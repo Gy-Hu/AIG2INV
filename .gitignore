@@ -1,0 +1,5 @@
+*.txt
+env.sh
+saved_models/*
+__pycache__/*
+
