@@ -21,6 +21,7 @@ class ConfigClassTest:
         self.save_interval=50
         self.continue_from_model=None
         self.grad_clip=0.65
+        self.modelname='test_v1'
 
     def to_str(self, printfn):
       allvars = vars(self)
@@ -59,5 +60,5 @@ class ConfigClassHWMCC07_1000:
         if len(n)>2 and n[0] != '_' and n[-1] != '_':
           printfn(n + ' := ' + str(v))
 
-config = ConfigClassHWMCC07_1000()
+config = ConfigClassTest()
 
