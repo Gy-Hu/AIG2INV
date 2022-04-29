@@ -57,6 +57,9 @@ def train(epoch, train_data, batch_size):
                 #print (prediction)
                 #print (data.clauses[0])
                 clauses = expand_clause(data.clauses, n_sv = n_sv)
+                if clauses is None:
+                    print (data.aag_name)
+                    exit(1)
                 #print (clauses)
                 clauses = clauses.to(config.device)
                 loss = loss + clause_loss(clauses, prediction)
@@ -174,9 +177,9 @@ def graph_filter(all_graphs, size):
     return retG
 
 def save_model(epoch, loss):
-    logger.info("Save current model...")
+    logger.info("Save current model... fname:" + config.modelname)
     ckpt = {'epoch': epoch+1, 'loss': loss, 'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict(), 'scheduler': scheduler.state_dict()}
-    ckpt_name = os.path.join("saved_models", 'model_checkpoint{}.pth'.format(epoch))
+    ckpt_name = os.path.join("saved_models", config.modelname + '_model_checkpoint{}.pth'.format(epoch))
     torch.save(ckpt, ckpt_name)
 
 def load_model(fname):
@@ -191,7 +194,7 @@ def load_model(fname):
 with open(config.dataset,'rb') as fin:
     all_graphs = pickle.load(fin)
 subset_graphs = graph_filter(all_graphs, config.use_size_below_this)
-print ('Load %d AIG, will use %d of them.' % (len(all_graphs), len(subset_graphs)))
+logger.info('Load %d AIG, will use %d of them.' % (len(all_graphs), len(subset_graphs)))
 
 if config.continue_from_model:
     load_model(config.continue_from_model)

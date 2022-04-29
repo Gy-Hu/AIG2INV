@@ -54,9 +54,14 @@ def add_order_info(graph):
 
 def expand_clause(clauses, n_sv):
     all_clauses = []
-    for c in clauses:
+    for cidx, c in enumerate(clauses):
         x = torch.zeros((1, n_sv))
         for idx, v in c:
+            if idx >= n_sv:
+                # this is a bug
+                print (cidx, ":", c)
+                print ('n_sv :', n_sv)
+                return None
             x[0][idx] = v
         all_clauses.append(x)
     all_clauses.append(torch.zeros((1, n_sv))) # this is the terminal symbol

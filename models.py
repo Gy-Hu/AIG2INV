@@ -42,7 +42,9 @@ class DGDAGRNN(nn.Module):
 
         self.grue_forward_input = nn.GRUCell(self.nvt, self.vhs)  # encode input & message into states
         self.grue_forward_hidden = nn.GRUCell(self.vhs, self.vhs)  # encoder old_state & message into states
-        self.grue_backward = nn.GRUCell(self.vhs, self.vhs)  # backward encoder GRU
+        # self.grue_backward = nn.GRUCell(self.vhs, self.vhs)  # backward encoder GRU
+        self.gru_latch_li_lo_update = nn.GRUCell(self.vhs, self.vhs)
+        self.gru_latch_output_lo_update = nn.GRUCell(self.vhs, self.vhs)
 
 
         # 2. gate-related, aggregate
@@ -51,19 +53,19 @@ class DGDAGRNN(nn.Module):
                 nn.Linear(self.vhs, self.vhs), 
                 nn.Sigmoid()
                 )
-        self.gate_backward = nn.Sequential(
-                nn.Linear(self.vhs, self.vhs), 
-                nn.Sigmoid()
-                )
+        # self.gate_backward = nn.Sequential(
+        #         nn.Linear(self.vhs, self.vhs), 
+        #         nn.Sigmoid()
+        #         )
         self.mapper_forward = nn.Sequential(
                 nn.Linear(self.vhs, self.vhs, bias=False),
                 )  # disable bias to ensure padded zeros also mapped to zeros
-        self.mapper_backward = nn.Sequential(
-                nn.Linear(self.vhs, self.vhs, bias=False), 
-                )
+        # self.mapper_backward = nn.Sequential(
+        #         nn.Linear(self.vhs, self.vhs, bias=False), 
+        #         )
 
         self.node_aggr_forward = GatedSumConv(self.vhs, num_rels, mapper=self.mapper_forward, gate=self.gate_forward)
-        self.node_aggr_backward = GatedSumConv(self.vhs, num_rels, mapper=self.mapper_backward, gate=self.gate_backward, reverse=True)
+        # self.node_aggr_backward = GatedSumConv(self.vhs, num_rels, mapper=self.mapper_backward, gate=self.gate_backward, reverse=True)
         
         # lstm ?
         self.lstm_clause_gen = nn.LSTM(input_size = 2*self.vhs, hidden_size = self.vhs, batch_first = True, bidirectional = True)
@@ -117,8 +119,11 @@ class DGDAGRNN(nn.Module):
             G.forward_layer_index = G.forward_layer_index.to(self.get_device())
             G.backward_layer_index = G.backward_layer_index.to(self.get_device())
             G.edge_index = G.edge_index.to(self.get_device())
+            G.output_node = G.output_node.to(self.get_device())
+            G.li_node = G.li_node.to(self.get_device())
 
         num_nodes_batch = G.x.shape[0]
+        num_sv_node = G.sv_node.shape[0]
         # print('# nodes for this batch: ', num_nodes_batch)
         num_layers_batch = max(G.forward_layer_index[0]).item() + 1
         # print('# layers for this batch: ', num_layers_batch)
@@ -162,31 +167,42 @@ class DGDAGRNN(nn.Module):
                     else:
                         G.h[layer] = self.grue_forward_hidden(inp, ps_h)
 
+            # end of forward propagation
+            # now update all latch node
+            sv_prev = G.h[G.sv_node]
+            li = G.h[G.li_node]
+            output = G.h[G.output_node]
+            output_repeat = output.repeat(num_sv_node, 1)
+
+
+            after_li_update = self.gru_latch_li_lo_update( li , sv_prev )
+            after_out_update = self.gru_latch_output_lo_update( output_repeat , after_li_update )
+            G.h[G.sv_node] = after_out_update
 
             # backwording
             # print('Backwarding')
-            for l_idx in range(num_layers_batch):
-                # print('# layer: ', l_idx)
-                layer = G.backward_layer_index[0] == l_idx
-                layer = G.backward_layer_index[1][layer]   # the vertices ID for this batch layer
+            # for l_idx in range(num_layers_batch):
+            #     # print('# layer: ', l_idx)
+            #     layer = G.backward_layer_index[0] == l_idx
+            #     layer = G.backward_layer_index[1][layer]   # the vertices ID for this batch layer
 
-                inp = G.h[layer]
-                # print("Input feature size: ", inp.size())
+            #     inp = G.h[layer]
+            #     # print("Input feature size: ", inp.size())
 
-                if l_idx > 0:   # no predecessors at first layer
-                    le_idx = []
-                    for n in layer:
-                        ne_idx = G.edge_index[0] == n
-                        le_idx += [torch.nonzero(ne_idx, as_tuple=False).squeeze(-1)]    # the index of edge edge in edg_index
-                    le_idx = torch.cat(le_idx, dim=-1)
-                    lp_edge_index = G.edge_index[:, le_idx] # the subset of edge_idx which contains the target vertices ID
+            #     if l_idx > 0:   # no predecessors at first layer
+            #         le_idx = []
+            #         for n in layer:
+            #             ne_idx = G.edge_index[0] == n
+            #             le_idx += [torch.nonzero(ne_idx, as_tuple=False).squeeze(-1)]    # the index of edge edge in edg_index
+            #         le_idx = torch.cat(le_idx, dim=-1)
+            #         lp_edge_index = G.edge_index[:, le_idx] # the subset of edge_idx which contains the target vertices ID
                 
-                    # HZ: We don't update the output layer at this time
-                    hs1 = G.h
-                    all_nodes_msg = self.node_aggr_backward(hs1, lp_edge_index, edge_attr=None)
-                    ps_h = all_nodes_msg[layer]
-                    # print('Aggregated hidden size: ', ps_h.size())
-                    G.h[layer] = self.grue_backward(inp, ps_h)
+            #         # HZ: We don't update the output layer at this time
+            #         hs1 = G.h
+            #         all_nodes_msg = self.node_aggr_backward(hs1, lp_edge_index, edge_attr=None)
+            #         ps_h = all_nodes_msg[layer]
+            #         # print('Aggregated hidden size: ', ps_h.size())
+            #         G.h[layer] = self.grue_backward(inp, ps_h)
 
 
 
