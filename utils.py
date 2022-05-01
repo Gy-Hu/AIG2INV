@@ -68,8 +68,33 @@ def expand_clause(clauses, n_sv):
     # this indicates no more clauses
     return torch.cat(all_clauses, dim=0).float()
 
+    
+def expand_clause_012(clauses, n_sv):
+    all_clauses = []
+    for cidx, c in enumerate(clauses):
+        x = torch.ones((1, n_sv)) #x = torch.zeros((1, n_sv))
+        for idx, v in c:
+            if idx >= n_sv:
+                # this is a bug
+                print (cidx, ":", c)
+                print ('n_sv :', n_sv)
+                return None
+            x[0][idx] = 1-v  # v
+        all_clauses.append(x)
+    all_clauses.append(torch.ones((1, n_sv))) # all_clauses.append(torch.zeros((1, n_sv))) # this is the terminal symbol
+    # this indicates no more clauses
+    return torch.cat(all_clauses, dim=0).float()
+    
+
 def clause_loss(groundtruth, prediction):
     return torch.sum( (groundtruth-prediction)**2 )
+
+def clause_loss_weighted(groundtruth, prediction, weight): # mse loss with weight
+    return torch.sum( (groundtruth-prediction)**2 * (torch.abs(groundtruth)+weight)**2 )
+
+def prediction_has_absone(prediction):
+    v, _ = torch.max(prediction[:-1]**2, dim=1)
+    return torch.sum(1-v)
 
 
 def load_module_state(model, state_name):
@@ -88,9 +113,23 @@ def load_module_state(model, state_name):
 def quantize(logits, threshold):
     return ((logits>threshold).long()-(logits<-threshold).long())
 
+def quantize_max(logits):
+    assert False
+
 def measure(expected, predicted):
     abs_expected = torch.abs(expected)
     abs_predict  = torch.abs(predicted)
+    TP = torch.sum(torch.logical_and(abs_expected==1, abs_predict==1).long()).cpu().item()
+    FP = torch.sum(torch.logical_and(abs_expected==0, abs_predict==1).long()).cpu().item()
+    TN = torch.sum(torch.logical_and(abs_expected==0, abs_predict==0).long()).cpu().item()
+    FN = torch.sum(torch.logical_and(abs_expected==1, abs_predict==0).long()).cpu().item()
+    ACC = torch.sum((expected==predicted).long()).cpu().item()
+    INC = torch.sum((expected!=predicted).long()).cpu().item()
+    return TP, FP, TN, FN, ACC, INC
+    
+def measure_012(expected, predicted):
+    abs_expected = torch.abs(expected-1)
+    abs_predict  = torch.abs(predicted-1)
     TP = torch.sum(torch.logical_and(abs_expected==1, abs_predict==1).long()).cpu().item()
     FP = torch.sum(torch.logical_and(abs_expected==0, abs_predict==1).long()).cpu().item()
     TN = torch.sum(torch.logical_and(abs_expected==0, abs_predict==0).long()).cpu().item()

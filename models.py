@@ -8,7 +8,7 @@ import numpy as np
 import copy
 from torch_geometric.data import Data
 from torch_geometric.nn import MessagePassing
-
+from msgnorm import MessageNorm
 
 
 '''
@@ -26,7 +26,7 @@ class DGDAGRNN(nn.Module):
         kstep (float, default: 10.0) - the value of k in soft step function.
         num_rounds (integer, default: 10) - # GRU iterations. 
     '''
-    def __init__(self,  nvt=6, vhs=100,  chs=30, nrounds=10):
+    def __init__(self, nvt=6, vhs=100,  chs=30, nrounds=10):
         super(DGDAGRNN, self).__init__()
         self.nvt = nvt  # number of vertex types
         self.vhs = vhs  # hidden state size of each vertex
@@ -40,11 +40,14 @@ class DGDAGRNN(nn.Module):
         self.init_ts = torch.ones(1)
         self.init_vector_for_nodes = nn.Linear(1, self.vhs, bias=False)
 
-        self.grue_forward_input = nn.GRUCell(self.nvt, self.vhs)  # encode input & message into states
-        self.grue_forward_hidden = nn.GRUCell(self.vhs, self.vhs)  # encoder old_state & message into states
+        self.grue_forward_input = nn.GRUCell(self.nvt, self.vhs)  # encode message into states & node type (as input)
+        self.grue_forward_hidden = nn.GRUCell(self.vhs, self.vhs)  # encoder message into states & old_state
         # self.grue_backward = nn.GRUCell(self.vhs, self.vhs)  # backward encoder GRU
         self.gru_latch_li_lo_update = nn.GRUCell(self.vhs, self.vhs)
         self.gru_latch_output_lo_update = nn.GRUCell(self.vhs, self.vhs)
+        self.layer_batch_norm = nn.BatchNorm1d(self.vhs)
+        
+        # self.hidden_state_norm = MessageNorm(vhs)
 
 
         # 2. gate-related, aggregate
@@ -64,7 +67,8 @@ class DGDAGRNN(nn.Module):
         #         nn.Linear(self.vhs, self.vhs, bias=False), 
         #         )
 
-        self.node_aggr_forward = GatedSumConv(self.vhs, num_rels, mapper=self.mapper_forward, gate=self.gate_forward)
+        self.node_aggr_forward = GatedSumConv(self.vhs, num_rels, normalizer=None, \
+            mapper=self.mapper_forward, gate=self.gate_forward)
         # self.node_aggr_backward = GatedSumConv(self.vhs, num_rels, mapper=self.mapper_backward, gate=self.gate_backward, reverse=True)
         
         # lstm ?
@@ -84,7 +88,9 @@ class DGDAGRNN(nn.Module):
         # expect [1 x n_input_node x self.vhs]
 
 
-
+    def batch_init(self, batch_node_count):
+        pass
+        # self.hidden_state_norm.set_initial_param(batch_node_count, self.get_device())
 
     def get_device(self):
         if self.device is None:
@@ -130,6 +136,8 @@ class DGDAGRNN(nn.Module):
 
         node_init_val = self.init_vector_for_nodes(self.init_ts.to(self.get_device()))
         G.h = node_init_val.repeat(num_nodes_batch, 1)
+        # G.h = torch.zeros((num_nodes_batch, self.vhs)).to(self.get_device())
+
         # print('Size of hidden states: ', G.h.size())
         
         
@@ -139,6 +147,7 @@ class DGDAGRNN(nn.Module):
             
             # forwarding
             # print('Forwarding...')
+            psh_absmax=[]
             for l_idx in range(num_layers_batch):
                 # print('# layer: ', l_idx)
                 layer = G.forward_layer_index[0] == l_idx # pick those which can be handled now
@@ -161,12 +170,68 @@ class DGDAGRNN(nn.Module):
                 
                     hs1 = G.h
                     ps_h = self.node_aggr_forward(hs1, lp_edge_index, edge_attr=None)[layer]
+                    
+                    psh_absmax.append(torch.max(torch.abs(ps_h)).item())
                     # print('Aggregated hidden size: ', ps_h.size())
                     if round_idx == 0:
-                        G.h[layer] = self.grue_forward_input(inp, ps_h)
+                        new_value = self.grue_forward_input(inp, ps_h)
+                        #old_value = G.h[layer]
+                        #self.hidden_state_norm.update_param_sliding_window(new_value, old_value)
+                        G.h[layer] = new_value
                     else:
-                        G.h[layer] = self.grue_forward_hidden(inp, ps_h)
+                        new_value = self.grue_forward_hidden(ps_h, inp)
+                        #old_value = G.h[layer]
+                        #self.hidden_state_norm.update_param_sliding_window(new_value, old_value)
+                        G.h[layer] = new_value
+                        
+                    if torch.any(torch.isnan(G.h)) or psh_absmax[-1] > 1e15:
+                        if psh_absmax[-1] > 1e15:
+                            print ('reason: 1e15')
+                        else:
+                            print ('reason: G.h has NaN')
+                            
+                        print ('1nan!!! G.h', G.aag_name, 'round:', round_idx, 'layer:', l_idx)
+                        print ('inp has NaN:', torch.any(torch.isnan(inp)))
+                        print ('ps_h has NaN:', torch.any(torch.isnan(ps_h)))
+                        
+                        print ('inp min:', torch.min(inp).item())
+                        print ('ps_h min:', torch.min(ps_h).item())
+                        
+                        print ('inp max:', torch.max(inp).item())
+                        print ('ps_h max:', torch.max(ps_h).item())
+                        
+                        
+                        print ('inp abs min:', torch.min(torch.abs(inp)).item())
+                        print ('ps_h abs min:', torch.min(torch.abs(ps_h)).item())
+                        
+                        print ('inp abs max:', torch.max(torch.abs(inp)).item())
+                        print ('ps_h abs max:', torch.max(torch.abs(ps_h)).item())
+                        
+                        print ('hs1 has NaN:', torch.any(torch.isnan(hs1)))
+                        print ('lp_edge_index has NaN:', torch.any(torch.isnan(lp_edge_index)))
+                        print ('layer has NaN:', torch.any(torch.isnan(layer)))
+                        print ('psh_absmax_history', psh_absmax)
+                        hdstate_max=[]
+                        for lidx in range(0,l_idx+1):
+                            layertmp = G.forward_layer_index[0] == lidx # pick those which can be handled now
+                            layertmp = G.forward_layer_index[1][layertmp]   # the vertices ID for this batch layer
+                            hidden_state_max = torch.max(torch.abs(G.h[layertmp]))
+                            hdstate_max.append(hidden_state_max.item())
+                        print ('h-state absmax', hdstate_max)
+                        exit(1)
+                        
+            # after all layers
+            
+            # print ('psh_absmax_history:', end=' ')
+            # for pshabs in psh_absmax:
+            #     print ('%0.3f' % pshabs, end=' ')
+            # print ()
+            # input()
+                        
 
+            if torch.any(torch.isnan(G.h)):
+                print ('2nan!!! ', G.aag_name, 'round:', round_idx, 'layer:', l_idx)
+                exit(1)
             # end of forward propagation
             # now update all latch node
             sv_prev = G.h[G.sv_node]
@@ -178,6 +243,23 @@ class DGDAGRNN(nn.Module):
             after_li_update = self.gru_latch_li_lo_update( li , sv_prev )
             after_out_update = self.gru_latch_output_lo_update( output_repeat , after_li_update )
             G.h[G.sv_node] = after_out_update
+            
+            # layer norm
+            # h_normalized = torch.zeros((num_nodes_batch, self.vhs)).to(self.get_device())
+            # for l_idx in range(num_layers_batch):
+            #     # print('# layer: ', l_idx)
+            #     layer = G.forward_layer_index[0] == l_idx # pick those which can be handled now
+            #     layer = G.forward_layer_index[1][layer]   # the vertices ID for this batch layer
+            #     if layer.shape[0] == 1:
+            #       h_normalized[layer] = G.h[layer]
+            #     else:
+            #       h_normalized[layer] = self.layer_batch_norm(G.h[layer])
+            # G.h = h_normalized
+
+            
+            if torch.any(torch.isnan(G.h)):
+                print ('3nan!!! ', G.aag_name, 'round:', round_idx, 'layer:', l_idx)
+                exit(1)
 
             # backwording
             # print('Backwarding')
@@ -204,7 +286,7 @@ class DGDAGRNN(nn.Module):
             #         # print('Aggregated hidden size: ', ps_h.size())
             #         G.h[layer] = self.grue_backward(inp, ps_h)
 
-
+        # after all rounds
 
         # 1. find the nodes for state vars
         sv_node = G.sv_node
@@ -217,6 +299,9 @@ class DGDAGRNN(nn.Module):
             sv_feature = self.lstm_clause_update2to1(prop_feature)
 
             clause_generated = self.lstm_clause_gen_mapper(clause_predict[0])
+            
+            if torch.any(torch.isnan(clause_generated)):
+                print ('end nan!!! ', "%d / %d" % (idx,n_clause) )
             result_clauses.append(clause_generated.t())
 
         result_clauses = torch.cat(result_clauses, dim=0)
@@ -233,8 +318,8 @@ class GatedSumConv(MessagePassing):  # dvae needs outdim parameter
     It is not the exactly Deep-Set. Should implement DeepSet later.
     Consider change `aggr` from 'add' to 'mean'. It makes sense when there are AND gates and NOT gates.
     '''
-    def __init__(self, emb_dim, num_relations=1, reverse=False, mapper=None, gate=None):
-        super(GatedSumConv, self).__init__(aggr='add', flow='target_to_source' if reverse else 'source_to_target')
+    def __init__(self, emb_dim, num_relations=1, normalizer=None, reverse=False, mapper=None, gate=None):
+        super(GatedSumConv, self).__init__(aggr='mean', flow='target_to_source' if reverse else 'source_to_target')
 
         assert emb_dim > 0
         if num_relations > 1:
@@ -242,6 +327,8 @@ class GatedSumConv(MessagePassing):  # dvae needs outdim parameter
             self.edge_encoder = torch.nn.Linear(num_relations, emb_dim)
         else:
             self.wea = False
+            
+        self.normalizer = normalizer
         self.mapper = nn.Linear(emb_dim, emb_dim) if mapper is None else mapper
         self.gate = nn.Sequential(nn.Linear(emb_dim, emb_dim), nn.Sigmoid()) if gate is None else gate
 
@@ -255,8 +342,13 @@ class GatedSumConv(MessagePassing):  # dvae needs outdim parameter
         return self.propagate(edge_index, x=x, edge_attr=edge_embedding)
 
     def message(self, x_j, edge_attr):
-        h_j = x_j + edge_attr if self.wea else x_j
+        h_j = x_j 
+        if self.wea:
+            h_j = h_j + edge_attr
+        #if self.normalizer:
+        #    h_j = self.normalizer(h_j)
         return self.gate(h_j) * self.mapper(h_j)
 
     def update(self, aggr_out):
         return aggr_out
+        
