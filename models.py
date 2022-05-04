@@ -2,76 +2,69 @@ import math
 import random
 import torch
 from torch import nn
-from torch.nn import functional as F
 import torch.nn.init as init
 import numpy as np
 import copy
 from torch_geometric.data import Data
-from torch_geometric.nn import MessagePassing
-from msgnorm import MessageNorm
 
 
-'''
-    Circuit-SAT.
-    The model used in this paper named Deep-Gated DAG Recursive Neural Networks (DG-DARGNN).
-'''
-class DGDAGRNN(nn.Module):
-    '''
-    The implemnetation of DGDAGRNN with Pytorch Geometric.
-    Attributes:
-        nvt (integer, default: 3) - # vertex types.
-        vhs (integer, default: 100) - the size of hidden state of nodes.
-        chs (integer, default: 30) - the size of hidden state of classifier.
-        temperature (float, default: 5.0) - the initial value of temperature for soft MIN.
-        kstep (float, default: 10.0) - the value of k in soft step function.
-        num_rounds (integer, default: 10) - # GRU iterations. 
-    '''
-    def __init__(self, nvt=6, vhs=100,  chs=30, nrounds=10):
-        super(DGDAGRNN, self).__init__()
-        self.nvt = nvt  # number of vertex types
-        self.vhs = vhs  # hidden state size of each vertex
+
+class MLP(nn.Module):
+  def __init__(self, in_dim, hidden_dim, out_dim):
+    super(MLP, self).__init__()
+    self.l1 = nn.Linear(in_dim, hidden_dim)
+    self.f1 = nn.ReLU()
+    self.l2 = nn.Linear(hidden_dim, hidden_dim)
+    self.f2 = nn.ReLU()
+    self.l3 = nn.Linear(hidden_dim, out_dim)
+
+  def forward(self, x):
+    x = self.l1(x)
+    x = self.f1(x)
+    x = self.l2(x)
+    x = self.f2(x)
+    output = self.l3(x)
+
+    return output
+
+
+class NeuroGraph(nn.Module):
+    def __init__(self, nvt=7, vhs=100, chs=30, nrounds=100):
+        super(NeuroGraph, self).__init__()
+        self.vhs = vhs
+        self.nvt = nvt
         self.chs = chs
         self.nrounds = nrounds
-        self.num_layers = 1 # one forward and no backword
 
         self.device = None
 
-        # 0. GRU-related
+        # AND=0
+        # NOT=1
+        # SV=2
+        # INP=3
+        # FALSE=4
+        # LI_UPDATE=5
+        # OUT_UPDATE=6
+
         self.init_ts = torch.ones(1)
-        self.init_vector_for_nodes = nn.Linear(1, self.vhs, bias=False)
+        self.init_ts.requires_grad = False
 
-        self.grue_forward_input = nn.GRUCell(self.nvt, self.vhs)  # encode message into states & node type (as input)
-        self.grue_forward_hidden = nn.GRUCell(self.vhs, self.vhs)  # encoder message into states & old_state
-        # self.grue_backward = nn.GRUCell(self.vhs, self.vhs)  # backward encoder GRU
-        self.gru_latch_li_lo_update = nn.GRUCell(self.vhs, self.vhs)
-        self.gru_latch_output_lo_update = nn.GRUCell(self.vhs, self.vhs)
-        self.layer_batch_norm = nn.BatchNorm1d(self.vhs)
-        
-        # self.hidden_state_norm = MessageNorm(vhs)
+        # these are the trainable parameters for different node type
+        self.and_init = nn.Linear(1,self.vhs)
+        self.not_init = nn.Linear(1, self.vhs)
+        self.sv_init = nn.Linear(1,self.vhs)
+        self.inp_init = nn.Linear(1, self.vhs)
+        self.false_init = nn.Linear(1,self.vhs)
+        self.li_init = nn.Linear(1, self.vhs)
+        self.out_init = nn.Linear(1, self.vhs)
 
+        self.forward_msg = MLP(self.vhs, self.vhs, self.vhs) #for children to pass message
+        self.backward_msg = MLP(self.vhs, self.vhs, self.vhs) #for parents to pass message
 
-        # 2. gate-related, aggregate
-        num_rels = 1    # num_relationship
-        self.gate_forward = nn.Sequential(
-                nn.Linear(self.vhs, self.vhs), 
-                nn.Sigmoid()
-                )
-        # self.gate_backward = nn.Sequential(
-        #         nn.Linear(self.vhs, self.vhs), 
-        #         nn.Sigmoid()
-        #         )
-        self.mapper_forward = nn.Sequential(
-                nn.Linear(self.vhs, self.vhs, bias=False),
-                )  # disable bias to ensure padded zeros also mapped to zeros
-        # self.mapper_backward = nn.Sequential(
-        #         nn.Linear(self.vhs, self.vhs, bias=False), 
-        #         )
+        self.forward_update = nn.GRU(self.vhs, self.vhs) #update node (exclude variable)
+        self.backward_update = nn.GRU(self.vhs, self.vhs) #udpate variable and node
 
-        self.node_aggr_forward = GatedSumConv(self.vhs, num_rels, normalizer=None, \
-            mapper=self.mapper_forward, gate=self.gate_forward)
-        # self.node_aggr_backward = GatedSumConv(self.vhs, num_rels, mapper=self.mapper_backward, gate=self.gate_backward, reverse=True)
-        
-        # lstm ?
+        # for clause generation
         self.lstm_clause_gen = nn.LSTM(input_size = 2*self.vhs, hidden_size = self.vhs, batch_first = True, bidirectional = True)
         # expect [1 x n_input_node x self.vhs]
         # output [1 x n_input_node x self.vhs] then go through this mapper to -1 0 1
@@ -85,212 +78,85 @@ class DGDAGRNN(nn.Module):
 
         self.lstm_clause_update = nn.LSTM(input_size = self.vhs, hidden_size = self.vhs, batch_first = True, bidirectional = True)
         self.lstm_clause_update2to1 = nn.Linear(self.vhs*2, self.vhs)
-        # expect [1 x n_input_node x self.vhs]
 
-
-    def batch_init(self, batch_node_count):
-        pass
-        # self.hidden_state_norm.set_initial_param(batch_node_count, self.get_device())
 
     def get_device(self):
         if self.device is None:
             self.device = next(self.parameters()).device
         return self.device
-    
-    def _get_zeros(self, n, length):
-        return torch.zeros(n, length).to(self.get_device()) # get a zero hidden state
-
-    def _get_zero_hidden(self, n=1):
-        return self._get_zeros(n, self.hs) # get a zero hidden state
-
-    def _one_hot(self, idx, length):
-        if type(idx) in [list, range]:
-            if idx == []:
-                return None
-            idx = torch.LongTensor(idx).unsqueeze(0).t()
-            x = torch.zeros((len(idx), length)).scatter_(1, idx, 1).to(self.get_device())
-        else:
-            idx = torch.LongTensor([idx]).unsqueeze(0)
-            x = torch.zeros((1, length)).scatter_(1, idx, 1).to(self.get_device())
-        return x
-
-    def _collate_fn(self, G):
-        return [copy.deepcopy(g) for g in G]
 
     def forward(self, G, n_clause, transfer_to_device):
-        # GNN computation to get node embeddings
         if transfer_to_device:
             G.x = G.x.to(self.get_device())
             G.sv_node = G.sv_node.to(self.get_device())
-            G.forward_layer_index = G.forward_layer_index.to(self.get_device())
-            G.backward_layer_index = G.backward_layer_index.to(self.get_device())
+
             G.edge_index = G.edge_index.to(self.get_device())
             G.output_node = G.output_node.to(self.get_device())
             G.li_node = G.li_node.to(self.get_device())
+            G.ind = G.ind.to(self.get_device())
+            G.outd = G.outd.to(self.get_device())
 
         num_nodes_batch = G.x.shape[0]
         num_sv_node = G.sv_node.shape[0]
-        # print('# nodes for this batch: ', num_nodes_batch)
-        num_layers_batch = max(G.forward_layer_index[0]).item() + 1
-        # print('# layers for this batch: ', num_layers_batch)
+        assert G.x.shape[1] == self.nvt
 
-        node_init_val = self.init_vector_for_nodes(self.init_ts.to(self.get_device()))
-        G.h = node_init_val.repeat(num_nodes_batch, 1)
-        # G.h = torch.zeros((num_nodes_batch, self.vhs)).to(self.get_device())
+        # TODO: build the adjacent matrix
+        n_edge = G.edge_index.shape[1]
+        edgeones = torch.ones(n_edge, device=self.get_device())
+        edge_backward = torch.vstack( (G.edge_index[1],G.edge_index[0]) )
+        adj_mat_bwd = torch.sparse_coo_tensor(indices=G.edge_index, values=edgeones, size=(num_nodes_batch,num_nodes_batch))
+        adj_mat_fwd = torch.sparse_coo_tensor(indices=edge_backward, values=edgeones, size=(num_nodes_batch,num_nodes_batch))
 
-        # print('Size of hidden states: ', G.h.size())
+        init_ts = self.init_ts.to(self.get_device())
+        type_vec = torch.vstack(\
+          ( self.and_init(init_ts), \
+            self.not_init(init_ts), \
+            self.sv_init (init_ts), \
+            self.inp_init(init_ts), \
+            self.false_init(init_ts),\
+            self.li_init(init_ts),  \
+            self.out_init(init_ts)))
+
+        assert self.nvt == type_vec.shape[0]
+        assert type_vec.shape[1] == self.vhs
+        var_state = torch.matmul(G.x, type_vec) # this is the initial hidden state vector
         
-        
-        # forward
-        for round_idx in range(self.nrounds):
-            # print('######## Round: ', round_idx)
+        ind = G.ind.unsqueeze(0).t()
+        outd = G.outd.unsqueeze(0).t()
+    
+        for _ in range(self.nrounds):
+            # forward
+            var_pre_msg = self.forward_msg(var_state)
+            fwd_msg = torch.matmul(adj_mat_fwd, var_pre_msg)
+            fwd_msg = fwd_msg/ind
+
+            # you may want to normalize here ?
+
+            inp = fwd_msg.unsqueeze(0)
+            h = var_state.unsqueeze(0) # shape: 1 x n_node x vhs
+            var_state, _ = self.forward_update(inp, h)  # basically, the first and second input are the same
+            var_state = var_state[0]
+
+            # backward
+            var_pre_msg = self.backward_msg(var_state)
+            bwd_msg = torch.matmul(adj_mat_bwd, var_pre_msg)
+            bwd_msg = bwd_msg/outd
             
-            # forwarding
-            # print('Forwarding...')
-            psh_absmax=[]
-            for l_idx in range(num_layers_batch):
-                # print('# layer: ', l_idx)
-                layer = G.forward_layer_index[0] == l_idx # pick those which can be handled now
-                layer = G.forward_layer_index[1][layer]   # the vertices ID for this batch layer
+            # you may want to normalize here ?
 
-                if round_idx == 0:
-                    inp = G.x[layer]    # input node feature vector
-                else:
-                    inp = G.h[layer]
+            inp = bwd_msg.unsqueeze(0)
+            h = var_state.unsqueeze(0)
+            var_state, _ = self.backward_update(inp, h)
+            var_state = var_state[0]
 
-                # print("Input feature size: ", inp.size())
-                
-                if l_idx > 0:   # no predecessors at first layer
-                    le_idx = []
-                    for n in layer:
-                        ne_idx = G.edge_index[1] == n
-                        le_idx += [torch.nonzero(ne_idx, as_tuple=False).squeeze(-1)]    # the index of edge edge in edg_index
-                    le_idx = torch.cat(le_idx, dim=-1)
-                    lp_edge_index = G.edge_index[:, le_idx] # the subset of edge_idx which contains the target vertices ID
-                
-                    hs1 = G.h
-                    ps_h = self.node_aggr_forward(hs1, lp_edge_index, edge_attr=None)[layer]
-                    
-                    psh_absmax.append(torch.max(torch.abs(ps_h)).item())
-                    # print('Aggregated hidden size: ', ps_h.size())
-                    if round_idx == 0:
-                        new_value = self.grue_forward_input(inp, ps_h)
-                        #old_value = G.h[layer]
-                        #self.hidden_state_norm.update_param_sliding_window(new_value, old_value)
-                        G.h[layer] = new_value
-                    else:
-                        new_value = self.grue_forward_hidden(ps_h, inp)
-                        #old_value = G.h[layer]
-                        #self.hidden_state_norm.update_param_sliding_window(new_value, old_value)
-                        G.h[layer] = new_value
-                        
-                    if torch.any(torch.isnan(G.h)) or psh_absmax[-1] > 1e15:
-                        if psh_absmax[-1] > 1e15:
-                            print ('reason: 1e15')
-                        else:
-                            print ('reason: G.h has NaN')
-                            
-                        print ('1nan!!! G.h', G.aag_name, 'round:', round_idx, 'layer:', l_idx)
-                        print ('inp has NaN:', torch.any(torch.isnan(inp)))
-                        print ('ps_h has NaN:', torch.any(torch.isnan(ps_h)))
-                        
-                        print ('inp min:', torch.min(inp).item())
-                        print ('ps_h min:', torch.min(ps_h).item())
-                        
-                        print ('inp max:', torch.max(inp).item())
-                        print ('ps_h max:', torch.max(ps_h).item())
-                        
-                        
-                        print ('inp abs min:', torch.min(torch.abs(inp)).item())
-                        print ('ps_h abs min:', torch.min(torch.abs(ps_h)).item())
-                        
-                        print ('inp abs max:', torch.max(torch.abs(inp)).item())
-                        print ('ps_h abs max:', torch.max(torch.abs(ps_h)).item())
-                        
-                        print ('hs1 has NaN:', torch.any(torch.isnan(hs1)))
-                        print ('lp_edge_index has NaN:', torch.any(torch.isnan(lp_edge_index)))
-                        print ('layer has NaN:', torch.any(torch.isnan(layer)))
-                        print ('psh_absmax_history', psh_absmax)
-                        hdstate_max=[]
-                        for lidx in range(0,l_idx+1):
-                            layertmp = G.forward_layer_index[0] == lidx # pick those which can be handled now
-                            layertmp = G.forward_layer_index[1][layertmp]   # the vertices ID for this batch layer
-                            hidden_state_max = torch.max(torch.abs(G.h[layertmp]))
-                            hdstate_max.append(hidden_state_max.item())
-                        print ('h-state absmax', hdstate_max)
-                        exit(1)
-                        
-            # after all layers
-            
-            # print ('psh_absmax_history:', end=' ')
-            # for pshabs in psh_absmax:
-            #     print ('%0.3f' % pshabs, end=' ')
-            # print ()
-            # input()
-                        
+        # end of for each round
 
-            if torch.any(torch.isnan(G.h)):
-                print ('2nan!!! ', G.aag_name, 'round:', round_idx, 'layer:', l_idx)
-                exit(1)
-            # end of forward propagation
-            # now update all latch node
-            sv_prev = G.h[G.sv_node]
-            li = G.h[G.li_node]
-            output = G.h[G.output_node]
-            output_repeat = output.repeat(num_sv_node, 1)
-
-
-            after_li_update = self.gru_latch_li_lo_update( li , sv_prev )
-            after_out_update = self.gru_latch_output_lo_update( output_repeat , after_li_update )
-            G.h[G.sv_node] = after_out_update
-            
-            # layer norm
-            # h_normalized = torch.zeros((num_nodes_batch, self.vhs)).to(self.get_device())
-            # for l_idx in range(num_layers_batch):
-            #     # print('# layer: ', l_idx)
-            #     layer = G.forward_layer_index[0] == l_idx # pick those which can be handled now
-            #     layer = G.forward_layer_index[1][layer]   # the vertices ID for this batch layer
-            #     if layer.shape[0] == 1:
-            #       h_normalized[layer] = G.h[layer]
-            #     else:
-            #       h_normalized[layer] = self.layer_batch_norm(G.h[layer])
-            # G.h = h_normalized
-
-            
-            if torch.any(torch.isnan(G.h)):
-                print ('3nan!!! ', G.aag_name, 'round:', round_idx, 'layer:', l_idx)
-                exit(1)
-
-            # backwording
-            # print('Backwarding')
-            # for l_idx in range(num_layers_batch):
-            #     # print('# layer: ', l_idx)
-            #     layer = G.backward_layer_index[0] == l_idx
-            #     layer = G.backward_layer_index[1][layer]   # the vertices ID for this batch layer
-
-            #     inp = G.h[layer]
-            #     # print("Input feature size: ", inp.size())
-
-            #     if l_idx > 0:   # no predecessors at first layer
-            #         le_idx = []
-            #         for n in layer:
-            #             ne_idx = G.edge_index[0] == n
-            #             le_idx += [torch.nonzero(ne_idx, as_tuple=False).squeeze(-1)]    # the index of edge edge in edg_index
-            #         le_idx = torch.cat(le_idx, dim=-1)
-            #         lp_edge_index = G.edge_index[:, le_idx] # the subset of edge_idx which contains the target vertices ID
-                
-            #         # HZ: We don't update the output layer at this time
-            #         hs1 = G.h
-            #         all_nodes_msg = self.node_aggr_backward(hs1, lp_edge_index, edge_attr=None)
-            #         ps_h = all_nodes_msg[layer]
-            #         # print('Aggregated hidden size: ', ps_h.size())
-            #         G.h[layer] = self.grue_backward(inp, ps_h)
-
-        # after all rounds
-
-        # 1. find the nodes for state vars
         sv_node = G.sv_node
-        sv_feature = G.h[sv_node].unsqueeze(0)
+        with torch.no_grad():
+            variance = torch.sum(torch.var(var_state[sv_node], dim=0))
+            G.variance = variance.item()
+            
+        sv_feature = var_state[sv_node].unsqueeze(0)
         #n_clause = len(G.clauses.clauses)
         result_clauses = []
         for idx in range(n_clause):
@@ -300,55 +166,17 @@ class DGDAGRNN(nn.Module):
 
             clause_generated = self.lstm_clause_gen_mapper(clause_predict[0])
             
-            if torch.any(torch.isnan(clause_generated)):
-                print ('end nan!!! ', "%d / %d" % (idx,n_clause) )
+            prop_feature_has_nan = torch.any(torch.isnan(prop_feature))
+            sv_feature_has_nan = torch.any(torch.isnan(sv_feature))
+            clause_generated_has_nan = torch.any(torch.isnan(clause_generated))
+
+            if prop_feature_has_nan or sv_feature_has_nan or clause_generated_has_nan:
+                print('sv_feature max abs', torch.max(torch.abs(sv_feature)))
+                print('clause_predict max abs', torch.max(torch.abs(clause_predict)))
+                print('prop_feature max abs', torch.max(torch.abs(prop_feature)))
+
             result_clauses.append(clause_generated.t())
 
+        # check the result size
         result_clauses = torch.cat(result_clauses, dim=0)
         return result_clauses
-
-
-class GatedSumConv(MessagePassing):  # dvae needs outdim parameter
-    '''
-    Some parameter definitions:
-        num_relations (integer): the edge types. If 1, then no information from edge attribute.
-                        if not zero, then it reprensent the number of edge types.
-        wea (bool): with edge attributes. If num_relations > 1, then the graph is with edge attributes.
-        edge_encoder: cast the one-hot edge feature vector into emb_dim size.
-    It is not the exactly Deep-Set. Should implement DeepSet later.
-    Consider change `aggr` from 'add' to 'mean'. It makes sense when there are AND gates and NOT gates.
-    '''
-    def __init__(self, emb_dim, num_relations=1, normalizer=None, reverse=False, mapper=None, gate=None):
-        super(GatedSumConv, self).__init__(aggr='mean', flow='target_to_source' if reverse else 'source_to_target')
-
-        assert emb_dim > 0
-        if num_relations > 1:
-            self.wea = True
-            self.edge_encoder = torch.nn.Linear(num_relations, emb_dim)
-        else:
-            self.wea = False
-            
-        self.normalizer = normalizer
-        self.mapper = nn.Linear(emb_dim, emb_dim) if mapper is None else mapper
-        self.gate = nn.Sequential(nn.Linear(emb_dim, emb_dim), nn.Sigmoid()) if gate is None else gate
-
-    def forward(self, x, edge_index, edge_attr=None, **kwargs):
-        # HACK assume x contains only message sources
-        if edge_index is None:
-            h = self.gate(x) * self.mapper(x)
-            return torch.sum(h, dim=1)
-
-        edge_embedding = self.edge_encoder(edge_attr) if self.wea else None
-        return self.propagate(edge_index, x=x, edge_attr=edge_embedding)
-
-    def message(self, x_j, edge_attr):
-        h_j = x_j 
-        if self.wea:
-            h_j = h_j + edge_attr
-        #if self.normalizer:
-        #    h_j = self.normalizer(h_j)
-        return self.gate(h_j) * self.mapper(h_j)
-
-    def update(self, aggr_out):
-        return aggr_out
-        

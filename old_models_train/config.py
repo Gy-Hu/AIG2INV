@@ -6,9 +6,9 @@ class ConfigClassTest:
         self.grad_clip = 0.65
         self.epochs = 150
 
-        self.device='cuda:1'
+        self.device='cuda:0'
 
-        self.dataset='/data/hongcezh/clause-learning/data-collect/data2dataset/newgraph/test.pkl'
+        self.dataset='/data/hongcezh/clause-learning/data-collect/data2dataset/test.pkl'
         self.batch_size=5
         self.use_size_below_this = 1000 # if set to 0 then use all graphs
         self.clause_clip = 0
@@ -17,7 +17,7 @@ class ConfigClassTest:
 
         self.seed = 1000
 
-        self.nvt=7
+        self.nvt=6
         self.vhs = 100
         self.nrounds = 15
 
@@ -40,9 +40,9 @@ class ConfigClassTestZero:
         self.grad_clip = 0.65
         self.epochs = 150
 
-        self.device='cuda:1'
+        self.device='cuda:0'
 
-        self.dataset='/data/hongcezh/clause-learning/data-collect/data2dataset/newgraph/test3zeros.pkl'
+        self.dataset='/data/hongcezh/clause-learning/data-collect/data2dataset/test3zeros.pkl'
         self.batch_size=5
         self.use_size_below_this = 1000 # if set to 0 then use all graphs
         self.clause_clip = 0
@@ -51,7 +51,7 @@ class ConfigClassTestZero:
 
         self.seed = 1000
 
-        self.nvt=7
+        self.nvt=6
         self.vhs = 100
         self.nrounds = 15
 
@@ -76,9 +76,9 @@ class ConfigClassHWMCC07_1000:
         self.grad_clip = 0.65
         self.epochs = 150
 
-        self.device='cuda:1'
+        self.device='cuda:0'
 
-        self.dataset='/data/hongcezh/clause-learning/data-collect/data2dataset/newgraph/hwmcc07dataset.pkl'
+        self.dataset='/data/hongcezh/clause-learning/data-collect/data2dataset/hwmcc07dataset.pkl'
         self.batch_size=5
         self.use_size_below_this = 1000 # if set to 0 then use all graphs
         self.clause_clip = 500
@@ -87,7 +87,7 @@ class ConfigClassHWMCC07_1000:
 
         self.seed = 1000
 
-        self.nvt=7
+        self.nvt=6
         self.vhs = 100
         self.nrounds = 15
 
@@ -113,7 +113,7 @@ class ConfigClassHWMCC_ALL_under5000node:
 
         self.device='cuda:1'
 
-        self.dataset='/data/hongcezh/clause-learning/data-collect/data2dataset/newgraph/hwmcc07_10_17_20_5000node.pkl'
+        self.dataset='/data/hongcezh/clause-learning/data-collect/data2dataset/hwmcc07_10_17_20_5000node.pkl'
         self.batch_size=5
         self.use_size_below_this = 5000 # if set to 0 then use all graphs
         self.clause_clip = 500
@@ -121,7 +121,7 @@ class ConfigClassHWMCC_ALL_under5000node:
 
         self.seed = 1000
 
-        self.nvt=7
+        self.nvt=6
         self.vhs = 100
         self.nrounds = 15
 

@@ -1,5 +1,5 @@
 #from aig2graph import AigGraph, Clauses
-from models import DGDAGRNN
+from models import NeuroGraph
 from utils import expand_clause, clause_loss, clause_loss_weighted, prediction_has_absone, load_module_state, quantize, measure, measure_to_str
 from tqdm import tqdm
 import random
@@ -14,11 +14,11 @@ import copy
 from loguru import logger
 import math
 
-logger.add("train_t1_log.txt")
+logger.add("train_t2_log.txt")
 config.to_str(logger.info)
 #logger.info(config)
 
-model = DGDAGRNN(nvt = config.nvt, vhs = config.vhs, nrounds = config.nrounds)
+model = NeuroGraph(nvt = config.nvt, vhs = config.vhs, nrounds = config.nrounds)
 optimizer = optim.Adam(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
 scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=10, verbose=True)
 #lossfun = nn.MSELoss()
@@ -47,9 +47,8 @@ def train(epoch, train_data, batch_size, loss_weight):
         g_batch.append(g)
         if len(g_batch) == batch_size or i == len(train_data) - 1:
             batch_idx += 1
+            variance = 0
             optimizer.zero_grad()
-            total_nodes = sum([g.x.shape[0] for g in g_batch])
-            model.batch_init(total_nodes)
             #g_batch = model._collate_fn(g_batch)
             # binary_logit = model(g_batch)
             loss = torch.zeros(1).to(config.device)
@@ -71,6 +70,7 @@ def train(epoch, train_data, batch_size, loss_weight):
                 #print (clauses)
                 clauses = clauses.to(config.device)
                 prediction = model(data, n_clause, True)
+                variance += data.variance
                 
                 if (torch.any(torch.isnan(prediction))):
                     print ('!!! prediction NAN!!!', data.aag_name)
@@ -78,7 +78,7 @@ def train(epoch, train_data, batch_size, loss_weight):
                     print ('!!! target NAN!!!', data.aag_name)
                     
 
-                #this_loss = lossfun(clauses, prediction, loss_weight)
+                # this_loss = lossfun(clauses, prediction, loss_weight)
                 this_loss = clause_loss(clauses, prediction)
                 #if config.alpha > 0:
                 #    this_loss = this_loss + prediction_has_absone(prediction) * config.alpha
@@ -128,8 +128,8 @@ def train(epoch, train_data, batch_size, loss_weight):
                     exit(1)
 
             train_loss += loss.item()
-            pbar.set_description('Epoch: %d, loss: %0.4f, %s, max grad: %0.5f' % (
-                             epoch, loss.item()/len(g_batch), msg50, maxgrad.item()))
+            pbar.set_description('Epoch: %d, loss: %0.4f, %s, grd: %0.4f var: %0.4f' % (
+                             epoch, loss.item()/len(g_batch), msg50, maxgrad.item(), variance))
 
             g_batch = []
 
@@ -160,8 +160,6 @@ def test(epoch, test_data, batch_size, loss_weight):
         g_batch.append(g)
         if len(g_batch) == batch_size or i == len(test_data) - 1:
             batch_idx += 1
-            total_nodes = sum([g.x.shape[0] for g in g_batch])
-            model.batch_init(total_nodes)
             optimizer.zero_grad()
             #g_batch = model._collate_fn(g_batch)
             # binary_logit = model(g_batch)

@@ -2,4 +2,5 @@
 env.sh
 saved_models/*
 __pycache__/*
+.vscode/*
 
