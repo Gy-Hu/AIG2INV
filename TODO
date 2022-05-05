@@ -1,0 +1,37 @@
+1. See if it is NaN and why (Cannot be from LSTM)
+
+2022-05-05 11:32:23.639 | INFO     | __main__:<module>:262 - Load 321 AIG, will use 321 of them.
+2022-05-05 11:32:23.656 | INFO     | __main__:<module>:265 - +/- 1 2030769 , all 19649599 , ratio:0.1033
+Epoch: 1, loss: 8136.7875, TP50: 0.043, FP50: 0.715, TN50: 0.231,FN50: 0.010,ACC50: 0.251, max grad: 0.02230:   9%|████▍                                          | 30/321 [02:34<27:29,  5.67s/it]
+/data/hongcezh/pythonVenv/venv/lib/python3.8/site-packages/torch/autograd/__init__.py:173: UserWarning: Error detected in CudnnRnnBackward0. Traceback of forward call that caused the error:
+  File "train_t1.py", line 276, in <module>
+    train_loss = train(epoch,subset_graphs,config.batch_size, loss_weight)
+  File "train_t1.py", line 73, in train
+    prediction = model(data, n_clause, True)
+  File "/data/hongcezh/pythonVenv/venv/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1110, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/data/hongcezh/clause-learning/Model2/models.py", line 315, in forward
+    prop_feature, _ = self.lstm_clause_update(sv_feature)  # the initial hidden states are set to zero
+  File "/data/hongcezh/pythonVenv/venv/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1110, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/data/hongcezh/pythonVenv/venv/lib/python3.8/site-packages/torch/nn/modules/rnn.py", line 761, in forward
+    result = _VF.lstm(input, hx, self._flat_weights, self.bias, self.num_layers,
+ (Triggered internally at  ../torch/csrc/autograd/python_anomaly_mode.cpp:104.)
+  Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+Epoch: 1, loss: 8136.7875, TP50: 0.043, FP50: 0.715, TN50: 0.231,FN50: 0.010,ACC50: 0.251, max grad: 0.02230:  11%|████▉                                          | 34/321 [02:54<24:31,  5.13s/it]
+Traceback (most recent call last):
+  File "train_t1.py", line 276, in <module>
+    train_loss = train(epoch,subset_graphs,config.batch_size, loss_weight)
+  File "train_t1.py", line 105, in train
+    loss.backward()
+  File "/data/hongcezh/pythonVenv/venv/lib/python3.8/site-packages/torch/_tensor.py", line 363, in backward
+    torch.autograd.backward(self, gradient, retain_graph, create_graph, inputs=inputs)
+  File "/data/hongcezh/pythonVenv/venv/lib/python3.8/site-packages/torch/autograd/__init__.py", line 173, in backward
+    Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+RuntimeError: Function 'CudnnRnnBackward0' returned nan values in its 0th output.
+
+
+may be a smaller lr?
+
+
+2. Try a better loss function (one / different loss)
