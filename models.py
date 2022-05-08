@@ -58,8 +58,8 @@ class NeuroGraph(nn.Module):
         self.li_init = nn.Linear(1, self.vhs)
         self.out_init = nn.Linear(1, self.vhs)
 
-        self.forward_msg = MLP(self.vhs, self.vhs, self.vhs) #for children to pass message
-        self.backward_msg = MLP(self.vhs, self.vhs, self.vhs) #for parents to pass message
+        self.forward_msg = MLP(self.vhs + self.nvt, self.vhs, self.vhs) #for children to pass message
+        self.backward_msg = MLP(self.vhs + self.nvt, self.vhs, self.vhs) #for parents to pass message
 
         self.forward_update = nn.GRU(self.vhs, self.vhs) #update node (exclude variable)
         self.backward_update = nn.GRU(self.vhs, self.vhs) #udpate variable and node
@@ -133,7 +133,8 @@ class NeuroGraph(nn.Module):
     
         for _ in range(self.nrounds):
             # forward
-            var_pre_msg = self.forward_msg(var_state)
+            var_state_with_type_fwd = torch.cat((var_state, G.x), dim=1)
+            var_pre_msg = self.forward_msg(var_state_with_type_fwd)
             fwd_msg = torch.matmul(adj_mat_fwd, var_pre_msg)
             fwd_msg = fwd_msg/ind
 
@@ -145,7 +146,8 @@ class NeuroGraph(nn.Module):
             var_state = var_state[0]
 
             # backward
-            var_pre_msg = self.backward_msg(var_state)
+            var_state_with_type_bwd = torch.cat((var_state, G.x), dim=1)
+            var_pre_msg = self.backward_msg(var_state_with_type_bwd)
             bwd_msg = torch.matmul(adj_mat_bwd, var_pre_msg)
             bwd_msg = bwd_msg/outd
             

@@ -37,9 +37,6 @@ def pretrain(epoch, train_data, batch_size):
     model.train()
     train_loss = 0
     total_variance = 0
-    TP50, FP50, TN50, FN50, ACC50 = 0,0,0,0,0
-    TP80, FP80, TN80, FN80, ACC80 = 0,0,0,0,0
-    TP95, FP95, TN95, FN95, ACC95 = 0,0,0,0,0
     TOT = 0
     
     random.shuffle(train_data) # let's not shuffling for debug purpose
@@ -129,7 +126,7 @@ def pretrain(epoch, train_data, batch_size):
     print('====> Epoch Pre-Train: {:d} Average loss: {:.4f}, Average variance: {:.4f}'.format(
           epoch, train_loss, total_variance))
 
-    return train_loss
+    return train_loss, total_variance
 
 
 
@@ -396,8 +393,22 @@ if config.continue_from_model:
 
 start_epoch = 0
 os.system('date > loss.txt')
-for epoch in range(0, config.pretrain_epoch):
-    pretrain(epoch, subset_graphs, config.batch_size)
+pre_train_variance = 0
+epoch = 0
+if config.auto_pretrain:
+    while pre_train_variance < 5:
+        if epoch > 1000:
+            logger.info('pretrain failed @ epoch ' + str(epoch))
+            exit(1)
+        pre_train_loss, pre_train_variance = pretrain(epoch, subset_graphs, config.batch_size)
+        # scheduler.step(pre_train_loss)
+        
+        with open("loss.txt", 'a') as loss_file:
+            loss_file.write("{:.4f} {:.4f}\n".format(
+                pre_train_loss, pre_train_variance
+                ))
+
+        epoch += 1
     
 for epoch in range(start_epoch + 1, config.epochs + 1):
     train_loss = train(epoch,subset_graphs,config.batch_size, loss_weight)
