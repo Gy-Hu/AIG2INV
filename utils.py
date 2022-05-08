@@ -51,6 +51,8 @@ def add_order_info(graph):
     graph.__setattr__("forward_layer_index", layers)
     graph.__setattr__("backward_layer_index", layers2)
     
+def sum_clause(clauses):
+    return torch.sum(clauses**2, dim=0)
 
 def expand_clause(clauses, n_sv):
     all_clauses = []
@@ -62,6 +64,7 @@ def expand_clause(clauses, n_sv):
                 print (cidx, ":", c)
                 print ('n_sv :', n_sv)
                 return None
+            assert v == 1 or v == -1
             x[0][idx] = v
         all_clauses.append(x)
     all_clauses.append(torch.zeros((1, n_sv))) # this is the terminal symbol
@@ -111,20 +114,22 @@ def load_module_state(model, state_name):
     
 
 def quantize(logits, threshold):
-    return ((logits>threshold).long()-(logits<-threshold).long())
+    with torch.no_grad():
+        return ((logits>threshold).long()-(logits<-threshold).long())
 
 def quantize_max(logits):
     assert False
 
 def measure(expected, predicted):
-    abs_expected = torch.abs(expected)
-    abs_predict  = torch.abs(predicted)
-    TP = torch.sum(torch.logical_and(abs_expected==1, abs_predict==1).long()).cpu().item()
-    FP = torch.sum(torch.logical_and(abs_expected==0, abs_predict==1).long()).cpu().item()
-    TN = torch.sum(torch.logical_and(abs_expected==0, abs_predict==0).long()).cpu().item()
-    FN = torch.sum(torch.logical_and(abs_expected==1, abs_predict==0).long()).cpu().item()
-    ACC = torch.sum((expected==predicted).long()).cpu().item()
-    INC = torch.sum((expected!=predicted).long()).cpu().item()
+    with torch.no_grad():
+        abs_expected = torch.abs(expected)
+        abs_predict  = torch.abs(predicted)
+        TP = torch.sum(torch.logical_and(abs_expected==1, abs_predict==1).long()).cpu().item()
+        FP = torch.sum(torch.logical_and(abs_expected==0, abs_predict==1).long()).cpu().item()
+        TN = torch.sum(torch.logical_and(abs_expected==0, abs_predict==0).long()).cpu().item()
+        FN = torch.sum(torch.logical_and(abs_expected==1, abs_predict==0).long()).cpu().item()
+        ACC = torch.sum((expected==predicted).long()).cpu().item()
+        INC = torch.sum((expected!=predicted).long()).cpu().item()
     return TP, FP, TN, FN, ACC, INC
     
 def measure_012(expected, predicted):

@@ -70,14 +70,21 @@ class NeuroGraph(nn.Module):
         # output [1 x n_input_node x self.vhs] then go through this mapper to -1 0 1
 
         self.lstm_clause_gen_mapper = nn.Sequential(
-                nn.Linear(self.vhs*2, self.chs),
+                nn.Linear(self.vhs, self.chs),
                 nn.ReLU(),
                 nn.Linear(self.chs, 1),
                 nn.Tanh()
             )
+        self.lstm_clause_gen2to1 = nn.Linear(self.vhs*2, self.vhs)
 
         self.lstm_clause_update = nn.LSTM(input_size = self.vhs, hidden_size = self.vhs, batch_first = True, bidirectional = True)
         self.lstm_clause_update2to1 = nn.Linear(self.vhs*2, self.vhs)
+
+        self.sv_feature_pretrain_layer = nn.Sequential(
+            nn.Linear(self.vhs, self.chs),
+            nn.ReLU(),
+            nn.Linear(self.chs, 1)
+            )
 
 
     def get_device(self):
@@ -85,7 +92,7 @@ class NeuroGraph(nn.Module):
             self.device = next(self.parameters()).device
         return self.device
 
-    def forward(self, G, n_clause, transfer_to_device):
+    def forward(self, G, n_clause, transfer_to_device, pretrain_round):
         if transfer_to_device:
             G.x = G.x.to(self.get_device())
             G.sv_node = G.sv_node.to(self.get_device())
@@ -152,10 +159,15 @@ class NeuroGraph(nn.Module):
         # end of for each round
 
         sv_node = G.sv_node
-        with torch.no_grad():
-            variance = torch.sum(torch.var(var_state[sv_node], dim=0))
-            G.variance = variance.item()
-            
+        variance = torch.sum(torch.var(var_state[sv_node], dim=0))
+        G.variance = variance
+
+        
+        shortcut = var_state[sv_node]
+
+        if pretrain_round:
+            return (self.sv_feature_pretrain_layer(shortcut).t())[0]
+
         sv_feature = var_state[sv_node].unsqueeze(0)
         #n_clause = len(G.clauses.clauses)
         result_clauses = []
@@ -164,7 +176,8 @@ class NeuroGraph(nn.Module):
             clause_predict, _ = self.lstm_clause_gen(prop_feature)
             sv_feature = self.lstm_clause_update2to1(prop_feature)
 
-            clause_generated = self.lstm_clause_gen_mapper(clause_predict[0])
+            clause_pred2to1 = self.lstm_clause_gen2to1(clause_predict[0])
+            clause_generated = self.lstm_clause_gen_mapper(clause_pred2to1 + shortcut)
             
             prop_feature_has_nan = torch.any(torch.isnan(prop_feature))
             sv_feature_has_nan = torch.any(torch.isnan(sv_feature))
