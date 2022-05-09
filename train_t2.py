@@ -20,6 +20,12 @@ config.to_str(logger.info)
 #logger.info(config)
 
 model = NeuroGraph(nvt = config.nvt, vhs = config.vhs, nrounds = config.nrounds)
+
+pretrain_optimizer = optim.Adam(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
+pretrain_scheduler = ReduceLROnPlateau(pretrain_optimizer, 'min', factor=0.1, patience=10, verbose=True)
+# maybe CosineAnnealingLR later ?
+
+
 optimizer = optim.Adam(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
 scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=10, verbose=True)
 #lossfun = nn.MSELoss()
@@ -48,7 +54,7 @@ def pretrain(epoch, train_data, batch_size):
         if len(g_batch) == batch_size or i == len(train_data) - 1:
             batch_idx += 1
             variance = 0
-            optimizer.zero_grad()
+            pretrain_optimizer.zero_grad()
             #g_batch = model._collate_fn(g_batch)
             # binary_logit = model(g_batch)
             loss = torch.zeros(1).to(config.device)
@@ -108,7 +114,7 @@ def pretrain(epoch, train_data, batch_size):
                             maxgrad = param_grad_max
             
             
-            optimizer.step()
+            pretrain_optimizer.step()
             
             for param in model.parameters():
                 if torch.any(torch.isnan(param)):
@@ -133,6 +139,7 @@ def pretrain(epoch, train_data, batch_size):
 def train(epoch, train_data, batch_size, loss_weight):
     model.train()
     train_loss = 0
+    train_var = 0
     TP50, FP50, TN50, FN50, ACC50 = 0,0,0,0,0
     TP80, FP80, TN80, FN80, ACC80 = 0,0,0,0,0
     TP95, FP95, TN95, FN95, ACC95 = 0,0,0,0,0
@@ -148,8 +155,6 @@ def train(epoch, train_data, batch_size, loss_weight):
             batch_idx += 1
             variance = 0
             optimizer.zero_grad()
-            #g_batch = model._collate_fn(g_batch)
-            # binary_logit = model(g_batch)
             loss = torch.zeros(1).to(config.device)
             for data in g_batch:
                 # make a copy, so we don't occupy GPU all the time
@@ -169,7 +174,7 @@ def train(epoch, train_data, batch_size, loss_weight):
                 #print (clauses)
                 clauses = clauses.to(config.device)
                 prediction = model(data, n_clause, True, False)
-                variance += data.variance
+                
                 
                 if (torch.any(torch.isnan(prediction))):
                     print ('!!! prediction NAN!!!', data.aag_name)
@@ -198,6 +203,7 @@ def train(epoch, train_data, batch_size, loss_weight):
                 #if config.alpha > 0:
                 #    this_loss = this_loss + prediction_has_absone(prediction) * config.alpha
                 loss = loss + this_loss
+                variance +=  data.variance.item()
                 #print (prediction)
                 if torch.any(torch.isnan(loss)):
                     print ("!!! loss NAN!!!",  data.aag_name)
@@ -243,19 +249,21 @@ def train(epoch, train_data, batch_size, loss_weight):
                     exit(1)
 
             train_loss += loss.item()
+            train_var += variance
             pbar.set_description('Epoch: %d, loss: %0.4f, %s, grd: %0.4f var: %0.4f' % (
-                             epoch, loss.item()/len(g_batch), msg50, maxgrad.item(), variance))
+                             epoch, loss.item()/len(g_batch), msg50, maxgrad.item(), variance/len(g_batch)))
 
             g_batch = []
 
     train_loss /= len(train_data)
+    train_var /= len(train_data)
     msg50=measure_to_str(TP50/TOT, FP50/TOT, TN50/TOT, FN50/TOT, ACC50/TOT, 50)
 
 
-    print('====> Epoch Train: {:d} Average loss: {:.4f}, {}'.format(
-          epoch, train_loss, msg50))
+    print('====> Epoch Train: {:d} Avg loss: {:.4f}, {}, Avg var: {:.3f}'.format(
+          epoch, train_loss, msg50, train_var))
 
-    return train_loss
+    return train_loss, train_var
 
 
 
@@ -349,7 +357,10 @@ def count_zero_one_ratio(all_graphs):
     for g in all_graphs:
         clauses = g.clauses
         n_sv = g.sv_node.shape[0]
-        for c in clauses:
+        clauses_len = len(clauses)
+        if config.clause_clip > 0:
+            clauses_len = min(clauses_len, config.clause_clip)
+        for c in clauses[:clauses_len]:
             literal_count += len(c)
         clause_width += len(clauses) * n_sv
     return literal_count, clause_width
@@ -396,26 +407,34 @@ os.system('date > loss.txt')
 pre_train_variance = 0
 epoch = 0
 if config.auto_pretrain:
-    while pre_train_variance < 5:
+    current_lr = pretrain_optimizer.param_groups[0]['lr']
+    while pre_train_variance < 5 and current_lr >= 1e-5 and epoch < 500:
         if epoch > 1000:
             logger.info('pretrain failed @ epoch ' + str(epoch))
             exit(1)
         pre_train_loss, pre_train_variance = pretrain(epoch, subset_graphs, config.batch_size)
-        # scheduler.step(pre_train_loss)
+        pretrain_scheduler.step(pre_train_loss)
         
         with open("loss.txt", 'a') as loss_file:
-            loss_file.write("{:.4f} {:.4f}\n".format(
-                pre_train_loss, pre_train_variance
+            loss_file.write("loss:{:.4f} var:{:.4f} lr:{:.8f}\n".format(
+                pre_train_loss, pre_train_variance, current_lr
                 ))
-
+        
+        current_lr = pretrain_optimizer.param_groups[0]['lr']
         epoch += 1
-    
+
+# optimizer.param_groups[0]['lr'] = config.lr
+
+with open("loss.txt", 'a') as loss_file:
+    loss_file.write("Pre-Train Finished!\n")
+
 for epoch in range(start_epoch + 1, config.epochs + 1):
-    train_loss = train(epoch,subset_graphs,config.batch_size, loss_weight)
+    current_lr = optimizer.param_groups[0]['lr']
+    train_loss, train_var = train(epoch,subset_graphs,config.batch_size, loss_weight)
     scheduler.step(train_loss)
     with open("loss.txt", 'a') as loss_file:
-        loss_file.write("{:.2f} \n".format(
-            train_loss
+        loss_file.write("{:.4f} {:.4f} {:.10f}\n".format(
+            train_loss, train_var, current_lr
             ))
     if epoch%10 == 0:
         tloss, acc50, acc80, acc95, tp50 = test(epoch,subset_graphs,1, loss_weight) # use default batch size : 1
@@ -429,7 +448,7 @@ for epoch in range(start_epoch + 1, config.epochs + 1):
 
         if is_subset:
             print ("====> TEST ALL BELOW")
-            _, acc50all, acc80all, acc95all, tp50 = test(epoch, all_graphs, 1)
+            tloss_all, acc50all, acc80all, acc95all, tp50 = test(epoch, all_graphs, 1, loss_weight)
             print ("====> END OF TEST ALL")
 
         with open("loss.txt", 'a') as loss_file:
@@ -438,7 +457,7 @@ for epoch in range(start_epoch + 1, config.epochs + 1):
                 ))
             if is_subset:
                 loss_file.write("Test-ALL {:.2f} {:.2f} {:.2f} {:.2f}\n".format(
-                    tloss, acc50, acc80, acc95
+                    tloss_all, acc50all, acc80all, acc95all
                     ))
 
 

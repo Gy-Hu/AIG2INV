@@ -51,15 +51,19 @@ class ConfigClassHWMCC07_1000(BaseConfiguration):
         self.modelname='HWMCC07_1000_v1'
 
 
-class ConfigClassHWMCC_ALL_under5000node:
+class ConfigClassHWMCC_ALL_under5000node(BaseConfiguration):
     def __init__(self):
         super().__init__()
         self.dataset='/data/hongcezh/clause-learning/data-collect/data2dataset/newgraph/hwmcc07_10_17_20_5000node.pkl'
         self.modelname='HWMCC_ALL_under5000node_v1'
+        self.use_size_below_this = 1000 # if set to 0 then use all graphs
+        self.clause_clip = 200
+        # TODO: try: self.autoweight=True
+        self.autoweight=True
 
 
-# config = ConfigClassHWMCC_ALL_under5000node()
-config = ConfigClassTestZero()
+config = ConfigClassHWMCC_ALL_under5000node()
+# config = ConfigClassTestZero()
 # config = ConfigClassTest()
 
 
