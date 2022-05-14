@@ -328,9 +328,9 @@ class DGDAGRNN(nn.Module):
                     print ('prop_feature max abs:', prop_feature_mabs)
                     exit(1)
             
+            #FIXME: Here may occur NaN error
             clause_predict, _ = self.lstm_clause_gen(prop_feature)  # the initial hidden states are set to zero
             sv_feature = self.lstm_clause_update2to1(prop_feature)
-
             clause_generated = self.lstm_clause_gen_mapper(clause_predict[0])
             
             with torch.no_grad():

@@ -129,6 +129,10 @@ class ConfigClassHWMCC_ALL_under5000node:
         self.continue_from_model=None
         self.grad_clip=0.65
         self.modelname='HWMCC_ALL_under5000node_v1'
+        self.gpu_id="1"
+        self.test_size = 0.2
+        self.random_state = 42
+        self.gpu_id = "1"
 
     def to_str(self, printfn):
       allvars = vars(self)
