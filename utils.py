@@ -1,5 +1,6 @@
 
 
+from cProfile import label
 import numpy
 import torch
 
@@ -91,6 +92,19 @@ def clause_loss(groundtruth, prediction):
 
 def clause_loss_weighted(groundtruth, prediction, weight): # mse loss with weight
     return torch.sum( (groundtruth-prediction)**2 * (torch.abs(groundtruth)+weight)**2 )
+
+def set_label_weight(expand_clauses, n_sv):
+    label_weight = []
+    for clauses_label in expand_clauses:
+        x = torch.zeros((1, n_sv))
+        for idx, v in enumerate(clauses_label.tolist()):
+            if v in [-1, 1]:
+                x[0][idx] = 5
+            elif v == 0:
+                x[0][idx] = 0.1
+    
+        label_weight.append(x)
+    return torch.cat(label_weight, dim=0).float()
 
 def prediction_has_absone(prediction):
     v, _ = torch.max(prediction[:-1]**2, dim=1)
