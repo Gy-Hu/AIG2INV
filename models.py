@@ -3,6 +3,7 @@ import random
 import torch
 from torch import nn
 from torch.nn import functional as F
+from torch.nn import Linear
 import torch.nn.init as init
 import numpy as np
 import copy
@@ -83,11 +84,10 @@ class DGDAGRNN(nn.Module):
                 nn.Linear(self.chs, 1),
                 nn.Tanh()
             )
-
         self.lstm_clause_update = nn.LSTM(input_size = self.vhs, hidden_size = self.vhs, batch_first = True, bidirectional = True)
         self.lstm_clause_update2to1 = nn.Linear(self.vhs*2, self.vhs)
         # expect [1 x n_input_node x self.vhs]
-
+        self.mlp_clause_gen_mapper = MLP(vhs = self.vhs, chs = self.chs)
 
     def batch_init(self, batch_node_count):
         pass
@@ -331,7 +331,12 @@ class DGDAGRNN(nn.Module):
             #FIXME: Here may occur NaN error
             clause_predict, _ = self.lstm_clause_gen(prop_feature)  # the initial hidden states are set to zero
             sv_feature = self.lstm_clause_update2to1(prop_feature)
-            clause_generated = self.lstm_clause_gen_mapper(clause_predict[0])
+
+            # Map 200 dimension feature to three class
+            clause_generated = self.mlp_clause_gen_mapper(clause_predict[0])
+            
+            # Map 200 dimension feature to 1
+            # clause_generated = self.lstm_clause_gen_mapper(clause_predict[0])
             
             with torch.no_grad():
                 prop_feature_has_nan = torch.any(torch.isnan(prop_feature))
@@ -349,9 +354,11 @@ class DGDAGRNN(nn.Module):
                     print ('clause_predict max abs', torch.max(torch.abs(clause_predict)))
                     print ('clause_generated max abs', torch.max(torch.abs(clause_generated)))
                     exit(1)
+            # Using LSTM, map to 1*78
+            # result_clauses.append(clause_generated.t())
 
-            result_clauses.append(clause_generated.t())
-
+            # Using MLP, map to 1*78*3
+            result_clauses.append(clause_generated.unsqueeze(0))
         result_clauses = torch.cat(result_clauses, dim=0)
         return result_clauses
 
@@ -400,3 +407,16 @@ class GatedSumConv(MessagePassing):  # dvae needs outdim parameter
     def update(self, aggr_out):
         return aggr_out
         
+class MLP(torch.nn.Module):
+    def __init__(self, vhs, chs):
+        super(MLP, self).__init__()
+        torch.manual_seed(12345)
+        self.lin1 = Linear(vhs*2, chs)
+        self.lin2 = Linear(chs, 3)
+
+    def forward(self, x):
+        x = self.lin1(x)
+        x = x.relu()
+        x = F.dropout(x, p=0.5, training=self.training)
+        x = self.lin2(x)
+        return x

@@ -1,6 +1,6 @@
 #from aig2graph import AigGraph, Clauses
 from models import DGDAGRNN
-from utils import expand_clause, clause_loss, clause_loss_weighted, prediction_has_absone, load_module_state, quantize, measure, measure_to_str, set_label_weight
+from utils import expand_clause, clause_loss, clause_loss_weighted, prediction_has_absone, load_module_state, quantize, measure, measure_to_str, set_label_weight, get_label_freq
 from tqdm import tqdm
 import random
 import torch
@@ -16,6 +16,8 @@ import math
 from sklearn.model_selection import train_test_split
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
+import numpy as np
+from sklearn.utils.class_weight import compute_class_weight 
 
 
 logger.add("train_t1_log.txt")
@@ -28,7 +30,8 @@ scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=10, verbose
 #lossfun = nn.MSELoss()
 #lossfun = clause_loss_weighted
 
-val_lossfun = nn.CrossEntropyLoss(reduction="sum")
+#val_lossfun = nn.CrossEntropyLoss(reduction="sum")
+val_lossfun = clause_loss_weighted
 
 model.to(config.device)
 logger.info(model)
@@ -82,21 +85,25 @@ def train(epoch, train_data, batch_size, loss_weight):
                     print ('!!! prediction NAN!!!', data.aag_name)
                 if (torch.any(torch.isnan(clauses))):
                     print ('!!! target NAN!!!', data.aag_name)
-                    
-
-                #this_loss = lossfun(clauses, prediction, loss_weight)
-                class_weights = (set_label_weight(expand_clauses=clauses,n_sv = n_sv)).to(config.device)
-                
-                # Use CrossEntropyLoss
-                # this_loss = []
-                # for idx, preditct_clause in enumerate(prediction):
-                #     train_lossfun = nn.CrossEntropyLoss(weight=class_weights[idx],reduction="sum")
-                #     this_loss.append(train_lossfun(preditct_clause, clauses[idx]))
-                # this_loss = sum(this_loss)
                 
                 # Use MSE
-                train_lossfun = nn.MSELoss(reduction='sum')
-                this_loss = train_lossfun(prediction, clauses)
+                # train_lossfun = nn.MSELoss(reduction='sum')
+                # this_loss = train_lossfun(prediction, clauses)
+
+                # Use Huber Losss
+                # train_lossfun = nn.SmoothL1Loss(reduction='sum')
+                # this_loss = train_lossfun(prediction,clauses)
+
+                # Use CrossEntropy
+                this_loss = []
+                for idx, preditct_clause in enumerate(prediction):
+                    label_freq = (get_label_freq(clauses[idx]))
+                    label_freq = label_freq / np.sum(label_freq)
+                    class_weights = torch.from_numpy(np.median(label_freq) / label_freq)
+                    train_lossfun = nn.CrossEntropyLoss(weight=class_weights.type(torch.FloatTensor).cpu(),reduction="mean")
+                    labels = clauses[idx].to(torch.int64)
+                    this_loss.append(train_lossfun(preditct_clause.cpu()+1,labels.cpu()+1))
+                this_loss = sum(this_loss)
 
                 # this_loss = clause_loss(clauses, prediction)
                 #if config.alpha > 0:
@@ -105,8 +112,13 @@ def train(epoch, train_data, batch_size, loss_weight):
                 #print (prediction)
                 if torch.any(torch.isnan(loss)):
                     print ("!!! loss NAN!!!",  data.aag_name)
+
+                predict_logistic = torch.nn.functional.softmax(prediction,dim=2)
+                quantize_50 = predict_logistic.argmax(dim=2)
+                quantize_50 -= 1
+
                 
-                quantize_50=quantize(prediction, 0.5)
+                #quantize_50=quantize(prediction, 0.5)
                 #print (quantize_50)
                 #quantize_80=quantize(prediction, 0.8)
                 #quantize_95=quantize(prediction, 0.95)
@@ -197,12 +209,18 @@ def test(epoch, test_data, batch_size, loss_weight):
             
             prediction = model(data, n_clause, True)
             loss = val_lossfun(clauses, prediction, loss_weight)
+
+            predict_logistic = torch.nn.functional.softmax(prediction,dim=2)
+            quantize_50 = predict_logistic.argmax(dim=2)
+            quantize_50 -= 1
+
             if config.alpha > 0:
                 loss = loss + prediction_has_absone(prediction) * config.alpha
             
-            quantize_50=quantize(prediction, 0.5)
-            quantize_80=quantize(prediction, 0.8)
-            quantize_95=quantize(prediction, 0.95)
+            # Original quantize part
+            # quantize_50=quantize(prediction, 0.5)
+            # quantize_80=quantize(prediction, 0.8)
+            # quantize_95=quantize(prediction, 0.95)
 
             TP, FP, TN, FN, ACC, INC = measure(clauses, quantize_50)
             assert (ACC + INC == n_clause*n_sv)
@@ -306,7 +324,7 @@ if __name__ == '__main__':
     start_epoch = 0
     os.system('date > loss.txt')
     for epoch in range(start_epoch + 1, config.epochs + 1):
-        adjust_learning_rate(config.lr,config.weight_decay,optimizer,epoch)
+        #adjust_learning_rate(config.lr,config.weight_decay,optimizer,epoch)
         train_loss = train(epoch,train_graph,config.batch_size, loss_weight)
         scheduler.step(train_loss)
         with open("loss.txt", 'a') as loss_file:

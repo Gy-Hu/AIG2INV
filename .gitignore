@@ -3,6 +3,7 @@
 *.pkl
 *.csv
 *.png
+*.ipynb
 .vscode/
 dataset/
 deprecated/
@@ -12,3 +13,4 @@ testcase*/
 log/
 old_models_train/
 saved_models/
+

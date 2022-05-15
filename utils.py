@@ -3,6 +3,7 @@
 from cProfile import label
 import numpy
 import torch
+import sys
 
 def one_hot(idx, length):
     idx = torch.LongTensor([idx]).unsqueeze(0)
@@ -105,6 +106,18 @@ def set_label_weight(expand_clauses, n_sv):
     
         label_weight.append(x)
     return torch.cat(label_weight, dim=0).float()
+
+def get_label_freq(label):
+        class_count = numpy.zeros((3))     #  array([0., 0., 0., 0., 0.])
+        for label in label.tolist():
+            if label == -1.0:       
+                class_count[0] += 1
+            elif label == 0.0:
+                class_count[1] += 1
+            elif label == 1.0:
+                class_count[2] += 1
+        class_count = numpy.where(class_count==0,sys.maxsize,class_count)
+        return class_count
 
 def prediction_has_absone(prediction):
     v, _ = torch.max(prediction[:-1]**2, dim=1)
