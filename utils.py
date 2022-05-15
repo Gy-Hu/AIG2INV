@@ -166,6 +166,6 @@ def measure_012(expected, predicted):
     return TP, FP, TN, FN, ACC, INC
 
 def measure_to_str(TP, FP, TN, FN, ACC, threshold,PRECISION):
-    return 'TP%d: %0.3f, FP%d: %0.3f, TN%d: %0.3f,FN%d: %0.3f,ACC%d: %0.3f,PRECISION%d: %0.3f' % (threshold,TP,threshold,FP,threshold,TN,threshold,FN,threshold,ACC,PRECISION)
+    return 'TP%d: %0.3f, FP%d: %0.3f, TN%d: %0.3f,FN%d: %0.3f,ACC%d: %0.3f, PRECISION%d: %0.3f' % (threshold,TP,threshold,FP,threshold,TN,threshold,FN,threshold,ACC,threshold,PRECISION)
 
 
