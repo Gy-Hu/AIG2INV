@@ -132,7 +132,7 @@ def train(epoch, train_data, batch_size, loss_weight):
                 TP50 += TP; FP50 += FP; TN50 += TN; FN50 += FN; ACC50 += ACC
                 TOT+=n_clause*n_sv
             # end of for data in batch
-            msg50=measure_to_str(TP50/TOT, FP50/TOT, TN50/TOT, FN50/TOT, ACC50/TOT, 50)
+            msg50=measure_to_str(TP50/TOT, FP50/TOT, TN50/TOT, FN50/TOT, ACC50/TOT, 50,PRECISION=TP50/(TP50+FP50))
             loss.backward()
 
             if config.grad_clip > 0:
@@ -226,12 +226,16 @@ def test(epoch, test_data, batch_size, loss_weight):
             assert (ACC + INC == n_clause*n_sv)
 
             TP50 += TP; FP50 += FP; TN50 += TN; FN50 += FN; ACC50 += ACC
-            TP, FP, TN, FN, ACC, _ = measure(clauses, quantize_80)
-            TP80 += TP; FP80 += FP; TN80 += TN; FN80 += FN; ACC80 += ACC
-            TP, FP, TN, FN, ACC, _ = measure(clauses, quantize_95)
-            TP95 += TP; FP95 += FP; TN95 += TN; FN95 += FN; ACC95 += ACC
-            TOT+=n_clause*n_sv
 
+            #Threshold 80
+            # TP, FP, TN, FN, ACC, _ = measure(clauses, quantize_80)
+            # TP80 += TP; FP80 += FP; TN80 += TN; FN80 += FN; ACC80 += ACC
+
+            #Threshold 95
+            # TP, FP, TN, FN, ACC, _ = measure(clauses, quantize_95)
+            # TP95 += TP; FP95 += FP; TN95 += TN; FN95 += FN; ACC95 += ACC
+
+            TOT+=n_clause*n_sv
             msg50=measure_to_str(TP50/TOT, FP50/TOT, TN50/TOT, FN50/TOT, ACC50/TOT, 50)
             
 
