@@ -1,4 +1,5 @@
 #from aig2graph import AigGraph, Clauses
+from logging import exception
 from models import DGDAGRNN
 from utils import expand_clause, clause_loss, clause_loss_weighted, prediction_has_absone, load_module_state, quantize, measure, measure_to_str, set_label_weight, get_label_freq
 from tqdm import tqdm
@@ -132,7 +133,11 @@ def train(epoch, train_data, batch_size, loss_weight):
                 TP50 += TP; FP50 += FP; TN50 += TN; FN50 += FN; ACC50 += ACC
                 TOT+=n_clause*n_sv
             # end of for data in batch
-            msg50=measure_to_str(TP50/TOT, FP50/TOT, TN50/TOT, FN50/TOT, ACC50/TOT, 50,PRECISION=TP50/(TP50+FP50))
+            try:
+                PRECISION=TP50/(TP50+FP50)
+            except:
+                PRECISION=0
+            msg50=measure_to_str(TP50/TOT, FP50/TOT, TN50/TOT, FN50/TOT, ACC50/TOT, 50,PRECISION=PRECISION)
             loss.backward()
 
             if config.grad_clip > 0:
