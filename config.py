@@ -72,6 +72,7 @@ class ConfigClassTestZero:
 class ConfigClassHWMCC07_1000:
     def __init__(self):
         self.lr = 1e-2
+        #self.lr = 1.95e-3
         self.weight_decay = 1e-10
         self.grad_clip = 0.65
         self.epochs = 150
@@ -95,6 +96,9 @@ class ConfigClassHWMCC07_1000:
         self.continue_from_model=None
         self.grad_clip=0.65
         self.modelname='HWMCC07_1000_v1'
+        self.gpu_id="1"
+        self.test_size = 0.1
+        self.random_state = 0
 
     def to_str(self, printfn):
       allvars = vars(self)
@@ -105,10 +109,13 @@ class ConfigClassHWMCC07_1000:
 
 class ConfigClassHWMCC_ALL_under5000node:
     def __init__(self):
-        self.lr = 2.5e-2
-        self.weight_decay = 1e-10
+        #self.lr = 2.5e-2
+        self.lr = 1.95e-3
+        #self.weight_decay = 1e-10
+        self.weight_decay = 1.05e-10
         self.grad_clip = 0.65
-        self.epochs = 150
+        #self.epochs = 150
+        self.epochs = 200
         self.autoweight=True
 
         self.device='cuda:1'
@@ -130,9 +137,8 @@ class ConfigClassHWMCC_ALL_under5000node:
         self.grad_clip=0.65
         self.modelname='HWMCC_ALL_under5000node_v1'
         self.gpu_id="1"
-        self.test_size = 0.2
-        self.random_state = 42
-        self.gpu_id = "1"
+        self.test_size = 0.1
+        self.random_state = 0
 
     def to_str(self, printfn):
       allvars = vars(self)
@@ -141,6 +147,7 @@ class ConfigClassHWMCC_ALL_under5000node:
           printfn(n + ' := ' + str(v))
 
 config = ConfigClassHWMCC_ALL_under5000node()
+#config = ConfigClassHWMCC07_1000()
 # config = ConfigClassTestZero()
 # config = ConfigClassTest()
 

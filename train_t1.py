@@ -1,5 +1,7 @@
 #from aig2graph import AigGraph, Clauses
 from logging import exception
+
+from zmq import FD
 from models import DGDAGRNN
 from utils import expand_clause, clause_loss, clause_loss_weighted, prediction_has_absone, load_module_state, quantize, measure, measure_to_str, set_label_weight, get_label_freq
 from tqdm import tqdm
@@ -54,8 +56,13 @@ def train(epoch, train_data, batch_size, loss_weight):
     g_batch = []
     batch_idx = 0
     for i, g in enumerate(pbar):
-        g_batch.append(g)
-        if len(g_batch) == batch_size or i == len(train_data) - 1:
+        # Filtering the graph that too sparse
+        clauses_len_sum = [len(tuple) for tuple in g.clauses]
+        percentage_clauses_node = sum(clauses_len_sum) / g.num_nodes
+        if percentage_clauses_node > 0.1:
+            g_batch.append(g)
+
+        if len(g_batch) == batch_size or (i == len(train_data) - 1 and len(g_batch)!=0):
             batch_idx += 1
             optimizer.zero_grad()
             total_nodes = sum([g.x.shape[0] for g in g_batch])
@@ -63,6 +70,7 @@ def train(epoch, train_data, batch_size, loss_weight):
             #g_batch = model._collate_fn(g_batch)
             # binary_logit = model(g_batch)
             loss = torch.zeros(1).to(config.device)
+            #loss.requires_grad_(True)
             for data in g_batch:
                 # make a copy, so we don't occupy GPU all the time
                 data = copy.deepcopy(data)
@@ -88,23 +96,34 @@ def train(epoch, train_data, batch_size, loss_weight):
                     print ('!!! target NAN!!!', data.aag_name)
                 
                 # Use MSE
-                # train_lossfun = nn.MSELoss(reduction='sum')
-                # this_loss = train_lossfun(prediction, clauses)
+                #train_lossfun = nn.MSELoss(reduction='sum')
+                #this_loss = train_lossfun(prediction, clauses)
+
+                # Use MSE with label weight
+                this_loss = torch.zeros(1).to(config.device)
+                train_lossfun = nn.MSELoss(reduction='none')
+                label_weight = set_label_weight(expand_clauses=clauses,n_sv=n_sv)
+                for idx, predict_clause in enumerate(prediction):
+                    partial_loss = train_lossfun(predict_clause,clauses[idx])
+                    partial_loss*=(label_weight[idx]).to(config.device)
+                    this_loss += torch.sum(partial_loss)
+
 
                 # Use Huber Losss
                 # train_lossfun = nn.SmoothL1Loss(reduction='sum')
                 # this_loss = train_lossfun(prediction,clauses)
 
                 # Use CrossEntropy
-                this_loss = []
-                for idx, preditct_clause in enumerate(prediction):
-                    label_freq = (get_label_freq(clauses[idx]))
-                    label_freq = label_freq / np.sum(label_freq)
-                    class_weights = torch.from_numpy(np.median(label_freq) / label_freq)
-                    train_lossfun = nn.CrossEntropyLoss(weight=class_weights.type(torch.FloatTensor).cpu(),reduction="mean")
-                    labels = clauses[idx].to(torch.int64)
-                    this_loss.append(train_lossfun(preditct_clause.cpu()+1,labels.cpu()+1))
-                this_loss = sum(this_loss)
+                # this_loss = []
+                # for idx, preditct_clause in enumerate(prediction):
+                #     label_freq = (get_label_freq(clauses[idx]))
+                #     label_freq = label_freq / np.sum(label_freq)
+                #     class_weights = torch.from_numpy(np.median(label_freq) / label_freq)
+                #     train_lossfun = nn.CrossEntropyLoss(weight=class_weights.type(torch.FloatTensor).to(config.device),reduction="mean")
+                #     labels = clauses[idx].to(torch.int64)
+                #     this_loss.append(train_lossfun(preditct_clause.to(config.device)+1,labels.to(config.device)+1))
+                # this_loss = sum(this_loss)
+                
 
                 # this_loss = clause_loss(clauses, prediction)
                 #if config.alpha > 0:
@@ -114,12 +133,13 @@ def train(epoch, train_data, batch_size, loss_weight):
                 if torch.any(torch.isnan(loss)):
                     print ("!!! loss NAN!!!",  data.aag_name)
 
-                predict_logistic = torch.nn.functional.softmax(prediction,dim=2)
-                quantize_50 = predict_logistic.argmax(dim=2)
-                quantize_50 -= 1
+                # Node Classification
+                # predict_logistic = torch.nn.functional.softmax(prediction,dim=2)
+                # quantize_50 = predict_logistic.argmax(dim=2)
+                # quantize_50 -= 1
 
-                
-                #quantize_50=quantize(prediction, 0.5)
+                # Node Regression
+                quantize_50=quantize(prediction, 0.5)
                 #print (quantize_50)
                 #quantize_80=quantize(prediction, 0.8)
                 #quantize_95=quantize(prediction, 0.95)
@@ -170,7 +190,7 @@ def train(epoch, train_data, batch_size, loss_weight):
             g_batch = []
 
     train_loss /= len(train_data)
-    msg50=measure_to_str(TP50/TOT, FP50/TOT, TN50/TOT, FN50/TOT, ACC50/TOT, 50)
+    msg50=measure_to_str(TP50/TOT, FP50/TOT, TN50/TOT, FN50/TOT, ACC50/TOT, 50,PRECISION=PRECISION)
 
 
     print('====> Epoch Train: {:d} Average loss: {:.4f}, {}'.format(
@@ -180,7 +200,7 @@ def train(epoch, train_data, batch_size, loss_weight):
 
 
 
-def test(epoch, test_data, batch_size, loss_weight):
+def test(epoch, test_data, batch_size, loss_weight=0):
     model.eval()
     test_loss = 0
     TP50, FP50, TN50, FN50, ACC50 = 0,0,0,0,0
@@ -195,6 +215,7 @@ def test(epoch, test_data, batch_size, loss_weight):
     for i, g in enumerate(pbar):
         g_batch.append(g)
         if len(g_batch) == batch_size or i == len(test_data) - 1:
+            loss = torch.zeros(1).to(config.device)
             batch_idx += 1
             total_nodes = sum([g.x.shape[0] for g in g_batch])
             model.batch_init(total_nodes)
@@ -213,17 +234,44 @@ def test(epoch, test_data, batch_size, loss_weight):
             clauses = clauses.to(config.device)
             
             prediction = model(data, n_clause, True)
-            loss = val_lossfun(clauses, prediction, loss_weight)
+            #loss = val_lossfun(clauses, prediction, loss_weight)
 
-            predict_logistic = torch.nn.functional.softmax(prediction,dim=2)
-            quantize_50 = predict_logistic.argmax(dim=2)
-            quantize_50 -= 1
+            # Loss for clause classification
+            # this_loss = []
+            # for idx, preditct_clause in enumerate(prediction):
+            #     label_freq = (get_label_freq(clauses[idx]))
+            #     label_freq = label_freq / np.sum(label_freq)
+            #     class_weights = torch.from_numpy(np.median(label_freq) / label_freq)
+            #     val_lossfun = nn.CrossEntropyLoss(weight=class_weights.type(torch.FloatTensor).to(config.device),reduction="mean")
+            #     labels = clauses[idx].to(torch.int64)
+            #     this_loss.append(val_lossfun(preditct_clause.to(config.device)+1,labels.to(config.device)+1))
+            
+            # this_loss = sum(this_loss)
+
+            
+            # Use MSE with label weight
+            this_loss = torch.zeros(1)
+            train_lossfun = nn.MSELoss(reduction='none')
+            label_weight = set_label_weight(expand_clauses=clauses,n_sv=n_sv)
+            for idx, predict_clause in enumerate(prediction):
+                partial_loss = train_lossfun(predict_clause,clauses[idx])
+                partial_loss*=(label_weight[idx]).to(config.device)
+                this_loss += torch.sum(partial_loss)
+
+            loss = this_loss
+
+            
+
+            # Node classification quantize
+            # predict_logistic = torch.nn.functional.softmax(prediction,dim=2)
+            # quantize_50 = predict_logistic.argmax(dim=2)
+            # quantize_50 -= 1
 
             if config.alpha > 0:
                 loss = loss + prediction_has_absone(prediction) * config.alpha
             
             # Original quantize part
-            # quantize_50=quantize(prediction, 0.5)
+            quantize_50=quantize(prediction, 0.5)
             # quantize_80=quantize(prediction, 0.8)
             # quantize_95=quantize(prediction, 0.95)
 
@@ -241,7 +289,11 @@ def test(epoch, test_data, batch_size, loss_weight):
             # TP95 += TP; FP95 += FP; TN95 += TN; FN95 += FN; ACC95 += ACC
 
             TOT+=n_clause*n_sv
-            msg50=measure_to_str(TP50/TOT, FP50/TOT, TN50/TOT, FN50/TOT, ACC50/TOT, 50)
+            try:
+                PRECISION=TP50/(TP50+FP50)
+            except:
+                PRECISION=0
+            msg50=measure_to_str(TP50/TOT, FP50/TOT, TN50/TOT, FN50/TOT, ACC50/TOT, 50, PRECISION=PRECISION)
             
 
             test_loss += loss.item()
@@ -251,19 +303,19 @@ def test(epoch, test_data, batch_size, loss_weight):
             g_batch = []
 
     test_loss /= len(test_data)
-    msg50=measure_to_str(TP50/TOT, FP50/TOT, TN50/TOT, FN50/TOT, ACC50/TOT, 50)
-    msg80=measure_to_str(TP80/TOT, FP80/TOT, TN80/TOT, FN80/TOT, ACC80/TOT, 80)
-    msg95=measure_to_str(TP95/TOT, FP95/TOT, TN95/TOT, FN95/TOT, ACC95/TOT, 95)
+    msg50=measure_to_str(TP50/TOT, FP50/TOT, TN50/TOT, FN50/TOT, ACC50/TOT, 50,PRECISION=PRECISION)
+    #msg80=measure_to_str(TP80/TOT, FP80/TOT, TN80/TOT, FN80/TOT, ACC80/TOT, 80)
+    #msg95=measure_to_str(TP95/TOT, FP95/TOT, TN95/TOT, FN95/TOT, ACC95/TOT, 95)
 
 
     print('====> Epoch Test: {:d} Average loss: {:.4f}'.format(
           epoch, test_loss))
     print('====> Epoch Test: {:d} {}'.format(
           epoch, msg50))
-    print('====> Epoch Test: {:d} {}'.format(
-          epoch, msg80))
-    print('====> Epoch Test: {:d} {}'.format(
-          epoch, msg95))
+    # print('====> Epoch Test: {:d} {}'.format(
+    #       epoch, msg80))
+    # print('====> Epoch Test: {:d} {}'.format(
+    #       epoch, msg95))
 
     return test_loss, ACC50/TOT, ACC80/TOT, ACC95/TOT, TP50/TOT
 
@@ -335,6 +387,7 @@ if __name__ == '__main__':
     for epoch in range(start_epoch + 1, config.epochs + 1):
         #adjust_learning_rate(config.lr,config.weight_decay,optimizer,epoch)
         train_loss = train(epoch,train_graph,config.batch_size, loss_weight)
+        #optimizer.step(train_loss)
         scheduler.step(train_loss)
         with open("loss.txt", 'a') as loss_file:
             loss_file.write("{:.2f} \n".format(
@@ -354,19 +407,19 @@ if __name__ == '__main__':
             elif acc95>0.95 and tp50 > 0.01:
                 threshold=0.95
 
-            if is_subset:
-                print ("====> TEST ALL BELOW")
-                _, acc50all, acc80all, acc95all = test(epoch, all_graphs, 1)
-                print ("====> END OF TEST ALL")
+            # if is_subset:
+            #     print ("====> TEST ALL BELOW")
+            #     _, acc50all, acc80all, acc95all = test(epoch, all_graphs, 1)
+            #     print ("====> END OF TEST ALL")
 
-            with open("loss.txt", 'a') as loss_file:
-                loss_file.write("Test {:.2f} {:.2f} {:.2f} {:.2f}\n".format(
-                    tloss, acc50, acc80, acc95
-                    ))
-                if is_subset:
-                    loss_file.write("Test-ALL {:.2f} {:.2f} {:.2f} {:.2f}\n".format(
-                        tloss, acc50, acc80, acc95
-                        ))
+            # with open("loss.txt", 'a') as loss_file:
+            #     loss_file.write("Test {:.2f} {:.2f} {:.2f} {:.2f}\n".format(
+            #         tloss, acc50, acc80, acc95
+            #         ))
+            #     if is_subset:
+            #         loss_file.write("Test-ALL {:.2f} {:.2f} {:.2f} {:.2f}\n".format(
+            #             tloss, acc50, acc80, acc95
+            #             ))
 
 
 

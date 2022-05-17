@@ -108,7 +108,7 @@ def set_label_weight(expand_clauses, n_sv):
     return torch.cat(label_weight, dim=0).float()
 
 def get_label_freq(label):
-        class_count = numpy.zeros((3))     #  array([0., 0., 0., 0., 0.])
+        class_count = numpy.zeros((3)) 
         for label in label.tolist():
             if label == -1.0:       
                 class_count[0] += 1

@@ -333,10 +333,10 @@ class DGDAGRNN(nn.Module):
             sv_feature = self.lstm_clause_update2to1(prop_feature)
 
             # Map 200 dimension feature to three class
-            clause_generated = self.mlp_clause_gen_mapper(clause_predict[0])
+            #clause_generated = self.mlp_clause_gen_mapper(clause_predict[0])
             
             # Map 200 dimension feature to 1
-            # clause_generated = self.lstm_clause_gen_mapper(clause_predict[0])
+            clause_generated = self.lstm_clause_gen_mapper(clause_predict[0])
             
             with torch.no_grad():
                 prop_feature_has_nan = torch.any(torch.isnan(prop_feature))
@@ -355,10 +355,10 @@ class DGDAGRNN(nn.Module):
                     print ('clause_generated max abs', torch.max(torch.abs(clause_generated)))
                     exit(1)
             # Using LSTM, map to 1*78
-            # result_clauses.append(clause_generated.t())
+            result_clauses.append(clause_generated.t())
 
             # Using MLP, map to 1*78*3
-            result_clauses.append(clause_generated.unsqueeze(0))
+            #result_clauses.append(clause_generated.unsqueeze(0))
         result_clauses = torch.cat(result_clauses, dim=0)
         return result_clauses
 
@@ -417,6 +417,7 @@ class MLP(torch.nn.Module):
     def forward(self, x):
         x = self.lin1(x)
         x = x.relu()
-        x = F.dropout(x, p=0.5, training=self.training)
+        #x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin2(x)
+        x = x.relu()
         return x
