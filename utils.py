@@ -100,7 +100,7 @@ def set_label_weight(expand_clauses, n_sv):
         x = torch.zeros((1, n_sv))
         for idx, v in enumerate(clauses_label.tolist()):
             if v in [-1, 1]:
-                x[0][idx] = 5
+                x[0][idx] = 500
             elif v == 0:
                 x[0][idx] = 0.1
     

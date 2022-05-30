@@ -57,10 +57,12 @@ def train(epoch, train_data, batch_size, loss_weight):
     batch_idx = 0
     for i, g in enumerate(pbar):
         # Filtering the graph that too sparse
-        clauses_len_sum = [len(tuple) for tuple in g.clauses]
-        percentage_clauses_node = sum(clauses_len_sum) / g.num_nodes
-        if percentage_clauses_node > 0.1:
-            g_batch.append(g)
+        # clauses_len_sum = [len(tuple) for tuple in g.clauses]
+        # percentage_clauses_node = sum(clauses_len_sum) / g.num_nodes
+        # if percentage_clauses_node > 0.1:
+        #     g_batch.append(g)
+
+        g_batch.append(g)
 
         if len(g_batch) == batch_size or (i == len(train_data) - 1 and len(g_batch)!=0):
             batch_idx += 1
@@ -102,7 +104,7 @@ def train(epoch, train_data, batch_size, loss_weight):
                 # Use MSE with label weight
                 this_loss = torch.zeros(1).to(config.device)
                 train_lossfun = nn.MSELoss(reduction='none')
-                label_weight = set_label_weight(expand_clauses=clauses,n_sv=n_sv)
+                label_weight = set_label_weight(clauses,n_sv)
                 for idx, predict_clause in enumerate(prediction):
                     partial_loss = train_lossfun(predict_clause,clauses[idx])
                     partial_loss*=(label_weight[idx]).to(config.device)
@@ -250,7 +252,7 @@ def test(epoch, test_data, batch_size, loss_weight=0):
 
             
             # Use MSE with label weight
-            this_loss = torch.zeros(1)
+            this_loss = torch.zeros(1).to(config.device)
             train_lossfun = nn.MSELoss(reduction='none')
             label_weight = set_label_weight(expand_clauses=clauses,n_sv=n_sv)
             for idx, predict_clause in enumerate(prediction):

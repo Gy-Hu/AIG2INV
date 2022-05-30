@@ -75,7 +75,7 @@ class ConfigClassHWMCC07_1000:
         #self.lr = 1.95e-3
         self.weight_decay = 1e-10
         self.grad_clip = 0.65
-        self.epochs = 150
+        self.epochs = 600
 
         self.device='cuda:1'
 
@@ -146,8 +146,8 @@ class ConfigClassHWMCC_ALL_under5000node:
         if len(n)>2 and n[0] != '_' and n[-1] != '_':
           printfn(n + ' := ' + str(v))
 
-config = ConfigClassHWMCC_ALL_under5000node()
-#config = ConfigClassHWMCC07_1000()
+#config = ConfigClassHWMCC_ALL_under5000node()
+config = ConfigClassHWMCC07_1000()
 # config = ConfigClassTestZero()
 # config = ConfigClassTest()
 
