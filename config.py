@@ -6,9 +6,10 @@ class BaseConfiguration:
         self.epochs = 170
         self.auto_pretrain = True
 
-        self.device='cuda:1'
+        self.device='cuda:0'
 
-        self.batch_size=5
+        #self.batch_size=5
+        self.batch_size=2
         self.use_size_below_this = 1000 # if set to 0 then use all graphs
         self.clause_clip = 0
         self.alpha = 0.1 # 0.1  # alpha * (1 - max_per_clause( logit**2 ) )
@@ -47,9 +48,15 @@ class ConfigClassTestZero(BaseConfiguration):
 class ConfigClassHWMCC07_1000(BaseConfiguration):
     def __init__(self):
         super().__init__()
-        self.dataset='/data/hongcezh/clause-learning/data-collect/data2dataset/newgraph/hwmcc07dataset.pkl'
+        #self.dataset='/data/hongcezh/clause-learning/data-collect/data2dataset/newgraph/hwmcc07dataset.pkl'
+        self.dataset='/data/hongcezh/clause-learning/data-collect/data2dataset/newgraph/hwmcc07_10_17_20_5000node.pkl'
         self.modelname='HWMCC07_1000_v1'
-
+        #self.gpu_id = '1'
+        self.use_size_below_this = 0 # if set to 0 then use all graphs
+        self.clause_clip = 200
+        self.autoweight=True
+        self.size_lowerbound = 0
+        self.size_upperbound = 1000
 
 class ConfigClassHWMCC_ALL_under5000node(BaseConfiguration):
     def __init__(self):
@@ -61,8 +68,8 @@ class ConfigClassHWMCC_ALL_under5000node(BaseConfiguration):
         # TODO: try: self.autoweight=True
         self.autoweight=True
 
-
-config = ConfigClassHWMCC_ALL_under5000node()
+config = ConfigClassHWMCC07_1000()
+#config = ConfigClassHWMCC_ALL_under5000node()
 # config = ConfigClassTestZero()
 # config = ConfigClassTest()
 

@@ -1,6 +1,11 @@
 *.txt
+*.ipynb
+*.code-workspace
 env.sh
 saved_models/*
 __pycache__/*
 .vscode/*
-
+.history/
+experiment_record/
+log/
+data2dataset/

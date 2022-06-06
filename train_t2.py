@@ -14,6 +14,9 @@ import copy
 from loguru import logger
 import math
 from adjust_var_coeff import adjust_var_coeff
+from sklearn.model_selection import train_test_split
+torch.cuda.empty_cache()
+import sys
 
 logger.add("train_t2_log.txt")
 config.to_str(logger.info)
@@ -173,6 +176,7 @@ def train(epoch, train_data, batch_size, loss_weight):
                     clauses = clauses[:n_clause]
                 #print (clauses)
                 clauses = clauses.to(config.device)
+                print(data.aag_name)
                 prediction = model(data, n_clause, True, False)
                 
                 
@@ -297,6 +301,8 @@ def test(epoch, test_data, batch_size, loss_weight):
                 clauses = clauses[:n_clause]
             clauses = clauses.to(config.device)
             
+            #TODO: Reduce the graph put on GPU
+            print(data.aag_name)
             prediction = model(data, n_clause, True, False)
             loss = clause_loss(clauses, prediction)
             if config.alpha > 0:
@@ -342,13 +348,12 @@ def test(epoch, test_data, batch_size, loss_weight):
 
     return test_loss, ACC50/TOT, ACC80/TOT, ACC95/TOT, TP50/TOT
 
-def graph_filter(all_graphs, size):
+def graph_filter(all_graphs, size_upperbound=sys.maxsize, size_lowerbound=0):
     retG = []
     for g in all_graphs:
         num_node = g.x.shape[0]
-        if num_node > size and size != 0:
-            continue
-        retG.append(g)
+        if num_node > size_lowerbound and num_node < size_upperbound:
+            retG.append(g)
     return retG
 
 def count_zero_one_ratio(all_graphs):
@@ -379,96 +384,100 @@ def load_model(fname):
     load_module_state(optimizer, ckpt['optimizer'])
     load_module_state(scheduler, ckpt['scheduler'])
 
-if isinstance(config.dataset,str):
-    with open(config.dataset,'rb') as fin:
-        all_graphs = pickle.load(fin)
-else:
-    assert isinstance(config.dataset, list)
-    all_graphs = []
-    for datasetfile in config.dataset:
-        with open(datasetfile, 'rb') as fin:
-            graphs = pickle.load(fin)
-            all_graphs.extend(graphs)
 
-subset_graphs = graph_filter(all_graphs, config.use_size_below_this)
-logger.info('Load %d AIG, will use %d of them.' % (len(all_graphs), len(subset_graphs)))
-is_subset = len(all_graphs) !=  len(subset_graphs)
-literal_count, clause_width = count_zero_one_ratio(subset_graphs)
-logger.info('+/- 1 %d , all %d , ratio:%0.4f' % (literal_count, clause_width, literal_count/clause_width))
-loss_weight = math.sqrt(clause_width/literal_count)-1
-assert (loss_weight > 0)
+if __name__ == '__main__':
+    #os.environ["CUDA_VISIBLE_DEVICES"] = config.gpu_id
+    if isinstance(config.dataset,str):
+        with open(config.dataset,'rb') as fin:
+            all_graphs = pickle.load(fin)
+    else:
+        assert isinstance(config.dataset, list)
+        all_graphs = []
+        for datasetfile in config.dataset:
+            with open(datasetfile, 'rb') as fin:
+                graphs = pickle.load(fin)
+                all_graphs.extend(graphs)
+
+    subset_graphs = graph_filter(all_graphs, config.size_upperbound, config.size_lowerbound)
+    # train_graph, val_graph = train_test_split(subset_graphs, test_size=config.test_size, random_state=config.random_state)
+    logger.info('Load %d AIG, will use %d of them.' % (len(all_graphs), len(subset_graphs)))
+    is_subset = len(all_graphs) !=  len(subset_graphs)
+    literal_count, clause_width = count_zero_one_ratio(subset_graphs)
+    logger.info('+/- 1 %d , all %d , ratio:%0.4f' % (literal_count, clause_width, literal_count/clause_width))
+    loss_weight = math.sqrt(clause_width/literal_count)-1
+    assert (loss_weight > 0)
 
 
-if config.continue_from_model:
-    load_model(config.continue_from_model)
+    if config.continue_from_model:
+        load_model(config.continue_from_model)
 
-start_epoch = 0
-os.system('date > loss.txt')
-pre_train_variance = 0
-epoch = 0
-if config.auto_pretrain:
-    current_lr = pretrain_optimizer.param_groups[0]['lr']
-    while pre_train_variance < 5 and current_lr >= 1e-5 and epoch < 500:
-        if epoch > 1000:
-            logger.info('pretrain failed @ epoch ' + str(epoch))
-            exit(1)
-        pre_train_loss, pre_train_variance = pretrain(epoch, subset_graphs, config.batch_size)
-        pretrain_scheduler.step(pre_train_loss)
-        
-        with open("loss.txt", 'a') as loss_file:
-            loss_file.write("loss:{:.4f} var:{:.4f} lr:{:.8f}\n".format(
-                pre_train_loss, pre_train_variance, current_lr
-                ))
-        
+    start_epoch = 0
+    os.system('date > loss.txt')
+    pre_train_variance = 0
+    epoch = 0
+    if config.auto_pretrain:
         current_lr = pretrain_optimizer.param_groups[0]['lr']
-        epoch += 1
-
-# optimizer.param_groups[0]['lr'] = config.lr
-
-with open("loss.txt", 'a') as loss_file:
-    loss_file.write("Pre-Train Finished!\n")
-
-for epoch in range(start_epoch + 1, config.epochs + 1):
-    current_lr = optimizer.param_groups[0]['lr']
-    train_loss, train_var = train(epoch,subset_graphs,config.batch_size, loss_weight)
-    scheduler.step(train_loss)
-    with open("loss.txt", 'a') as loss_file:
-        loss_file.write("{:.4f} {:.4f} {:.10f}\n".format(
-            train_loss, train_var, current_lr
-            ))
-    if epoch%10 == 0:
-        tloss, acc50, acc80, acc95, tp50 = test(epoch,subset_graphs,1, loss_weight) # use default batch size : 1
-        threshold=None
-        if acc50>0.9999 and acc80>0.95 and tp50 > 0.01:
-            threshold=0.5
-        elif acc80>0.98 and tp50 > 0.01:
-            threshold=0.8
-        elif acc95>0.95 and tp50 > 0.01:
-            threshold=0.95
-
-        if is_subset:
-            print ("====> TEST ALL BELOW")
-            tloss_all, acc50all, acc80all, acc95all, tp50 = test(epoch, all_graphs, 1, loss_weight)
-            print ("====> END OF TEST ALL")
-
-        with open("loss.txt", 'a') as loss_file:
-            loss_file.write("Test {:.2f} {:.2f} {:.2f} {:.2f}\n".format(
-                tloss, acc50, acc80, acc95
-                ))
-            if is_subset:
-                loss_file.write("Test-ALL {:.2f} {:.2f} {:.2f} {:.2f}\n".format(
-                    tloss_all, acc50all, acc80all, acc95all
+        while pre_train_variance < 5 and current_lr >= 1e-5 and epoch < 500:
+            if epoch > 1000:
+                logger.info('pretrain failed @ epoch ' + str(epoch))
+                exit(1)
+            pre_train_loss, pre_train_variance = pretrain(epoch, subset_graphs, config.batch_size)
+            pretrain_scheduler.step(pre_train_loss)
+            
+            with open("loss.txt", 'a') as loss_file:
+                loss_file.write("loss:{:.4f} var:{:.4f} lr:{:.8f}\n".format(
+                    pre_train_loss, pre_train_variance, current_lr
                     ))
+            
+            current_lr = pretrain_optimizer.param_groups[0]['lr']
+            epoch += 1
+
+    # optimizer.param_groups[0]['lr'] = config.lr
+
+    with open("loss.txt", 'a') as loss_file:
+        loss_file.write("Pre-Train Finished!\n")
+
+    for epoch in range(start_epoch + 1, config.epochs + 1):
+        current_lr = optimizer.param_groups[0]['lr']
+        train_loss, train_var = train(epoch,subset_graphs,config.batch_size, loss_weight)
+        scheduler.step(train_loss)
+        with open("loss.txt", 'a') as loss_file:
+            loss_file.write("{:.4f} {:.4f} {:.10f}\n".format(
+                train_loss, train_var, current_lr
+                ))
+        if epoch%10 == 0:
+            tloss, acc50, acc80, acc95, tp50 = test(epoch,subset_graphs,1, loss_weight) # use default batch size : 1
+            threshold=None
+            if acc50>0.9999 and acc80>0.95 and tp50 > 0.01:
+                threshold=0.5
+            elif acc80>0.98 and tp50 > 0.01:
+                threshold=0.8
+            elif acc95>0.95 and tp50 > 0.01:
+                threshold=0.95
+
+            if is_subset:
+                print ("====> TEST ALL BELOW")
+                tloss_all, acc50all, acc80all, acc95all, tp50 = test(epoch, all_graphs, 1, loss_weight)
+                print ("====> END OF TEST ALL")
+
+            with open("loss.txt", 'a') as loss_file:
+                loss_file.write("Test {:.2f} {:.2f} {:.2f} {:.2f}\n".format(
+                    tloss, acc50, acc80, acc95
+                    ))
+                if is_subset:
+                    loss_file.write("Test-ALL {:.2f} {:.2f} {:.2f} {:.2f}\n".format(
+                        tloss_all, acc50all, acc80all, acc95all
+                        ))
 
 
 
-        if threshold is not None:
-            # then we can stop!
-            print ('Accuracy is good enough! Training terminates early.')
-            break
+            if threshold is not None:
+                # then we can stop!
+                print ('Accuracy is good enough! Training terminates early.')
+                break
 
 
-save_model(config.epochs, train_loss)
+    save_model(config.epochs, train_loss)
 
 
 
