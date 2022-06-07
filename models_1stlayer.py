@@ -73,21 +73,20 @@ class DGDAGRNN(nn.Module):
             mapper=self.mapper_forward, gate=self.gate_forward)
         # self.node_aggr_backward = GatedSumConv(self.vhs, num_rels, mapper=self.mapper_backward, gate=self.gate_backward, reverse=True)
         
-        # lstm ?
-        self.lstm_clause_gen = nn.LSTM(input_size = 2*self.vhs, hidden_size = self.vhs, batch_first = True, bidirectional = True)
         # expect [1 x n_input_node x self.vhs]
-        # output [1 x n_input_node x self.vhs] then go through this mapper to -1 0 1
+        self.mlp_clause_gen_mapper = nn.Sequential(
+            nn.Linear(self.vhs, self.chs),
+            nn.ReLU(),
+            nn.Linear(self.chs, 3),
+            nn.ReLU()
+        )
 
-        self.lstm_clause_gen_mapper = nn.Sequential(
-                nn.Linear(self.vhs*2, self.chs),
-                nn.ReLU(),
-                nn.Linear(self.chs, 1),
-                nn.Tanh()
+        # pre-train layer
+        self.sv_feature_pretrain_layer = nn.Sequential(
+            nn.Linear(self.vhs, self.chs),
+            nn.ReLU(),
+            nn.Linear(self.chs, 1)
             )
-        self.lstm_clause_update = nn.LSTM(input_size = self.vhs, hidden_size = self.vhs, batch_first = True, bidirectional = True)
-        self.lstm_clause_update2to1 = nn.Linear(self.vhs*2, self.vhs)
-        # expect [1 x n_input_node x self.vhs]
-        self.mlp_clause_gen_mapper = MLP(vhs = self.vhs, chs = self.chs)
 
         # self.hidden_state_norm.set_initial_param(batch_node_count, self.get_device())
 
@@ -116,7 +115,7 @@ class DGDAGRNN(nn.Module):
     def _collate_fn(self, G):
         return [copy.deepcopy(g) for g in G]
 
-    def forward(self, G, n_clause, transfer_to_device):
+    def forward(self, G, n_clause, transfer_to_device, pretrain_round):
         # GNN computation to get node embeddings
         if transfer_to_device:
             G.x = G.x.to(self.get_device())
@@ -300,7 +299,18 @@ class DGDAGRNN(nn.Module):
 
         # 1. find the nodes for state vars
         sv_node = G.sv_node
-        sv_feature = G.h[sv_node].unsqueeze(0)
+        sv_feature = G.h[sv_node] #.unsqueeze(0)
+
+        with torch.no_grad():
+            variance = torch.sum(torch.var(sv_feature, dim=0))
+            G.variance = variance.item()
+
+        if pretrain_round:
+            return (self.sv_feature_pretrain_layer(sv_feature).t())[0]
+
+        return self.mlp_clause_gen_mapper(sv_feature)
+
+
         #n_clause = len(G.clauses.clauses)
 
         #  sv_feature ----R----> prop_feature ----R----> clause_predict --(MLP)--> clause_generated
@@ -308,57 +318,57 @@ class DGDAGRNN(nn.Module):
         #     |                      |
         #     ---------(MLP)---------- 
 
-        result_clauses = []
-        for idx in range(n_clause):
-            prop_feature, _ = self.lstm_clause_update(sv_feature)  # the initial hidden states are set to zero
+        # result_clauses = []
+        # for idx in range(n_clause):
+        #     prop_feature, _ = self.lstm_clause_update(sv_feature)  # the initial hidden states are set to zero
             
-            with torch.no_grad():
-                prop_feature_has_nan = torch.any(torch.isnan(prop_feature))
-                sv_feature_has_nan = torch.any(torch.isnan(sv_feature))
-                prop_feature_mabs = torch.max(torch.abs(prop_feature))
-                sv_feature_mabs = torch.max(torch.abs(sv_feature))
+        #     with torch.no_grad():
+        #         prop_feature_has_nan = torch.any(torch.isnan(prop_feature))
+        #         sv_feature_has_nan = torch.any(torch.isnan(sv_feature))
+        #         prop_feature_mabs = torch.max(torch.abs(prop_feature))
+        #         sv_feature_mabs = torch.max(torch.abs(sv_feature))
 
-                if prop_feature_has_nan or sv_feature_has_nan or prop_feature_mabs.item()>1e5 or sv_feature_mabs.item()>1e5:
-                    print ('point 1:')
-                    print ('prop_feature_has_nan:',prop_feature_has_nan)
-                    print ('sv_feature_has_nan:',sv_feature_has_nan)
-                    print ('sv_feature max abs:', sv_feature_mabs)
-                    print ('prop_feature max abs:', prop_feature_mabs)
-                    exit(1)
+        #         if prop_feature_has_nan or sv_feature_has_nan or prop_feature_mabs.item()>1e5 or sv_feature_mabs.item()>1e5:
+        #             print ('point 1:')
+        #             print ('prop_feature_has_nan:',prop_feature_has_nan)
+        #             print ('sv_feature_has_nan:',sv_feature_has_nan)
+        #             print ('sv_feature max abs:', sv_feature_mabs)
+        #             print ('prop_feature max abs:', prop_feature_mabs)
+        #             exit(1)
             
-            #FIXME: Here may occur NaN error
-            clause_predict, _ = self.lstm_clause_gen(prop_feature)  # the initial hidden states are set to zero
-            sv_feature = self.lstm_clause_update2to1(prop_feature)
+        #     #FIXME: Here may occur NaN error
+        #     clause_predict, _ = self.lstm_clause_gen(prop_feature)  # the initial hidden states are set to zero
+        #     sv_feature = self.lstm_clause_update2to1(prop_feature)
 
-            # Map 200 dimension feature to three class
-            #clause_generated = self.mlp_clause_gen_mapper(clause_predict[0])
+        #     # Map 200 dimension feature to three class
+        #     #clause_generated = self.mlp_clause_gen_mapper(clause_predict[0])
             
-            # Map 200 dimension feature to 1
-            clause_generated = self.lstm_clause_gen_mapper(clause_predict[0])
+        #     # Map 200 dimension feature to 1
+        #     clause_generated = self.lstm_clause_gen_mapper(clause_predict[0])
             
-            with torch.no_grad():
-                prop_feature_has_nan = torch.any(torch.isnan(prop_feature))
-                clause_predict_has_nan = torch.any(torch.isnan(clause_predict))
-                sv_feature_has_nan = torch.any(torch.isnan(sv_feature))
-                clause_generated_has_nan = torch.any(torch.isnan(clause_generated))
+        #     with torch.no_grad():
+        #         prop_feature_has_nan = torch.any(torch.isnan(prop_feature))
+        #         clause_predict_has_nan = torch.any(torch.isnan(clause_predict))
+        #         sv_feature_has_nan = torch.any(torch.isnan(sv_feature))
+        #         clause_generated_has_nan = torch.any(torch.isnan(clause_generated))
 
-                if clause_generated_has_nan or clause_predict_has_nan or sv_feature_has_nan :
-                    print ('point 2:')
-                    print ('prop_feature_has_nan',prop_feature_has_nan)
-                    print ('clause_predict_has_nan',clause_predict_has_nan)
-                    print ('sv_feature_has_nan',sv_feature_has_nan)
-                    print ('clause_generated_has_nan',clause_generated_has_nan)
-                    print ('prop_feature max abs', torch.max(torch.abs(prop_feature)))
-                    print ('clause_predict max abs', torch.max(torch.abs(clause_predict)))
-                    print ('clause_generated max abs', torch.max(torch.abs(clause_generated)))
-                    exit(1)
-            # Using LSTM, map to 1*78
-            result_clauses.append(clause_generated.t())
+        #         if clause_generated_has_nan or clause_predict_has_nan or sv_feature_has_nan :
+        #             print ('point 2:')
+        #             print ('prop_feature_has_nan',prop_feature_has_nan)
+        #             print ('clause_predict_has_nan',clause_predict_has_nan)
+        #             print ('sv_feature_has_nan',sv_feature_has_nan)
+        #             print ('clause_generated_has_nan',clause_generated_has_nan)
+        #             print ('prop_feature max abs', torch.max(torch.abs(prop_feature)))
+        #             print ('clause_predict max abs', torch.max(torch.abs(clause_predict)))
+        #             print ('clause_generated max abs', torch.max(torch.abs(clause_generated)))
+        #             exit(1)
+        #     # Using LSTM, map to 1*78
+        #     result_clauses.append(clause_generated.t())
 
-            # Using MLP, map to 1*78*3
-            #result_clauses.append(clause_generated.unsqueeze(0))
-        result_clauses = torch.cat(result_clauses, dim=0)
-        return result_clauses
+        #     # Using MLP, map to 1*78*3
+        #     #result_clauses.append(clause_generated.unsqueeze(0))
+        # result_clauses = torch.cat(result_clauses, dim=0)
+        # return result_clauses
 
 
 class GatedSumConv(MessagePassing):  # dvae needs outdim parameter
@@ -405,17 +415,3 @@ class GatedSumConv(MessagePassing):  # dvae needs outdim parameter
     def update(self, aggr_out):
         return aggr_out
         
-class MLP(torch.nn.Module):
-    def __init__(self, vhs, chs):
-        super(MLP, self).__init__()
-        torch.manual_seed(12345)
-        self.lin1 = Linear(vhs*2, chs)
-        self.lin2 = Linear(chs, 3)
-
-    def forward(self, x):
-        x = self.lin1(x)
-        x = x.relu()
-        #x = F.dropout(x, p=0.5, training=self.training)
-        x = self.lin2(x)
-        x = x.relu()
-        return x

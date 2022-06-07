@@ -74,19 +74,21 @@ def expand_clause(clauses, n_sv):
 def expand_clause_012(clauses, n_sv):
     all_clauses = []
     for cidx, c in enumerate(clauses):
-        x = torch.ones((1, n_sv)) #x = torch.zeros((1, n_sv))
+        x = torch.ones((1, n_sv),dtype=torch.long) #x = torch.zeros((1, n_sv))
         for idx, v in c:
             if idx >= n_sv:
                 # this is a bug
                 print (cidx, ":", c)
                 print ('n_sv :', n_sv)
                 return None
-            x[0][idx] = 1-v  # v
+            x[0][idx] = int(1+v)  # v
         all_clauses.append(x)
-    all_clauses.append(torch.ones((1, n_sv))) # all_clauses.append(torch.zeros((1, n_sv))) # this is the terminal symbol
+    all_clauses.append(torch.ones((1, n_sv),dtype=torch.long)) # all_clauses.append(torch.zeros((1, n_sv))) # this is the terminal symbol
     # this indicates no more clauses
-    return torch.cat(all_clauses, dim=0).float()
+    return torch.cat(all_clauses, dim=0).long()
     
+def sum_clause(clauses):
+    return torch.sum(clauses**2, dim=0)
 
 def clause_loss(groundtruth, prediction):
     return torch.sum( (groundtruth-prediction)**2 )
@@ -165,7 +167,7 @@ def measure_012(expected, predicted):
     INC = torch.sum((expected!=predicted).long()).cpu().item()
     return TP, FP, TN, FN, ACC, INC
 
-def measure_to_str(TP, FP, TN, FN, ACC, threshold,PRECISION):
-    return 'TP%d: %0.3f, FP%d: %0.3f, TN%d: %0.3f,FN%d: %0.3f,ACC%d: %0.3f, PRECISION%d: %0.3f' % (threshold,TP,threshold,FP,threshold,TN,threshold,FN,threshold,ACC,threshold,PRECISION)
+def measure_to_str(TP, FP, TN, FN, ACC,PRECISION):
+    return 'TP: %0.3f, FP: %0.3f, TN: %0.3f,FN: %0.3f,ACC: %0.3f, PRECISION: %0.3f' % (TP,FP,TN,FN,ACC,PRECISION)
 
 

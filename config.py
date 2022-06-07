@@ -85,6 +85,7 @@ class ConfigClassHWMCC07_1000:
         self.clause_clip = 500
         self.alpha = 0.1  # alpha * (1 - max_per_clause( logit**2 ) )
         self.autoweight=True
+        self.auto_pretrain=True
 
         self.seed = 1000
 
@@ -107,7 +108,7 @@ class ConfigClassHWMCC07_1000:
           printfn(n + ' := ' + str(v))
 
 
-class ConfigClassHWMCC_ALL_under5000node:
+class ConfigClassHWMCC_ALL_under1000node:
     def __init__(self):
         #self.lr = 2.5e-2
         self.lr = 1.95e-3
@@ -117,10 +118,11 @@ class ConfigClassHWMCC_ALL_under5000node:
         #self.epochs = 150
         self.epochs = 200
         self.autoweight=True
+        self.auto_pretrain=True
 
         self.device='cuda:1'
 
-        self.dataset='/data/hongcezh/clause-learning/data-collect/data2dataset/hwmcc07_10_17_20_5000node.pkl'
+        self.dataset='/data/hongcezh/clause-learning/data-collect/data2dataset/hwmcc07_10_17_20_1000node.pkl'
         self.batch_size=5
         self.use_size_below_this = 5000 # if set to 0 then use all graphs
         self.clause_clip = 500
@@ -135,7 +137,7 @@ class ConfigClassHWMCC_ALL_under5000node:
         self.save_interval=50
         self.continue_from_model=None
         self.grad_clip=0.65
-        self.modelname='HWMCC_ALL_under5000node_v1'
+        self.modelname='HWMCC_ALL_under1000node_v1'
         self.gpu_id="1"
         self.test_size = 0.1
         self.random_state = 0
@@ -146,7 +148,7 @@ class ConfigClassHWMCC_ALL_under5000node:
         if len(n)>2 and n[0] != '_' and n[-1] != '_':
           printfn(n + ' := ' + str(v))
 
-config = ConfigClassHWMCC_ALL_under5000node()
+config = ConfigClassHWMCC_ALL_under1000node()
 #config = ConfigClassHWMCC07_1000()
 # config = ConfigClassTestZero()
 # config = ConfigClassTest()
