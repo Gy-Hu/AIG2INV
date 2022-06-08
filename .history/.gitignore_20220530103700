@@ -5,7 +5,6 @@
 *.png
 *.ipynb
 .vscode/
-.history/
 dataset/
 deprecated/
 newgraph/

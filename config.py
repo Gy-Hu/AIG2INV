@@ -75,7 +75,7 @@ class ConfigClassHWMCC07_1000:
         #self.lr = 1.95e-3
         self.weight_decay = 1e-10
         self.grad_clip = 0.65
-        self.epochs = 150
+        self.epochs = 600
 
         self.device='cuda:1'
 
