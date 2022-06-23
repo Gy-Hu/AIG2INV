@@ -4,6 +4,8 @@
 *.csv
 *.png
 *.ipynb
+*.code-workspace
+experiment_record/
 .vscode/
 .history/
 dataset/
