@@ -78,9 +78,12 @@ class Frame:
 
 class tCube:
     # make a tcube object assosciated with frame t.
-    def __init__(self, t=0):
+    def __init__(self, t=0, cubeLiterals=None):
         self.t = t
-        self.cubeLiterals = list()
+        if cubeLiterals is None:
+            self.cubeLiterals = list()
+        else:
+            self.cubeLiterals = cubeLiterals
 
     def __lt__(self, other):
         return self.t < other.t
@@ -376,10 +379,10 @@ class PDR:
         self.frames.append(Frame(lemmas=[self.post.cube()]))
 
         while True:
-            c = self.getBadCube() # conduct generalize predecessor here
+            c, all_model_lst = self.getBadCube() # conduct generalize predecessor here
             if c is not None:
                 # print("get bad cube!")
-                trace = self.recBlockCube(c) # conduct generalize predecessor here (in solve relative process)
+                trace = self.recBlockCube((c,all_model_lst)) # conduct generalize predecessor here (in solve relative process)
                 #TODO: 找出spec3-and-env这个case为什么没有recBlock
                 if trace is not None:
                     # Generate ground truth of generalized predecessor
@@ -575,11 +578,13 @@ class PDR:
     #TODO: 解决这边特殊case遇到safe判断成unsafe的问题
     
     #@profile
-    def recBlockCube(self, s0: tCube):
+    def recBlockCube(self, wrapper):
         '''
         :param s0: CTI (counterexample to induction, represented as cube)
         :return: Trace (cex, indicates that the system is unsafe) or None (successfully blocked)
         '''
+        s0 = wrapper[0]
+        model_lst = wrapper[1]
         Q = PriorityQueue()
         print("recBlockCube now...")
         Q.put((s0.t, s0))
@@ -1816,6 +1821,29 @@ class PDR:
     #             res,h= self.RL(tcube)
     #             return None, res
 
+
+    def get_all_model(self, s_original,t):
+        model_lst = []
+        s = Solver()
+        # copy s_original to s
+        for c in s_original.assertions():
+            s.add(c)
+        res = s.check()
+        assert(s_original.check() == res)
+        while (res == sat and len(model_lst) < 10):
+            m = s.model()
+            #print(m)
+            model_lst.append(m)
+            #assert(len(model_lst) == 1)
+            block = []
+            for var in m:
+                block.append(var() != m[var])
+            s.add(Or(block))
+            res = s.check()
+        model_lst = [tCube(t,cubeLiterals=model_lst[i]) for i in range(len(model_lst))]
+        return model_lst
+
+
     def getBadCube(self):
         print("seek for bad cube...")
 
@@ -1825,6 +1853,7 @@ class PDR:
         s.add(self.trans.cube())
 
         if s.check() == sat: #F[-1] /\ T /\ !P(s') is sat! CTI (cex to induction) found!
+            
             res = tCube(len(self.frames) - 1)
             res.addModel(self.lMap, s.model(), remove_input=False)  # res = sat_model
             print("get bad cube size:", len(res.cubeLiterals), end=' --> ') # Print the result
@@ -1834,7 +1863,9 @@ class PDR:
             print(len(new_model.cubeLiterals)) # Print the result
             self._debug_c_is_predecessor(new_model.cube(), self.trans.cube(), self.frames[-1].cube(), substitute(substitute(self.post.cube(), self.primeMap),self.inp_map))
             new_model.remove_input()
-            return new_model
+            all_model = self.get_all_model(s,new_model.t)
+            all_model_lst = [model.remove_input() for model in all_model]
+            return new_model, all_model_lst
         else:
             return None
 

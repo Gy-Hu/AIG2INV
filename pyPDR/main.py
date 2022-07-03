@@ -43,7 +43,7 @@ if __name__ == '__main__':
     parser.add_argument('-tm', type=str, help='test mic', default='off')
     parser.add_argument('-inf_dev', type=str, help='device do inference', default='gpu')
 
-    args = parser.parse_args()
+    args = parser.parse_args(["./nusmv.syncarb10^2.B.aag"])
     if (args.fileName is not None) and (args.mode==0):
         file = args.fileName
         m = model.Model()
