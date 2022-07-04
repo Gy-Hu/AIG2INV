@@ -577,6 +577,19 @@ class PDR:
 
     #TODO: 解决这边特殊case遇到safe判断成unsafe的问题
     
+    def export_CTI_lst(self, cti_lst: list):
+        if len(cti_lst) == 0:
+            return
+        # change the list to string, use comma to split
+        cubeliteral_to_str = lambda cube_literals: ','.join(map
+                                (lambda x: str(_extract(x)[0]).replace('v','') 
+                                if str(_extract(x)[1])=='True' 
+                                else str(int(str(_extract(x)[0]).replace('v',''))+1),cube_literals))
+        # open a file for writing
+        with open("./" + self.filename.split('/')[-1].replace('.aag', '') + "_CTI.txt", "w") as text_file:
+            for cti in cti_lst:
+                text_file.write(cubeliteral_to_str(cti.cubeLiterals) + "\n")
+
     #@profile
     def recBlockCube(self, wrapper):
         '''
@@ -585,6 +598,7 @@ class PDR:
         '''
         s0 = wrapper[0]
         model_lst = wrapper[1]
+        self.export_CTI_lst(model_lst)
         Q = PriorityQueue()
         print("recBlockCube now...")
         Q.put((s0.t, s0))
@@ -1824,13 +1838,14 @@ class PDR:
 
     def get_all_model(self, s_original,t):
         model_lst = []
+        tCube_lst = []
         s = Solver()
         # copy s_original to s
         for c in s_original.assertions():
             s.add(c)
         res = s.check()
         assert(s_original.check() == res)
-        while (res == sat and len(model_lst) < 10):
+        while (res == sat and len(model_lst) < 45):
             m = s.model()
             #print(m)
             model_lst.append(m)
@@ -1840,8 +1855,12 @@ class PDR:
                 block.append(var() != m[var])
             s.add(Or(block))
             res = s.check()
-        model_lst = [tCube(t,cubeLiterals=model_lst[i]) for i in range(len(model_lst))]
-        return model_lst
+
+        for m in model_lst:
+            res = tCube(t)
+            res.addModel(self.lMap, m, remove_input=True)
+            tCube_lst.append(res)
+        return tCube_lst
 
 
     def getBadCube(self):
@@ -1863,9 +1882,9 @@ class PDR:
             print(len(new_model.cubeLiterals)) # Print the result
             self._debug_c_is_predecessor(new_model.cube(), self.trans.cube(), self.frames[-1].cube(), substitute(substitute(self.post.cube(), self.primeMap),self.inp_map))
             new_model.remove_input()
-            all_model = self.get_all_model(s,new_model.t)
-            all_model_lst = [model.remove_input() for model in all_model]
-            return new_model, all_model_lst
+
+            all_tcube_lst = self.get_all_model(s,new_model.t)
+            return new_model, all_tcube_lst
         else:
             return None
 
