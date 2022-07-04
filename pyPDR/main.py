@@ -42,6 +42,7 @@ if __name__ == '__main__':
     parser.add_argument('-mn', type=str, help='model name of NN', default=None)
     parser.add_argument('-tm', type=str, help='test mic', default='off')
     parser.add_argument('-inf_dev', type=str, help='device do inference', default='gpu')
+    parser.add_argument('-check_cti', type=str, help='check CTI before exporting', default='on')
 
     args = parser.parse_args(["./nusmv.syncarb10^2.B.aag"])
     if (args.fileName is not None) and (args.mode==0):
@@ -122,6 +123,12 @@ if __name__ == '__main__':
         elif args.inf_dev=='gpu':
             solver.inf_device = 'gpu'
 
+        # switch to check cti before exporting
+        if args.check_cti=='off':
+            solver.check_CTI_before_export = 0
+        elif args.check_cti=='on':
+            solver.check_CTI_before_export = 1
+
         startTime = time.time()
         # Record start time
         solver.start_time = time.time()
@@ -141,3 +148,130 @@ if __name__ == '__main__':
                     plt.savefig("../log/NN_guided_IG_pass_ratio.jpg") 
             else:
                 print("TIME CONSUMING: " ,(endTime - startTime) , "seconds")
+    elif args.mode==1: # 1 means runs through all the folder
+        print("================ Test the ./aag directory ========")
+        agent = None
+        for root, dirs, files in os.walk(args.p): #TODO: 把aig原本的二进制文件也搬进来，这边代码改成仅把.aag加入处理的文件队列里面
+            for name in files:
+                if name.endswith('.aag'):
+                    print("============ Testing " + str(name) + " ==========")
+                    m = model.Model()
+                    solver = pdr.PDR(*m.parse(os.path.join(root, name)))
+
+                    # Switch to turn on/off using neural network to guide generalization (predecessor/inductive generalization)
+                    if args.n=='off':
+                        solver.test_IG_NN = 0
+                        solver.test_GP_NN = 0
+                    elif args.n=='on':
+                        solver.test_IG_NN = 1
+                        solver.test_GP_NN = 1
+                    elif args.n=='ig':
+                        solver.test_IG_NN = 1
+                        solver.test_GP_NN = 0
+                    elif args.n=='gp':
+                        solver.test_IG_NN = 0
+                        solver.test_GP_NN = 1
+
+                    # Switch to turn on/off the data generation of generalized predecessor or inductive generalization
+                    if args.d=='off':
+                        solver.smt2_gen_GP = 0
+                        solver.smt2_gen_IG = 0
+                    elif args.d=='on':
+                        solver.smt2_gen_GP = 1
+                        solver.smt2_gen_IG = 1
+                    elif args.d=='ig':
+                        solver.smt2_gen_IG = 1
+                        solver.smt2_gen_GP = 0
+                    elif args.d=='gp':
+                        solver.smt2_gen_IG = 0
+                        solver.smt2_gen_GP = 1
+
+                    # On/off the NN-guided ig append to MIC
+                    if args.a=='off':
+                        solver.NN_guide_ig_append = 0
+                    elif args.a=='on':
+                        solver.NN_guide_ig_append = 1
+
+                    # On/off the collection of inductive invariant
+                    if args.s=='off':
+                        solver.collect_inductive_invariant = 0
+                    elif args.s=='on':
+                        solver.collect_inductive_invariant = 1
+
+                    # On/off the recording of result
+                    if args.r=='off':
+                        solver.record_result = 0
+                    elif args.r=='on':
+                        solver.record_result = 1
+                    
+                    # Set the thershold of prediction
+                    solver.prediction_threshold = args.th
+
+                    # Set the model name to predict
+                    solver.model_name = args.mn
+
+                    # Set the switch to test mic
+                    if args.tm=='off':
+                        solver.test_mic = 0
+                    elif args.tm=='on':
+                        solver.test_mic = 1
+
+
+                    # switch device to do inference
+                    if args.inf_dev=='cpu':
+                        solver.inf_device = 'cpu'
+                        os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+                    elif args.inf_dev=='gpu':
+                        solver.inf_device = 'gpu'
+                        if args.gpu_id != -1:
+                            os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
+
+                    # switch to check cti before exporting
+                    if args.check_cti=='off':
+                        solver.check_CTI_before_export = 0
+                    elif args.check_cti=='on':
+                        solver.check_CTI_before_export = 1
+
+                    solver.folder_name =  args.p.split('/')[-1]
+
+                    startTime = time.time()
+                    timeout = False
+
+                    # Record start time
+                    solver.start_time = time.time()
+
+                    # t = Thread(target=solver.run)
+                    # t.daemon = True
+                    # t.start() # start the thread
+                    # t.join(timeout=args.t) #FIXME: If timeout, the thread will throw exception and program core dump
+                    
+                    p = Process(target=solver.run, name="PDR")
+                    p.start()
+                    # Wait a maximum of 10 seconds for foo
+                    # Usage: join([timeout in seconds])
+                    p.join(timeout=int(args.t))
+                    endTime = time.time()
+                    # If thread is active
+                    if p.is_alive():
+                        timeout = True
+                        print("Finish runing aiger file:"+str(name))
+                        print("PDR run out of the time... let's kill it...")
+                        # Terminate foo
+                        p.terminate()
+                        p.join()
+
+                    # if timeout == True:
+                    #     sleep(20)
+                    # elif timeout != True:
+                    if timeout != True:
+                        solve_time = (endTime - startTime)
+                        print("Finish runing aiger file:"+str(name))
+                        print("Done in time")
+                        #sleep(20)
+                        if args.c:
+                            print("TIME CONSUMING: ", solve_time, "seconds")
+                        
+    else:
+        print("Wrong input, please give a vaild input or check the document")
+
+#TODO: Run all the dataset (includes tip..)

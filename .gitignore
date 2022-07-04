@@ -5,6 +5,7 @@
 *.png
 *.ipynb
 *.code-workspace
+*.ipynb
 experiment_record/
 .vscode/
 .history/

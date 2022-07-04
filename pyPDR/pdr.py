@@ -16,6 +16,7 @@ from queue import PriorityQueue
 from functools import wraps
 import pandas as pd
 from bmc import BMC
+#from pyPDR.check_inv import remove_duplicate_list
 import ternary_sim
 from itertools import combinations
 from concurrent.futures import ThreadPoolExecutor
@@ -349,6 +350,10 @@ class PDR:
         -----------------Device to inf----------------------
         '''
         self.inf_device = 'gpu'
+        '''
+        ------------------Check solve relative before export the CTI---------
+        '''
+        self.check_CTI_before_export = 0
         
     def check_init(self):
         s = Solver()
@@ -379,10 +384,10 @@ class PDR:
         self.frames.append(Frame(lemmas=[self.post.cube()]))
 
         while True:
-            c, all_model_lst = self.getBadCube() # conduct generalize predecessor here
+            c, all_model_lst_complete, all_model_lst_partial = self.getBadCube() # conduct generalize predecessor here
             if c is not None:
                 # print("get bad cube!")
-                trace = self.recBlockCube((c,all_model_lst)) # conduct generalize predecessor here (in solve relative process)
+                trace = self.recBlockCube((c,all_model_lst_complete, all_model_lst_partial)) # conduct generalize predecessor here (in solve relative process)
                 #TODO: 找出spec3-and-env这个case为什么没有recBlock
                 if trace is not None:
                     # Generate ground truth of generalized predecessor
@@ -577,17 +582,29 @@ class PDR:
 
     #TODO: 解决这边特殊case遇到safe判断成unsafe的问题
     
-    def export_CTI_lst(self, cti_lst: list):
-        if len(cti_lst) == 0:
+    def export_CTI_lst(self, cti_lst_complete: list, cti_lst_partial:list):
+        if len(cti_lst_complete)==0 or len(cti_lst_partial) == 0:
             return
+        
+        if self.check_CTI_before_export == 1:
+            #check_init = lambda s,cti : s.add(self.init.cube(),cti.cube())
+            check_solve_relative = lambda x: self._solveRelative_upgrade(x) == 'pass the check'
+            #check_solve_relative = lambda x: self._solveRelative(x) == unsat
+            assert(all(check_solve_relative(x) for x in cti_lst_complete))
+            assert(all(check_solve_relative(x) for x in cti_lst_partial))
+        
         # change the list to string, use comma to split
         cubeliteral_to_str = lambda cube_literals: ','.join(map
                                 (lambda x: str(_extract(x)[0]).replace('v','') 
                                 if str(_extract(x)[1])=='True' 
                                 else str(int(str(_extract(x)[0]).replace('v',''))+1),cube_literals))
         # open a file for writing
-        with open("./" + self.filename.split('/')[-1].replace('.aag', '') + "_CTI.txt", "w") as text_file:
-            for cti in cti_lst:
+        with open("./" + self.filename.split('/')[-1].replace('.aag', '') + "_complete_CTI.txt", "w") as text_file:
+            for cti in cti_lst_complete:
+                text_file.write(cubeliteral_to_str(cti.cubeLiterals) + "\n")
+        
+        with open("./" + self.filename.split('/')[-1].replace('.aag', '') + "_partial_CTI.txt", "w") as text_file:
+            for cti in cti_lst_partial:
                 text_file.write(cubeliteral_to_str(cti.cubeLiterals) + "\n")
 
     #@profile
@@ -597,8 +614,9 @@ class PDR:
         :return: Trace (cex, indicates that the system is unsafe) or None (successfully blocked)
         '''
         s0 = wrapper[0]
-        model_lst = wrapper[1]
-        self.export_CTI_lst(model_lst)
+        model_lst_complete = wrapper[1]
+        model_lst_partial = wrapper[2]
+        self.export_CTI_lst(cti_lst_complete=model_lst_complete, cti_lst_partial=model_lst_partial)
         Q = PriorityQueue()
         print("recBlockCube now...")
         Q.put((s0.t, s0))
@@ -1835,8 +1853,7 @@ class PDR:
     #             res,h= self.RL(tcube)
     #             return None, res
 
-
-    def get_all_model(self, s_original,t):
+    def get_all_model_partial(self, s_original, t):
         model_lst = []
         tCube_lst = []
         s = Solver()
@@ -1845,21 +1862,100 @@ class PDR:
             s.add(c)
         res = s.check()
         assert(s_original.check() == res)
-        while (res == sat and len(model_lst) < 45):
+
+        #remove_duplicate_tcube = lambda lst : [list(t) for t in set(tuple(t) for t in lst)]
+
+        # partial model
+        
+        while (res == sat):
             m = s.model()
             #print(m)
-            model_lst.append(m)
+            #model_lst.append(m)
             #assert(len(model_lst) == 1)
             block = []
-            for var in m:
-                block.append(var() != m[var])
+            for var in m: block.append(var() != m[var])
             s.add(Or(block))
             res = s.check()
+            res2tcube = tCube(t)
+            res2tcube.addModel(self.lMap, m, remove_input=True)
+            if res2tcube not in tCube_lst:
+                tCube_lst.append(res2tcube)
+                if len(tCube_lst) >= 45:
+                    break
+
+        # older version -> has bug to determine when to stop (or how many models to generate in advance)
+        # while (res == sat and len(model_lst) < 45):
+        #     m = s.model()
+        #     #print(m)
+        #     model_lst.append(m)
+        #     #assert(len(model_lst) == 1)
+        #     block = []
+        #     for var in m:
+        #         block.append(var() != m[var])
+        #     s.add(Or(block))
+        #     res = s.check()
+        #     #model_lst = remove_duplicate_tcube(model_lst)
+
+
+        # for m in model_lst:
+        #     res = tCube(t)
+        #     res.addModel(self.lMap, m, remove_input=True)
+        #     if res not in tCube_lst:
+        #         tCube_lst.append(res)
+        #         if len(tCube_lst) >= 45:
+        #             break
+
+        return tCube_lst
+
+
+    def get_all_model_complete(self, s_original,t):
+        model_lst = []
+        tCube_lst = []
+        s = Solver()
+        # copy s_original to s
+        for c in s_original.assertions():
+            s.add(c)
+        res = s.check()
+        assert(s_original.check() == res)
+
+        # partial model
+        # while (res == sat and len(model_lst) < 45):
+        #     m = s.model()
+        #     #print(m)
+        #     model_lst.append(m)
+        #     #assert(len(model_lst) == 1)
+        #     block = []
+        #     for var in m:
+        #         block.append(var() != m[var])
+        #     s.add(Or(block))
+        #     res = s.check()
+
+        # for m in model_lst:
+        #     res = tCube(t)
+        #     res.addModel(self.lMap, m, remove_input=True)
+        #     tCube_lst.append(res)
+        
+        # complete model
+        latch_lst = [Bool(str(key).replace('_prime','')) for key in self.pv2next.keys()]
+        while (res == sat and len(model_lst) < 45):
+            m = s.model()
+            block = []
+            this_solution = Solver()
+            # extract all variable in z3 solver
+
+            for var in latch_lst:
+                v = m.eval(var, model_completion=True)
+                block.append(var != v)
+                this_solution.add((var == True) if is_true(v) else (var == False))
+
+            s.add(Or(block))
+            res = s.check()
+            model_lst.append(this_solution.assertions())
 
         for m in model_lst:
-            res = tCube(t)
-            res.addModel(self.lMap, m, remove_input=True)
+            res = tCube(t,cubeLiterals=m)
             tCube_lst.append(res)
+
         return tCube_lst
 
 
@@ -1883,8 +1979,9 @@ class PDR:
             self._debug_c_is_predecessor(new_model.cube(), self.trans.cube(), self.frames[-1].cube(), substitute(substitute(self.post.cube(), self.primeMap),self.inp_map))
             new_model.remove_input()
 
-            all_tcube_lst = self.get_all_model(s,new_model.t)
-            return new_model, all_tcube_lst
+            all_tcube_lst_complete = self.get_all_model_complete(s, new_model.t)
+            all_tcube_lst_partial = self.get_all_model_partial(s, new_model.t)
+            return new_model, all_tcube_lst_complete, all_tcube_lst_partial
         else:
             return None
 
