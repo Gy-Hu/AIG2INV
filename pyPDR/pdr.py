@@ -1853,6 +1853,25 @@ class PDR:
     #             res,h= self.RL(tcube)
     #             return None, res
 
+    # use edit distance as filter to promise the diveristy of the cex
+    def levenshtein_distance(self, cex1: str, cex2: str) -> int:
+        len1, len2 = len(cex1), len(cex2)
+        # Initialization
+        dp = [[0 for _ in range(len2 + 1)] for _ in range(len1 + 1)]
+        for i in range(len1+1): 
+            dp[i][0] = i
+        for j in range(len2+1):
+            dp[0][j] = j
+            
+        # Iteration
+        for i in range(1, len1 + 1):
+            for j in range(1, len2 + 1):
+                if cex1[i-1] == cex2[j-1]:
+                    dp[i][j] = dp[i-1][j-1]
+                else:
+                    dp[i][j] = min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]) + 1
+        return dp[len1][len2]
+
     def get_all_model_partial(self, s_original, t):
         model_lst = []
         tCube_lst = []
