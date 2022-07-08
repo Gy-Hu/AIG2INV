@@ -61,9 +61,10 @@ def filter_cex(cex_list):
 # main function
 if __name__ == '__main__':
     file_path_prefix = "/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/"
-    file_suffix = "cmu.dme1.B"
+    #file_suffix = "cmu.dme1.B"
     #file_suffix = "eijk.S208o.S"
     #file_suffix = "nusmv.syncarb10^2.B"
+    file_suffix = "nusmv.reactor^4.C"
     inv_cnf = file_path_prefix + file_suffix + "/inv.cnf"
     with open(inv_cnf, 'r') as f:
         lines = f.readlines()
@@ -77,8 +78,10 @@ if __name__ == '__main__':
 
     #cex_file_path = "./cex_before_generalization_without_unsat.txt"
     #cex_file_path = "./nusmv.syncarb10^2.B_complete_CTI.txt"
-    cex_file_path = "./nusmv.syncarb10^2.B_partial_CTI.txt"
+    #cex_file_path = "./nusmv.syncarb10^2.B_partial_CTI.txt"
     #cex_file_path = "./cmu.dme1.B_complete_CTI.txt"
+    cex_file_path = f"./{file_suffix}_partial_CTI.txt"
+    #cex_file_path = "./nusmv.reactor^4.C_complete_CTI.txt"
     with open(cex_file_path, 'r') as f:
         lines = f.readlines()
         f.close()
@@ -90,7 +93,7 @@ if __name__ == '__main__':
     print(len(cex_lines))
     print("print the clauses in json")
     print(cex_lines[:3])
-    
+
     # decide whether to filter the cex
     # cex_lines = filter_cex(cex_list=cex_lines)
 
@@ -122,14 +125,14 @@ if __name__ == '__main__':
                 this_subset_success += 1
             else:
                 this_subset_fail += 1
-        
+
         all_subset_fail.append(this_subset_fail)
         all_subset_success.append(this_subset_success)
-            
+
         # Check subset fail
         if this_subset_fail == len(cex_lines):
             subset_fail += 1
-    
-    print(subset_fail, "inductive invariant has not found mapping model,","fail rate of mapping invariant to model is", (subset_fail/len(inv_lines))* 100, "%")
 
+    print(subset_fail, "inductive invariant has not found mapping model,","fail rate of mapping invariant to model is", (subset_fail/(len(inv_lines)-1))* 100, "%")
+    print("only", len(inv_lines) - 1 - subset_fail, "inductive invariant has found mapping model")
 

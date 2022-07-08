@@ -1,7 +1,8 @@
+# -*- coding: UTF-8 -*- 
 '''
 Main function to run PDR (extract the graph as well)
 '''
-# -*- coding: UTF-8 -*- 
+
 import argparse
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
@@ -44,7 +45,7 @@ if __name__ == '__main__':
     parser.add_argument('-inf_dev', type=str, help='device do inference', default='gpu')
     parser.add_argument('-check_cti', type=str, help='check CTI before exporting', default='on')
 
-    args = parser.parse_args(["./cmu.dme1.B.aag"])
+    args = parser.parse_args(["./nusmv.reactor^4.C.aag"])
     if (args.fileName is not None) and (args.mode==0):
         file = args.fileName
         m = model.Model()

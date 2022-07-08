@@ -384,10 +384,10 @@ class PDR:
         self.frames.append(Frame(lemmas=[self.post.cube()]))
 
         while True:
-            c, all_model_lst_complete, all_model_lst_partial = self.getBadCube() # conduct generalize predecessor here
+            c, all_model_lst_complete, all_model_lst_partial, all_model_lst_inv_guided  = self.getBadCube() # conduct generalize predecessor here
             if c is not None:
                 # print("get bad cube!")
-                trace = self.recBlockCube((c,all_model_lst_complete, all_model_lst_partial)) # conduct generalize predecessor here (in solve relative process)
+                trace = self.recBlockCube((c,all_model_lst_complete, all_model_lst_partial,all_model_lst_inv_guided)) # conduct generalize predecessor here (in solve relative process)
                 if trace == 'Finished' : return
                 #TODO: 找出spec3-and-env这个case为什么没有recBlock
                 if trace is not None:
@@ -583,8 +583,8 @@ class PDR:
 
     #TODO: 解决这边特殊case遇到safe判断成unsafe的问题
     
-    def export_CTI_lst(self, cti_lst_complete: list, cti_lst_partial:list):
-        if len(cti_lst_complete)==0 or len(cti_lst_partial) == 0:
+    def export_CTI_lst(self, cti_lst_complete: list, cti_lst_partial:list, cti_lst_inv:list):
+        if len(cti_lst_complete)==0 or len(cti_lst_partial) == 0 or len(cti_lst_inv) == 0:
             return
         
         if self.check_CTI_before_export == 1:
@@ -593,6 +593,7 @@ class PDR:
             #check_solve_relative = lambda x: self._solveRelative(x) == unsat
             assert(all(check_solve_relative(x) for x in cti_lst_complete))
             assert(all(check_solve_relative(x) for x in cti_lst_partial))
+            assert(all(check_solve_relative(x) for x in cti_lst_inv))
         
         # change the list to string, use comma to split
         cubeliteral_to_str = lambda cube_literals: ','.join(map
@@ -607,6 +608,10 @@ class PDR:
         with open("./" + self.filename.split('/')[-1].replace('.aag', '') + "_partial_CTI.txt", "w") as text_file:
             for cti in cti_lst_partial:
                 text_file.write(cubeliteral_to_str(cti.cubeLiterals) + "\n")
+        
+        with open("./" + self.filename.split('/')[-1].replace('.aag', '') + "_inv_CTI.txt", "w") as text_file:
+            for cti in cti_lst_inv:
+                text_file.write(cubeliteral_to_str(cti.cubeLiterals) + "\n")
 
     #@profile
     def recBlockCube(self, wrapper):
@@ -617,7 +622,8 @@ class PDR:
         s0 = wrapper[0]
         model_lst_complete = wrapper[1]
         model_lst_partial = wrapper[2]
-        self.export_CTI_lst(cti_lst_complete=model_lst_complete, cti_lst_partial=model_lst_partial)
+        model_lst_inv_guided = wrapper[3]
+        self.export_CTI_lst(cti_lst_complete=model_lst_complete, cti_lst_partial=model_lst_partial, cti_lst_inv=model_lst_inv_guided)
         return 'Finished'
         Q = PriorityQueue()
         print("recBlockCube now...")
@@ -1873,6 +1879,135 @@ class PDR:
                 else:
                     dp[i][j] = min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]) + 1
         return dp[len1][len2]
+    
+    def get_all_model_complete_random_sampling(self,s_original, t):
+        '''
+        TODO: NOT FINISHED YET
+        '''
+
+        model_lst = []
+        tCube_lst = []
+        s = Solver()
+        # copy s_original to s
+        for c in s_original.assertions():
+            s.add(c)
+        res = s.check()
+        assert(s_original.check() == res)
+        
+        # complete model
+        latch_lst = [Bool(str(key).replace('_prime','')) for key in self.pv2next.keys()]
+        while (res == sat and len(model_lst) < 1000):
+            m = s.model()
+            block = []
+            this_solution = Solver()
+            # extract all variable in z3 solver
+
+            for var in latch_lst:
+                v = m.eval(var, model_completion=True)
+                block.append(var != v)
+                this_solution.add((var == True) if is_true(v) else (var == False))
+
+            s.add(Or(block))
+            res = s.check()
+            model_lst.append(this_solution.assertions())
+
+        for m in model_lst:
+            res = tCube(t,cubeLiterals=m)
+            tCube_lst.append(res)
+
+        return tCube_lst
+    
+    def get_all_model_guided_by_inv_partial(self, s_original, t):
+        model_lst = []
+        tCube_lst = []
+        s = Solver()
+        for c in s_original.assertions():
+            s.add(c)
+        res = s.check()
+        assert(s_original.check() == res)
+        inv_file_path_prefix = "/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/"
+        file_suffix = (self.filename).replace(".aag", "")
+        inv_cnf = inv_file_path_prefix + file_suffix + "/inv.cnf"
+        with open(inv_cnf, 'r') as f:
+            lines = f.readlines()
+            f.close()
+        inv_lines = [(line.strip()).split() for line in lines]
+        for clause in inv_lines[1:]:
+            s_clause = z3.Solver()
+            for lt in clause:
+                if int(lt) % 2 == 1:
+                    lt_bool = z3.Bool(str("v"+str(int(lt)-1)))
+                    s_clause.add(lt_bool==False)
+                else:
+                    lt_bool = z3.Bool(str("v"+str(int(lt))))
+                    s_clause.add(lt_bool==True)
+            clauses_lst = list(s_clause.assertions())
+            s.add(Not(simplify(And(clauses_lst))))
+            s.check()
+            if s.check() != sat: break
+            m = s.model()
+            block = [var() != m[var] for var in m]
+            s.add(Or(block))
+
+            res2tcube = tCube(t)
+            res2tcube.addModel(self.lMap, m, remove_input=True)
+            if res2tcube not in tCube_lst:
+                tCube_lst.append(res2tcube)
+
+        return tCube_lst
+
+    def get_all_model_guided_by_inv_complete(self, s_original, t):
+        model_lst = []
+        tCube_lst = []
+        s = Solver()
+        for c in s_original.assertions():
+            s.add(c)
+        res = s.check()
+        assert(s_original.check() == res)
+        inv_file_path_prefix = "/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/"
+        file_suffix = (self.filename).replace(".aag", "")
+        inv_cnf = inv_file_path_prefix + file_suffix + "/inv.cnf"
+        with open(inv_cnf, 'r') as f:
+            lines = f.readlines()
+            f.close()
+        inv_lines = [(line.strip()).split() for line in lines]
+        latch_lst = [Bool(str(key).replace('_prime','')) for key in self.pv2next.keys()]
+        for clause in inv_lines[1:]:
+            block = []
+            this_solution = Solver() # Store the SAT model
+            s_clause = Solver()
+            for lt in clause:
+                if int(lt) % 2 == 1:
+                    lt_bool = z3.Bool(str("v"+str(int(lt)-1)))
+                    s_clause.add(lt_bool==False)
+                else:
+                    lt_bool = z3.Bool(str("v"+str(int(lt))))
+                    s_clause.add(lt_bool==True)
+            clauses_lst = list(s_clause.assertions())
+            s.add(Not((And(clauses_lst))))
+            s.check()
+            if s.check() != sat: break
+            m = s.model()
+
+            for var in latch_lst:
+                v = m.eval(var, model_completion=True)
+                block.append(var != v)
+                this_solution.add((var == True) if is_true(v) else (var == False))
+
+            s.add(Or(block))
+            res = s.check()
+            model_lst.append(this_solution.assertions())
+
+        for m in model_lst:
+            res = tCube(t,cubeLiterals=m)
+            tCube_lst.append(res)
+
+        return tCube_lst
+
+            
+
+        return tCube_lst
+
 
     def get_all_model_partial(self, s_original, t):
         model_lst = []
@@ -1904,28 +2039,6 @@ class PDR:
                 if len(tCube_lst) >= 1000:
                     break
 
-        # older version -> has bug to determine when to stop (or how many models to generate in advance)
-        # while (res == sat and len(model_lst) < 45):
-        #     m = s.model()
-        #     #print(m)
-        #     model_lst.append(m)
-        #     #assert(len(model_lst) == 1)
-        #     block = []
-        #     for var in m:
-        #         block.append(var() != m[var])
-        #     s.add(Or(block))
-        #     res = s.check()
-        #     #model_lst = remove_duplicate_tcube(model_lst)
-
-
-        # for m in model_lst:
-        #     res = tCube(t)
-        #     res.addModel(self.lMap, m, remove_input=True)
-        #     if res not in tCube_lst:
-        #         tCube_lst.append(res)
-        #         if len(tCube_lst) >= 45:
-        #             break
-
         return tCube_lst
 
 
@@ -1938,23 +2051,6 @@ class PDR:
             s.add(c)
         res = s.check()
         assert(s_original.check() == res)
-
-        # partial model
-        # while (res == sat and len(model_lst) < 45):
-        #     m = s.model()
-        #     #print(m)
-        #     model_lst.append(m)
-        #     #assert(len(model_lst) == 1)
-        #     block = []
-        #     for var in m:
-        #         block.append(var() != m[var])
-        #     s.add(Or(block))
-        #     res = s.check()
-
-        # for m in model_lst:
-        #     res = tCube(t)
-        #     res.addModel(self.lMap, m, remove_input=True)
-        #     tCube_lst.append(res)
         
         # complete model
         latch_lst = [Bool(str(key).replace('_prime','')) for key in self.pv2next.keys()]
@@ -2002,7 +2098,8 @@ class PDR:
 
             all_tcube_lst_complete = self.get_all_model_complete(s, new_model.t)
             all_tcube_lst_partial = self.get_all_model_partial(s, new_model.t)
-            return new_model, all_tcube_lst_complete, all_tcube_lst_partial
+            all_tcube_lst_inv_guided = self.get_all_model_guided_by_inv_complete(s, new_model.t)
+            return new_model, all_tcube_lst_complete, all_tcube_lst_partial, all_tcube_lst_inv_guided
         else:
             return None
 
