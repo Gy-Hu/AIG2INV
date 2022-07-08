@@ -61,9 +61,9 @@ def filter_cex(cex_list):
 # main function
 if __name__ == '__main__':
     file_path_prefix = "/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/"
-    #file_suffix = "cmu.dme1.B"
+    file_suffix = "cmu.dme1.B"
     #file_suffix = "eijk.S208o.S"
-    file_suffix = "nusmv.syncarb10^2.B"
+    #file_suffix = "nusmv.syncarb10^2.B"
     inv_cnf = file_path_prefix + file_suffix + "/inv.cnf"
     with open(inv_cnf, 'r') as f:
         lines = f.readlines()
@@ -76,8 +76,9 @@ if __name__ == '__main__':
     #q_list_cnf =  ['114', '118', '126', '133', '134', '137', '141', '142', '144', '211', '231']
 
     #cex_file_path = "./cex_before_generalization_without_unsat.txt"
-    cex_file_path = "./nusmv.syncarb10^2.B_complete_CTI.txt"
+    #cex_file_path = "./nusmv.syncarb10^2.B_complete_CTI.txt"
     #cex_file_path = "./nusmv.syncarb10^2.B_partial_CTI.txt"
+    cex_file_path = "./cmu.dme1.B_complete_CTI.txt"
     with open(cex_file_path, 'r') as f:
         lines = f.readlines()
         f.close()
@@ -130,3 +131,5 @@ if __name__ == '__main__':
             subset_fail += 1
     
     print(subset_fail, "inductive invariant has not found mapping model,","fail rate of mapping invariant to model is", (subset_fail/len(inv_lines))* 100, "%")
+
+

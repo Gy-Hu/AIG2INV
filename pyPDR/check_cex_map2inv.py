@@ -30,8 +30,8 @@ if __name__ == '__main__':
     #q_list_cnf =  ['114', '118', '126', '133', '134', '137', '141', '142', '144', '211', '231']
 
     #cube_file_path = "./cube_before_generalization_without_unsat.txt"
-    cube_file_path = "./nusmv.syncarb10^2.B_complete_CTI.txt"
-    #cube_file_path = "./nusmv.syncarb10^2.B_partial_CTI.txt"
+    #cube_file_path = "./nusmv.syncarb10^2.B_complete_CTI.txt"
+    cube_file_path = "./nusmv.syncarb10^2.B_partial_CTI.txt"
     with open(cube_file_path, 'r') as f:
         lines = f.readlines()
         f.close()

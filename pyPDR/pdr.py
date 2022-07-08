@@ -388,6 +388,7 @@ class PDR:
             if c is not None:
                 # print("get bad cube!")
                 trace = self.recBlockCube((c,all_model_lst_complete, all_model_lst_partial)) # conduct generalize predecessor here (in solve relative process)
+                if trace == 'Finished' : return
                 #TODO: 找出spec3-and-env这个case为什么没有recBlock
                 if trace is not None:
                     # Generate ground truth of generalized predecessor
@@ -617,6 +618,7 @@ class PDR:
         model_lst_complete = wrapper[1]
         model_lst_partial = wrapper[2]
         self.export_CTI_lst(cti_lst_complete=model_lst_complete, cti_lst_partial=model_lst_partial)
+        return 'Finished'
         Q = PriorityQueue()
         print("recBlockCube now...")
         Q.put((s0.t, s0))
@@ -1899,7 +1901,7 @@ class PDR:
             res2tcube.addModel(self.lMap, m, remove_input=True)
             if res2tcube not in tCube_lst:
                 tCube_lst.append(res2tcube)
-                if len(tCube_lst) >= 45:
+                if len(tCube_lst) >= 1000:
                     break
 
         # older version -> has bug to determine when to stop (or how many models to generate in advance)
@@ -1956,7 +1958,7 @@ class PDR:
         
         # complete model
         latch_lst = [Bool(str(key).replace('_prime','')) for key in self.pv2next.keys()]
-        while (res == sat and len(model_lst) < 45):
+        while (res == sat and len(model_lst) < 1000):
             m = s.model()
             block = []
             this_solution = Solver()
