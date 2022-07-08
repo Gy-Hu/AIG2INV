@@ -77,8 +77,8 @@ if __name__ == '__main__':
 
     #cex_file_path = "./cex_before_generalization_without_unsat.txt"
     #cex_file_path = "./nusmv.syncarb10^2.B_complete_CTI.txt"
-    #cex_file_path = "./nusmv.syncarb10^2.B_partial_CTI.txt"
-    cex_file_path = "./cmu.dme1.B_complete_CTI.txt"
+    cex_file_path = "./nusmv.syncarb10^2.B_partial_CTI.txt"
+    #cex_file_path = "./cmu.dme1.B_complete_CTI.txt"
     with open(cex_file_path, 'r') as f:
         lines = f.readlines()
         f.close()
