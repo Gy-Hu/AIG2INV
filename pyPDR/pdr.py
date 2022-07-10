@@ -624,7 +624,15 @@ class PDR:
         model_lst_partial = wrapper[2]
         model_lst_inv_guided = wrapper[3]
         self.export_CTI_lst(cti_lst_complete=model_lst_complete, cti_lst_partial=model_lst_partial, cti_lst_inv=model_lst_inv_guided)
+        # Generate ground truth of inductive generalization
+        if self.generaliztion_data_IG: # When this list is not empty, it return true
+            df = pd.DataFrame(self.generaliztion_data_IG)
+            df = df.fillna(0)
+            # Data from the result of inductive invariant
+            df.to_csv("../dataset/IG2graph/generalization_no_enumerate/" + (self.filename.split('/')[-1]).replace('.aag', '.csv'))
         return 'Finished'
+
+
         Q = PriorityQueue()
         print("recBlockCube now...")
         Q.put((s0.t, s0))
@@ -1030,48 +1038,6 @@ class PDR:
         elif self.smt2_gen_IG == 1:
             assert(q.cubeLiterals.count(True)==0)
             assert(q.cubeLiterals.count(False)==0)
-            '''
-            ---------------------Generate .smt2 file (for building graph)--------------
-            
-            
-            #FIXME: This .smt generation still exists problem, remember to fix this
-            s_smt = Solver()  #use to generate SMT-lib2 file
-
-            #This "Cube" is a speical circuit of combining two conditions of solve relative (determine inductive generalization)
-
-            # s_smt.add(Not(q.cube()))
-            # s_smt.add(self.frames[q.t - 1].cube())
-            # s_smt.add(self.trans.cube())
-            # s_smt.add(substitute(substitute(q.cube(), self.primeMap),self.inp_map))
-            
-            Cube = Not(
-                And(
-                    Not(
-                      And(self.frames[q.t-1].cube(), Not(q.cube()), self.trans.cube_remove_equal().cube(),
-                      substitute(substitute(substitute(q.cube(), self.primeMap),self.inp_map),list(self.pv2next.items())))
-                      #substitute(q.cube(), self.primeMap))
-                      )  # Fi-1 ! and not(q) and T and q'
-                ,
-                    Not(And(self.frames[0].cube(),q.cube()))
-                    )
-            )
-
-            #Cube = substitute(Cube,list(self.pv2next.items()))
-
-            for index, literals in enumerate(q.cubeLiterals): 
-                s_smt.add(literals) 
-                # s_smt.assert_and_track(literals,'p'+str(index))
-            
-            s_smt.add(Cube)  # F[i - 1] and T and Not(badCube) and badCube'
-
-            assert (s_smt.check() == unsat)
-
-            filename = '../dataset/IG2graph/generalize_IG/' + (self.filename.split('/')[-1]).replace('.aag', '_'+ str(len(self.generaliztion_data_IG)) +'.smt2')
-            with open(filename, mode='w') as f:
-                f.write(s_smt.to_smt2())
-            f.close()
-            '''
-            
 
             '''
             -------------------Generate ground truth--------------
@@ -1082,11 +1048,6 @@ class PDR:
                 slv.add(self.init.cube())
                 slv.add(c.cube())
                 return slv.check()
-
-            # sz = q.true_size()
-            # self.unsatcore_reduce(q, trans=self.trans.cube(), frame=self.frames[q.t-1].cube())
-            # print('unsatcore', sz, ' --> ', q.true_size())
-            # q.remove_true()
 
             end_lst = []
             passed_minimum_q = []
@@ -1099,26 +1060,6 @@ class PDR:
                     end_lst.append(c)
                 if is_looping==False:
                     break
-
-            #FIXME: This may cause memory exploration of list (length 2^n, n is the length of original q)
-
-            '''
-            1 -> 0
-            2 -> Cn1
-            3 -> Cn1+Cn2
-            4 -> Cn1+Cn2+Cn3
-            5 -> Cn1+Cn2+Cn3+Cn4
-            ...
-            n -> Cn1+Cn2+Cn3+Cn4+...+Cnn -> 2^n - 1 
-            '''
-            
-            #TODO: Using multi-thread to handle inductive relative checking
-            # dict_n = {}
-            # dict_n[1] = 0
-            # dict_n[2] = int(comb(len(end_lst),1))
-            # dict_n[3] = int(comb(len(end_lst),1) + comb(len(end_lst),2))
-            # dict_n[4] = int(comb(len(end_lst),1) + comb(len(end_lst),2) \
-            #     + comb(len(end_lst),2)+comb(len(end_lst),3))
             
             data = {} # Store ground truth, and output to .csv
             for tuble in end_lst:
@@ -1896,7 +1837,7 @@ class PDR:
         
         # complete model
         latch_lst = [Bool(str(key).replace('_prime','')) for key in self.pv2next.keys()]
-        while (res == sat and len(model_lst) < 1000):
+        while (res == sat and len(model_lst) < 100):
             m = s.model()
             block = []
             this_solution = Solver()
@@ -2035,8 +1976,9 @@ class PDR:
             res2tcube = tCube(t)
             res2tcube.addModel(self.lMap, m, remove_input=True)
             if res2tcube not in tCube_lst:
+                s_enumerate = self.generate_GT_no_enumerate(res2tcube)
                 tCube_lst.append(res2tcube)
-                if len(tCube_lst) >= 1000:
+                if len(tCube_lst) >= 100:
                     break
 
         return tCube_lst
@@ -2054,7 +1996,7 @@ class PDR:
         
         # complete model
         latch_lst = [Bool(str(key).replace('_prime','')) for key in self.pv2next.keys()]
-        while (res == sat and len(model_lst) < 1000):
+        while (res == sat and len(model_lst) < 100):
             m = s.model()
             block = []
             this_solution = Solver()

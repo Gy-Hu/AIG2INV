@@ -10,8 +10,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from config import parser
-from pyPDR.neuropdr import NeuroPredessor
-from pyPDR.model2graph_offline import problem, walkFile
+from neuropdr import NeuroPDR
+from model2graph_offline import problem, walkFile
 import pandas as pd
 from pathlib import Path
 from sklearn.model_selection import train_test_split
@@ -190,7 +190,7 @@ if __name__ == "__main__":
         collate_fn=collate_wrapper,
         num_workers=0)
 
-    net = NeuroPredessor(args)
+    net = NeuroPDR(args)
     net = net.to(device)  # TODO: modify to accept both CPU and GPU version
     # if torch.cuda.device_count() > 1:
     #     net = torch.nn.DataParallel(net)
@@ -200,7 +200,7 @@ if __name__ == "__main__":
         args.log_dir, args.task_name + '_detail.log'), 'a+')
 
     #loss_fn = nn.BCELoss(reduction='sum')
-    loss_fn = nn.BCEWithLogitsLoss(reduction='sum',pos_weight=torch.Tensor([4]).cuda())
+    loss_fn = nn.BCEWithLogitsLoss(reduction='sum',pos_weight=torch.Tensor([8]).cuda())
     #loss_fn = BCEFocalLoss()
     #loss_fn = WeightedBCELosswithLogits()
     optim = optim.Adam(net.parameters(), lr=0.0001, weight_decay=1e-10)
