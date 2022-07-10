@@ -12,6 +12,7 @@ experiment_record/
 dataset/
 deprecated/
 newgraph/
+neuropdr_model/
 __pycache__/
 testcase*/
 log/
