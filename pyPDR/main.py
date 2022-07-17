@@ -45,8 +45,8 @@ if __name__ == '__main__':
     parser.add_argument('-inf_dev', type=str, help='device do inference', default='gpu')
     parser.add_argument('-check_cti', type=str, help='check CTI before exporting', default='on')
 
-    #args = parser.parse_args(["./nusmv.reactor^4.C.aag"])
-    args = parser.parse_args(['./nusmv.syncarb10^2.B.aag','-d','ig'])
+    args = parser.parse_args(['./nusmv.reactor^4.C.aag','-d','ig'])
+    #args = parser.parse_args(['./nusmv.syncarb10^2.B.aag','-d','ig'])
     if (args.fileName is not None) and (args.mode==0):
         file = args.fileName
         m = model.Model()

@@ -134,7 +134,7 @@ if __name__ == "__main__":
     datetime_str = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
     
 
-    args = parser.parse_args(['--task-name', 'neuropdr_'+datetime_str.replace(' ', '_'), '--dim', '128', '--n_rounds', '512',
+    args = parser.parse_args(['--task-name', 'neuropdr_'+datetime_str.replace(' ', '_'), '--dim', '64', '--n_rounds', '512',
                               '--epochs', '256',
                               #'--log-dir', str(Path(__file__).parent.parent /'log/tmp/'), \
                               '--train-file', '../dataset/IG2graph/train_no_enumerate/',\
@@ -200,7 +200,9 @@ if __name__ == "__main__":
         args.log_dir, args.task_name + '_detail.log'), 'a+')
 
     #loss_fn = nn.BCELoss(reduction='sum')
-    loss_fn = nn.BCEWithLogitsLoss(reduction='sum',pos_weight=torch.Tensor([8]).cuda())
+
+    # original loss function
+    loss_fn = nn.BCEWithLogitsLoss(reduction='sum',pos_weight=torch.Tensor([32]).cuda())
     #loss_fn = BCEFocalLoss()
     #loss_fn = WeightedBCELosswithLogits()
     optim = optim.Adam(net.parameters(), lr=0.0001, weight_decay=1e-10)

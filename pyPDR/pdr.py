@@ -1837,7 +1837,7 @@ class PDR:
         
         # complete model
         latch_lst = [Bool(str(key).replace('_prime','')) for key in self.pv2next.keys()]
-        while (res == sat and len(model_lst) < 100):
+        while (res == sat and len(model_lst) < 1000):
             m = s.model()
             block = []
             this_solution = Solver()
@@ -1978,7 +1978,7 @@ class PDR:
             if res2tcube not in tCube_lst:
                 s_enumerate = self.generate_GT_no_enumerate(res2tcube)
                 tCube_lst.append(res2tcube)
-                if len(tCube_lst) >= 100:
+                if len(tCube_lst) >= 1000:
                     break
 
         return tCube_lst
@@ -1996,7 +1996,7 @@ class PDR:
         
         # complete model
         latch_lst = [Bool(str(key).replace('_prime','')) for key in self.pv2next.keys()]
-        while (res == sat and len(model_lst) < 100):
+        while (res == sat and len(model_lst) < 1000):
             m = s.model()
             block = []
             this_solution = Solver()
