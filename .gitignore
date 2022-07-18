@@ -3,9 +3,8 @@
 *.pkl
 *.csv
 *.png
-*.ipynb
+test.ipynb
 *.code-workspace
-*.ipynb
 experiment_record/
 .vscode/
 .history/
