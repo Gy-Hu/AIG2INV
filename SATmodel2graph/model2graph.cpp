@@ -87,7 +87,7 @@ int main(int argc, char ** argv) {
     z3::context ctx;
     auto&& opt = z3::optimize(ctx);
     //Z3_ast_vector b = Z3_parse_smtlib2_file(ctx, "dataset/IG2graph/generalize_IG_no_enumerate/nusmv.reactor^4.C_0.smt2", 0, 0, 0, 0, 0, 0);
-    Z3_ast_vector b = Z3_parse_smtlib2_file(ctx, "nusmv.syncarb5^2.B_0.smt2", 0, 0, 0, 0, 0, 0);
+    Z3_ast_vector b = Z3_parse_smtlib2_file(ctx, "nusmv.reactor^4.C_0.smt2", 0, 0, 0, 0, 0, 0);
 
     // Get all the constriants
     // Z3_ast* args = new Z3_ast[Z3_ast_vector_size(ctx, b)];
@@ -178,7 +178,7 @@ int main(int argc, char ** argv) {
         json_nodes.push_back(json_node);
     }
 
-    ofstream file("../dataset/json2networkx/nusmv.syncarb5^2.B_0.json");
+    ofstream file("../dataset/json2networkx/nusmv.reactor^4.C_0.json");
     // for(auto it = json_nodes.begin(); it != json_nodes.end(); it++)
     // {
     //     file<<*it<<endl;
