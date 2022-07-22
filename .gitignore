@@ -11,7 +11,7 @@ data2dataset_ignore/
 .vscode/
 .history/
 dataset/
-deprecated/
+# deprecated/
 newgraph/
 neuropdr_model/
 __pycache__/
