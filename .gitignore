@@ -3,9 +3,11 @@
 *.pkl
 *.csv
 *.png
-test.ipynb
 *.code-workspace
+test.ipynb
+z3_example/
 experiment_record/
+data2dataset_ignore/
 .vscode/
 .history/
 dataset/

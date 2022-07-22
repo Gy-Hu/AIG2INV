@@ -138,7 +138,7 @@ class ConfigClassHWMCC_ALL_under1000node:
         self.continue_from_model=None
         self.grad_clip=0.65
         self.modelname='HWMCC_ALL_under1000node_v1'
-        self.gpu_id="1"
+        self.gpu_id="0"
         self.test_size = 0.1
         self.random_state = 0
 
