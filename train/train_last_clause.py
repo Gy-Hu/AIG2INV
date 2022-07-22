@@ -2,6 +2,9 @@
 from logging import exception
 
 from zmq import FD
+import sys
+sys.path.append("../NN_models/")
+sys.path.append("../data2dataset/aig2graph/")
 from models_1stlayer_bwd import DGDAGRNN
 from utils import expand_clause_012, clause_loss, clause_loss_weighted, prediction_has_absone, load_module_state, quantize, measure_012, measure_to_str, set_label_weight, get_label_freq
 from tqdm import tqdm

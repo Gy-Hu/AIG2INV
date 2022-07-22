@@ -2,7 +2,10 @@
 from logging import exception
 
 from zmq import FD
-from models_1stlayer import DGDAGRNN
+import sys
+sys.path.append("../NN_models")
+sys.path.append("../data2dataset/aig2graph")
+from models_1stlayer_label import DGDAGRNN
 from utils import expand_clause_012, expand_clause, sum_clause, load_module_state,  measure_012, measure_to_str, set_label_weight, get_label_freq
 from tqdm import tqdm
 import random
