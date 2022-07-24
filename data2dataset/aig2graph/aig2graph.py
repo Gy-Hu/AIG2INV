@@ -104,7 +104,7 @@ def test():
     _2 = z3.And(z3.Not(_1), z3.Not(y))
     _3 = z3.Not(z3.And(_2, z3.Not(_1), y))
 
-    g = AigGraph(sv = [x], inpv = [y], trans = [_3], output=[_1])
+    g = AigGraph(sv = [x], inpv = [y], trans = [_3], output=_1)
     for node, nid in g.node2nid.items():
         print (str(node), ' ID:',nid, 'TYPE:', g.node_type[nid] )
     graph = g.to_dataframe(6, None)
@@ -119,11 +119,11 @@ def test2():
     y = z3.Bool('y')
     output=z3.And(x,z3.Not(y))
 
-    g = AigGraph(sv = [x,y], inpv = [], trans = [z3.Not(y), z3.Not(x)], output=[output])
+    g = AigGraph(sv = [x,y], inpv = [], trans = [z3.Not(y), z3.Not(x)], output=output)
     for node, nid in g.node2nid.items():
         print (str(node), ' ID:',nid, 'TYPE:', g.node_type[nid] )
-    Clauses(clause = [ [(0,1), (1,-1)], [(0,-1), (1,1)]])  # not (x y') and not (x' y)
-    graph = g.to_dataframe(6, None)
+    clause = Clauses(clauses = [ [(0,1), (1,-1)], [(0,-1), (1,1)]])  # not (x y') and not (x' y)
+    graph = g.to_dataframe(total_num_node_types=6, clauses=clause.clauses)
     print (graph)
     G = to_networkx(graph)
     nx.draw(G)

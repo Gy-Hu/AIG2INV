@@ -27,15 +27,15 @@ def convert_aag(aag_fname, inv_cnf):
 
 def test():
   all_graphs = [ \
-    convert_aag(aag_fname="testcase1/cnt.aag", inv_cnf="testcase1/inv.cnf"), \
-    convert_aag(aag_fname="testcase2/cnt2.aag", inv_cnf="testcase2/inv.cnf"), \
+    convert_aag(aag_fname="../../deprecated/data2dataset/testcase1/cnt.aag", inv_cnf="../../deprecated/data2dataset/testcase1/inv.cnf"), \
+    convert_aag(aag_fname="../../deprecated/data2dataset/testcase2/cnt2.aag", inv_cnf="../../deprecated/data2dataset/testcase2/inv.cnf"), \
     ]
   with open("test.pkl", 'wb') as f:
       pickle.dump(all_graphs, f)
 
 
 if __name__ == '__main__':
-    #test()
+    test()
     #exit()
 
     parser = argparse.ArgumentParser()
