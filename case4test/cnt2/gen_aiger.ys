@@ -1,0 +1,12 @@
+read_verilog -formal cnt2.v
+prep -top cnt
+sim -clock clk -reset rst -n 1 -w cnt
+miter -assert cnt
+flatten
+memory -nordff
+opt_clean
+techmap
+abc -fast -g AND
+write_aiger -zinit -map cnt2.aig.map cnt2.aig
+!~/aiger/aigtoaig cnt2.aig cnt2.aag
+!~/clause-learning/IC3ref/IC3 -d < cnt2.aig ; head -n 1 inv.cnf

@@ -1,0 +1,6 @@
+input 0 0 clk
+input 1 0 rst
+output 0 0 trigger
+invlatch 0 0 a
+latch 1 0 b
+latch 2 0 c

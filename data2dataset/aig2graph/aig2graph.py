@@ -18,7 +18,7 @@ class AigGraph(object):
         self.nid = 0
         self.node2nid = {}  # map z3expr -> node id
         
-        self.edges = set()
+        self.edges = set() # the id in edges should the same as the sorted nodetypes
         self.node_type = {} # map nid -> type (0: AND, 1: NOT, 2: SV-0, 3: INP)
 
         self.trans = trans
@@ -33,14 +33,14 @@ class AigGraph(object):
         x = []
         sv_node = []
         for idx,tp in nodetype:
-            x.append(one_hot(tp, total_num_node_types))
+            x.append(one_hot(tp, total_num_node_types)) # one hot embedding according to type
             if tp == 2:
                 sv_node.append(idx)
 
         x = torch.cat(x, dim=0).float()
         edge_index = torch.tensor(list(self.edges)).t().contiguous()  # our graph has more than 1 output !
         g = Data(x=x, edge_index=edge_index)
-        add_order_info(g)
+        add_order_info(g) # add arrows to the graph
         g.__setattr__("clauses", clauses)
         sv_node = torch.tensor(sv_node)
         g.__setattr__("sv_node", sv_node)
@@ -114,6 +114,25 @@ def test():
     plt.savefig("test1.png")
     
 def test2():
+    '''
+    test2.aag
+    2 
+    4
+    2 5
+    4 3
+    6
+    6 2 5
+    '''
+
+    '''
+    test3.aag (this is a bug)
+    2
+    4
+    2 3
+    4 5
+    6
+    6 2 5
+    '''
 
     x = z3.Bool('x')
     y = z3.Bool('y')
@@ -128,7 +147,6 @@ def test2():
     G = to_networkx(graph)
     nx.draw(G)
     plt.savefig("test1.png")
-
 
 if __name__ == '__main__':
     test2()
