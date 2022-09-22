@@ -16,6 +16,9 @@ from pathlib import Path
 from sklearn.model_selection import train_test_split
 from time import sleep
 import z3
+# add "../utils" to sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.toolbox import walkFile
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 from torch.utils.data import Dataset, DataLoader
@@ -55,22 +58,27 @@ class GraphDataset(Dataset):
         self.mode = mode
         self.samples = []
         self.__init_dataset()
-        self.__remove_adj_null_file()
-        self.__refine_target_and_output()
+        #self.__remove_adj_null_file()
+        #self.__refine_target_and_output()
 
     def __len__(self):
         return len(self.samples)
 
     def __getitem__(self, idx):
+        graph_info = self.samples[idx][1]
+        adj_matrix = self.samples[idx][2]
+        label = self.samples[idx][3]
+        file_name = self.samples[idx][4]
+        #lambda function to sum up the true value in a list
+        sum_true = lambda x: sum(i == True for i in x)
         prob_main_info = {
-            'n_vars' : self.samples[idx].n_vars, #include m and variable (all node)
-            'n_nodes' : self.samples[idx].n_nodes, #node exclude input, input_prime, variable
-            'unpack' : (torch.from_numpy(self.samples[idx].adj_matrix.astype(np.float32).values)).to(device),
-            'refined_output' : self.samples[idx].refined_output,
-            'label' : self.samples[idx].label
+            'n_vars' : len(graph_info), #include m and variable (all node)
+            # count the number of 'node' in the graph_info (node exclude input, input_prime, variable)
+            'n_nodes' : sum_true([graph_info[i]['data']['type']=='node' for i in range(len(graph_info))]),
+            'unpack' : adj_matrix,
+            'label' : label
         }
-        dict_vt = dict(zip((self.samples[idx].value_table).index, (self.samples[idx].value_table).Value))
-        return prob_main_info, dict_vt
+        return prob_main_info, graph_info
     
     def __init_dataset(self):
         if self.mode == 'debug':
@@ -136,8 +144,8 @@ if __name__ == "__main__":
     args = parser.parse_args(['--task-name', 'neuropdr_'+datetime_str.replace(' ', '_'), '--dim', '128', '--n_rounds', '512',
                               '--epochs', '256',
                               #'--log-dir', str(Path(__file__).parent.parent /'log/tmp/'), \
-                              '--train-file', '../dataset/IG2graph/train_no_enumerate/',\
-                              '--val-file', '../dataset/IG2graph/validate_no_enumerate/',\
+                              '--train-file', '../dataset/cex2graph/',\
+                              '--val-file', '../dataset/cex2graph/',\
                               '--mode', 'debug'
                               ])
 

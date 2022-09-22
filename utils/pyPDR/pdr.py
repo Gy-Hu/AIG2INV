@@ -629,7 +629,7 @@ class PDR:
             df = pd.DataFrame(self.generaliztion_data_IG)
             df = df.fillna(0)
             # Data from the result of inductive invariant
-            df.to_csv("../dataset/IG2graph/generalization_no_enumerate/" + (self.filename.split('/')[-1]).replace('.aag', '.csv'))
+            df.to_csv("../../dataset/IG2graph/generalization_no_enumerate/" + (self.filename.split('/')[-1]).replace('.aag', '.csv'))
         return 'Finished'
 
 
@@ -1172,16 +1172,15 @@ class PDR:
                 '''
                 
                 s_smt = Solver()
-                Cube = Not(
-                    And(
+                Cube =  And(
                         Not(q.cube()), 
                         substitute(substitute(substitute(q.cube(), self.primeMap),self.inp_map),
                         list(self.pv2next.items()))
-                        ))
+                        )
                 for index, literals in enumerate(q.cubeLiterals): s_smt.add(literals)
                 s_smt.add(Cube)
                 #assert (s_smt.check() == unsat)
-                filename = '../dataset/IG2graph/generalize_IG_no_enumerate/' + (self.filename.split('/')[-1]).replace('.aag', '_'+ str(len(self.generaliztion_data_IG)) +'.smt2')
+                filename = '../../dataset/IG2graph/generalize_IG_no_enumerate/' + (self.filename.split('/')[-1]).replace('.aag', '_'+ str(len(self.generaliztion_data_IG)) +'.smt2')
                 data['inductive_check'] = filename.split('/')[-1] #Store the name of .smt file
                 with open(filename, mode='w') as f: f.write(s_smt.to_smt2())
                 f.close() 
@@ -1190,7 +1189,7 @@ class PDR:
                 '''
                 ---------------------Export the ground truth----------------------
                 '''
-                q_minimum = passed_minimum_q[0] # Minimum ground truth has been generated
+                q_minimum = passed_minimum_q[-1] # Minimum ground truth has been generated
                 for idx in range(len(q.cubeLiterals)): # -> ground truth size is q
                     var, val = _extract(q.cubeLiterals[idx])
                     data[str(var)] = 0
@@ -1837,7 +1836,7 @@ class PDR:
         
         # complete model
         latch_lst = [Bool(str(key).replace('_prime','')) for key in self.pv2next.keys()]
-        while (res == sat and len(model_lst) < 1000):
+        while (res == sat and len(model_lst) < 100):
             m = s.model()
             block = []
             this_solution = Solver()
@@ -1965,6 +1964,8 @@ class PDR:
         # partial model
         
         while (res == sat):
+            # fix the z3 radom seed for get model
+            # s.set("random_seed", 0)
             m = s.model()
             #print(m)
             #model_lst.append(m)
@@ -1978,7 +1979,7 @@ class PDR:
             if res2tcube not in tCube_lst:
                 s_enumerate = self.generate_GT_no_enumerate(res2tcube)
                 tCube_lst.append(res2tcube)
-                if len(tCube_lst) >= 1000:
+                if len(tCube_lst) >= 100:
                     break
 
         return tCube_lst
@@ -1996,7 +1997,7 @@ class PDR:
         
         # complete model
         latch_lst = [Bool(str(key).replace('_prime','')) for key in self.pv2next.keys()]
-        while (res == sat and len(model_lst) < 1000):
+        while (res == sat and len(model_lst) < 100):
             m = s.model()
             block = []
             this_solution = Solver()

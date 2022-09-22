@@ -63,8 +63,9 @@ if __name__ == '__main__':
     file_path_prefix = "/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/"
     #file_suffix = "cmu.dme1.B"
     #file_suffix = "eijk.S208o.S"
-    #file_suffix = "nusmv.syncarb10^2.B"
-    file_suffix = "nusmv.reactor^4.C"
+    file_suffix = "nusmv.syncarb10^2.B"
+    #file_suffix = "nusmv.syncarb5^2.B"
+    #file_suffix = "nusmv.reactor^4.C"
     inv_cnf = file_path_prefix + file_suffix + "/inv.cnf"
     with open(inv_cnf, 'r') as f:
         lines = f.readlines()
