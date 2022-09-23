@@ -3,7 +3,7 @@ import pickle
 import os
 
 from zmq import device
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 from tqdm import tqdm
 import sys
 import torch
@@ -24,6 +24,7 @@ from datetime import datetime
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import torch.nn.functional as F
+from natsort import natsorted
 
 class ReloadedInt(int):
     def __truediv__(self, other):
@@ -64,20 +65,38 @@ class GraphDataset(Dataset):
     def __len__(self):
         return len(self.samples)
 
+    def __df_to_np(self,df, graph_info=None):
+        # copy the df to avoid the warning of SettingWithCopyWarning
+        ground_truth_table = df.copy()
+        # only keep the columns that are 'variable' that can be found in graph_info based on the column name
+        ground_truth_table = ground_truth_table[[graph_info[i]['data']['application'] for i in range(len(graph_info)) if graph_info[i]['data']['type']=='variable' and graph_info[i]['data']['application'].startswith('v')]]
+        #ground_truth_table.drop("Unnamed: 0", axis=1, inplace=True)
+        ground_truth_table = ground_truth_table.reindex(natsorted(ground_truth_table.columns), axis=1)
+        return ((ground_truth_table.values.tolist())[:])[0]
+
     def __getitem__(self, idx):
-        graph_info = self.samples[idx][1]
-        adj_matrix = self.samples[idx][2]
-        label = self.samples[idx][3]
-        file_name = self.samples[idx][4]
+        
         #lambda function to sum up the true value in a list
         sum_true = lambda x: sum(i == True for i in x)
+        graph_info = self.samples[idx][1]
+        # only keep the top n_nodes rows of the adj_matrix
+        adj_matrix = (self.samples[idx][2].head(sum_true([graph_info[i]['data']['type']=='node' for i in range(len(graph_info))])))
+        ground_truth_label_row = self.samples[idx][3]
+        file_name = self.samples[idx][4]
+        var_index_in_graph = [i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('v')]
+        # achieve the first row first column of the ground_truth_label_row
+        assert(file_name == ground_truth_label_row['inductive_check'].iloc[0].replace('.smt2',''))
         prob_main_info = {
             'n_vars' : len(graph_info), #include m and variable (all node)
             # count the number of 'node' in the graph_info (node exclude input, input_prime, variable)
             'n_nodes' : sum_true([graph_info[i]['data']['type']=='node' for i in range(len(graph_info))]),
-            'unpack' : adj_matrix,
-            'label' : label
+            'unpack' : (torch.from_numpy(adj_matrix.astype(np.float32).values)).to(device),
+            'label' : self.__df_to_np(ground_truth_label_row,graph_info),
+            # find the last element in the graph_info that is 'node'
+            'refined_output' : list(map(lambda x: x-var_index_in_graph[0],var_index_in_graph)),
+            'file_name' : file_name
         }
+        assert(len(prob_main_info['label']) == len(prob_main_info['refined_output']))
         return prob_main_info, graph_info
     
     def __init_dataset(self):
@@ -207,7 +226,7 @@ if __name__ == "__main__":
         args.log_dir, args.task_name + '_detail.log'), 'a+')
 
     #loss_fn = nn.BCELoss(reduction='sum')
-    loss_fn = nn.BCEWithLogitsLoss(reduction='sum',pos_weight=torch.Tensor([4]).cuda())
+    loss_fn = nn.BCEWithLogitsLoss(reduction='sum',pos_weight=torch.Tensor([4]).to(device))
     #loss_fn = BCEFocalLoss()
     #loss_fn = WeightedBCELosswithLogits()
     optim = optim.Adam(net.parameters(), lr=0.0001, weight_decay=1e-10)
@@ -267,11 +286,12 @@ if __name__ == "__main__":
             for prob_index in range(len(prob)):
                 q_index = prob[prob_index]['refined_output']
                 outputs = net((prob[prob_index],vt_dict[prob_index]))
-                target = torch.Tensor(prob[prob_index]['label']).to(device).float()
+                target = torch.Tensor(prob[prob_index]['label'][:]).to(device).float()
 
                 torch_select = torch.Tensor(q_index).to(device).int()
                 outputs = torch.index_select(outputs, 0, torch_select)
 
+                #assert(outputs.size() == target.size())
                 this_loss = loss_fn(outputs, target)
                 loss = loss+this_loss # loss for every batch
 
@@ -342,7 +362,7 @@ if __name__ == "__main__":
                 q_index = prob[0]['refined_output']
                 #optim.zero_grad()
                 outputs = net((prob[0],vt_dict[0]))
-                target = torch.Tensor(prob[0]['label']).to(device).float()
+                target = torch.Tensor(prob[0]['label'][:]).to(device).float()
                 torch_select = torch.Tensor(q_index).to(device).int()
                 outputs = torch.index_select(outputs, 0, torch_select)
                 
@@ -399,7 +419,7 @@ if __name__ == "__main__":
                 q_index = prob[0]['refined_output']
                 #optim.zero_grad()
                 outputs = net((prob[0],vt_dict[0]))
-                target = torch.Tensor(prob[0]['label']).to(device).float()
+                target = torch.Tensor(prob[0]['label'][:]).to(device).float()
                 torch_select = torch.Tensor(q_index).to(device).int()
                 outputs = torch.index_select(outputs, 0, torch_select)
 

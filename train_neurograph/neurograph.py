@@ -53,8 +53,11 @@ class NeuroInductiveGeneralization(nn.Module):
         self.init_ts.requires_grad = False
 
         #TODO: Using 2 separated nn.Linear to do literals embedding
-        self.true_init = nn.Linear(1,self.dim) #for node return true
-        self.false_init = nn.Linear(1, self.dim) #for node return false
+        self.and_init = nn.Linear(1,self.dim) #for node return true
+        self.not_init = nn.Linear(1, self.dim) #for node return false
+        self.or_init = nn.Linear(1,self.dim) #for node return true
+        self.var_init = nn.Linear(1,self.dim) #for node return true
+        self.inp_init = nn.Linear(1, self.dim) #for node return true
 
         self.children_msg = MLP(self.dim, self.dim, self.dim) #for children to pass message
         self.parent_msg = MLP(self.dim, self.dim, self.dim) #for parents to pass message
@@ -78,13 +81,19 @@ class NeuroInductiveGeneralization(nn.Module):
         #true_tensor = torch.tensor([]).to('cuda')
         #false_tensor = torch.tensor([]).to('cuda')
         all_init = torch.tensor([]).to(self.inf_device)
-        for key, value in dict_vt.items():
-            if value == 1:
-                tmp_tensor = self.true_init(init_ts).view(1, 1, -1) #<-assign true init tensor
+        for node in dict_vt:
+            if node['data']['application'].startswith('and') == True:
+                tmp_tensor = self.and_init(init_ts).view(1, 1, -1) #<-assign true init tensor
                 #true_tensor = torch.cat((true_tensor,tmp_true_tensor),dim=1)
-            else:
-                tmp_tensor = self.false_init(init_ts).view(1, 1, -1) #<-assign false init tensor
+            elif node['data']['application'].startswith('not') == True:
+                tmp_tensor = self.not_init(init_ts).view(1, 1, -1) #<-assign false init tensor
                 #false_tensor = torch.cat((false_tensor, tmp_false_tensor), dim=1)
+            elif node['data']['application'].startswith('or') == True:
+                tmp_tensor = self.or_init(init_ts).view(1, 1, -1)
+            elif node['data']['application'].startswith('v') == True:
+                tmp_tensor = self.var_init(init_ts).view(1, 1, -1)
+            elif node['data']['application'].startswith('i') == True:
+                tmp_tensor = self.inp_init(init_ts).view(1, 1, -1)
             all_init = torch.cat((all_init,tmp_tensor),dim=1)
 
         #all_init = torch.cat((true_tensor, false_tensor),dim=1)

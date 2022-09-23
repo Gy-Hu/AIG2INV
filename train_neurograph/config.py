@@ -25,7 +25,7 @@ parser.add_argument('--gen_log', type=str, default=str(Path(__file__).parent.par
 # parser.add_argument('--one', action='store', dest='one', type=int, default=0)
 #
 parser.add_argument('--log-dir', type=str, default=str(Path(__file__).parent.parent /'log/'), help='log folder dir')
-parser.add_argument('--model-dir', type=str, default=str(Path(__file__).parent.parent /'model/'), help='model folder dir')
+parser.add_argument('--model-dir', type=str, default=str(Path(__file__).parent.parent /'neurograph_model/'), help='model folder dir')
 parser.add_argument('--data-dir', type=str, default=str(Path(__file__).parent.parent /'dataset/'), help='data folder dir')
 parser.add_argument('--restore', type=str, default=None, help='continue train from model')
 #
