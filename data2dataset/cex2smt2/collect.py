@@ -6,9 +6,19 @@ import z3
 
 total_num_node_types = 6
 
-def dump2smt2(cex_clause_pair_list_prop):
-    for _,_, prop in cex_clause_pair_list_prop:
-        print (prop)
+def dump2smt2(cex_clause_pair_list_prop,aag_name,m, return_after_finished = False):
+    cubeliteral_to_str = lambda cube_literals: ','.join(map
+                                (lambda x: str(m.svars[x[0]]).replace('v','') 
+                                if str(x[1])=='1' 
+                                else str(int(str(m.svars[x[0]]).replace('v',''))+1),cube_literals))
+    # open a file for writing
+    with open(f"./{aag_name}_inv_CTI.txt", "w") as text_file:
+        for cti in cex_clause_pair_list_prop:
+            text_file.write(cubeliteral_to_str(cti[0]) + "\n")
+    
+    if return_after_finished:
+        print('program finished, only dump cti to file')
+        return 'Finish all the work!'
         
 
 def convert_one_aag(aag_name, cnf_name, g1_list, g2_list):
@@ -17,7 +27,7 @@ def convert_one_aag(aag_name, cnf_name, g1_list, g2_list):
     inv_cnf = Clauses(fname=cnf_name, num_sv = len(m.svars), num_input = len(m.inputs))
     extractor = ExtractCnf(aagmodel = m, clause = inv_cnf)
     cex_clause_pair_list_prop, cex_clause_pair_list_ind, is_inductive, has_fewer_clauses = extractor.get_clause_cex_pair()
-    #dump2smt2(cex_clause_pair_list_prop)
+    if dump2smt2(cex_clause_pair_list_prop,aag_name,m, return_after_finished = True)!= None: return
     num_old_clause = len(inv_cnf.clauses)
     num_new_clause = len(cex_clause_pair_list_prop) + len(cex_clause_pair_list_ind)
     print ('CL %d -> %d' % (num_old_clause, num_new_clause))
@@ -36,7 +46,7 @@ def convert_one_aag(aag_name, cnf_name, g1_list, g2_list):
         idx += 1
 
 def test():
-    case = "nusmv.syncarb5^2.B"
+    case = "nusmv.reactor^4.C"
     g1_list = []
     g2_list = []
     convert_one_aag(f"../../case4test/hwmcc_simple/{case}/{case}.aag", f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", g1_list, g2_list)

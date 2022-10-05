@@ -595,7 +595,7 @@ class PDR:
             assert(all(check_solve_relative(x) for x in cti_lst_partial))
             assert(all(check_solve_relative(x) for x in cti_lst_inv))
         
-        # change the list to string, use comma to split
+        # change the list to string, use comma to split, input like : [v150 == False, v152 == True, v154 == False, v156 == True ... ]
         cubeliteral_to_str = lambda cube_literals: ','.join(map
                                 (lambda x: str(_extract(x)[0]).replace('v','') 
                                 if str(_extract(x)[1])=='True' 
@@ -1896,14 +1896,12 @@ class PDR:
 
         return tCube_lst
 
-    def get_all_model_guided_by_inv_complete(self, s_original, t):
+    def get_all_model_guided_by_inv_complete(self, s_original: Solver, t): # s_original is solver
         model_lst = []
         tCube_lst = []
         s = Solver()
         for c in s_original.assertions():
             s.add(c)
-        res = s.check()
-        assert(s_original.check() == res)
         inv_file_path_prefix = "/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/"
         file_suffix = (self.filename).replace(".aag", "")
         inv_cnf = inv_file_path_prefix + file_suffix + "/inv.cnf"
@@ -1912,40 +1910,34 @@ class PDR:
             f.close()
         inv_lines = [(line.strip()).split() for line in lines]
         latch_lst = [Bool(str(key).replace('_prime','')) for key in self.pv2next.keys()]
-        for clause in inv_lines[1:]:
-            block = []
-            this_solution = Solver() # Store the SAT model
-            s_clause = Solver()
-            for lt in clause:
-                if int(lt) % 2 == 1:
-                    lt_bool = z3.Bool(str("v"+str(int(lt)-1)))
-                    s_clause.add(lt_bool==False)
-                else:
-                    lt_bool = z3.Bool(str("v"+str(int(lt))))
-                    s_clause.add(lt_bool==True)
-            clauses_lst = list(s_clause.assertions())
-            s.add(Not((And(clauses_lst))))
-            s.check()
-            if s.check() != sat: break
+
+
+        while (s.check() == sat):
+            if(len(tCube_lst)) > 125: break
             m = s.model()
-
-            for var in latch_lst:
-                v = m.eval(var, model_completion=True)
-                block.append(var != v)
-                this_solution.add((var == True) if is_true(v) else (var == False))
-
-            s.add(Or(block))
-            res = s.check()
-            model_lst.append(this_solution.assertions())
-
-        for m in model_lst:
-            res = tCube(t,cubeLiterals=m)
-            tCube_lst.append(res)
-
-        return tCube_lst
-
-            
-
+            block = []
+            # find the subset in inv.cnf that can be generalized by this model
+            res2tcube = tCube(t)
+            res2tcube.addModel(self.lMap, m, remove_input=True)
+            if res2tcube not in tCube_lst: tCube_lst.append(res2tcube)
+            q_list_cnf = [str(_extract(literal)[0]).replace('v','') if _extract(literal)[1] == True else str(int(str(_extract(literal)[0]).replace('v',''))+1) for literal in res2tcube.cubeLiterals]
+            found_subset_flag = 0
+            for clause in inv_lines[1:]: #scan every clause
+                if(all(x in q_list_cnf for x in clause)): #the clause is subset of q
+                    clause_list = []
+                    for lt in clause:
+                        if int(lt) % 2 == 1:
+                            lt_bool = z3.Bool(str("v"+str(int(lt)-1)))
+                            clause_list.append(lt_bool==False)
+                        else:
+                            lt_bool = z3.Bool(str("v"+str(int(lt))))
+                            clause_list.append(lt_bool==True)
+                    #clauses_lst = list(s_clause.assertions()) # rm this line
+                    s.add(Not(And(clause_list)))
+                    found_subset_flag = 1
+                    break
+            assert(found_subset_flag == 1)
+        
         return tCube_lst
 
 
@@ -2034,6 +2026,7 @@ class PDR:
             print("get bad cube size:", len(res.cubeLiterals), end=' --> ') # Print the result
             # sanity check - why?
             self._debug_c_is_predecessor(res.cube(), self.trans.cube(), self.frames[-1].cube(), substitute(substitute(self.post.cube(), self.primeMap),self.inp_map)) #TODO: Here has bug
+            #new_model = res
             new_model = self.generalize_predecessor(res, Not(self.post.cube()), self.frames[-1].cube()) #new_model: predecessor of !P extracted from SAT witness
             print(len(new_model.cubeLiterals)) # Print the result
             self._debug_c_is_predecessor(new_model.cube(), self.trans.cube(), self.frames[-1].cube(), substitute(substitute(self.post.cube(), self.primeMap),self.inp_map))

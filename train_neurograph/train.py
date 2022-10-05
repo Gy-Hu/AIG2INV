@@ -59,8 +59,6 @@ class GraphDataset(Dataset):
         self.mode = mode
         self.samples = []
         self.__init_dataset()
-        #self.__remove_adj_null_file()
-        #self.__refine_target_and_output()
 
     def __len__(self):
         return len(self.samples)
@@ -97,6 +95,8 @@ class GraphDataset(Dataset):
             'file_name' : file_name
         }
         assert(len(prob_main_info['label']) == len(prob_main_info['refined_output']))
+        # assert sum of prob_main_info['label'] > 1
+        assert(sum(prob_main_info['label']) >= 1)
         return prob_main_info, graph_info
     
     def __init_dataset(self):
@@ -111,45 +111,6 @@ class GraphDataset(Dataset):
                 with open(train_file, 'rb') as f:
                     self.samples.append(pickle.load(f))
 
-
-    def __refine_target_and_output(self):
-        for problem in self.samples:
-            var_list = list(problem.db_gt)
-            var_list.pop(0)  # remove "filename_nextcube"
-            tmp = problem.value_table[~problem.value_table.index.str.contains('m_')]
-            tmp.index = tmp.index.str.replace("n_", "")
-
-            single_node_index = []  # store the index
-            for i, element in enumerate(var_list):
-                if element not in tmp.index.tolist():
-                    single_node_index.append(i)
-
-            problem.label = [e[1] for e in enumerate(
-                problem.label) if e[0] not in single_node_index]
-            
-            # assert the label will not be all zero
-            assert(sum(problem.label) != 0)
-
-            '''
-            Finish refine the target, now try to refine the output 
-            '''
-            var_index = [] # Store the index that is in the graph and in the ground truth table
-            tmp_lst_var = list(problem.db_gt)[1:]
-            # The groud truth we need to focus on
-            focus_gt = [e[1] for e in enumerate(tmp_lst_var) if e[0] not in single_node_index]
-            # Try to fetch the index of the variable in the value table (variable in db_gt)
-            tmp_lst_all_node = problem.value_table.index.to_list()[problem.n_nodes:]
-            for element in focus_gt:
-                var_index.append(tmp_lst_all_node.index('n_'+str(element)))
-            problem.refined_output = var_index
-            assert(all(problem.refined_output[i] <= problem.refined_output[i + 1] for i in range(len(problem.refined_output) - 1)))
-            assert(len(problem.refined_output) == len(problem.label))
-        #print('num of train batches: ', len(train), file=log_file, flush=True)
-    
-    def __remove_adj_null_file(self):
-        # Remove the train file which exists bug (has no adj_matrix generated)
-        self.samples = [train_file for train_file in self.samples if hasattr(train_file, 'adj_matrix')]
-
 def collate_wrapper(batch):
     prob_main_info, dict_vt = zip(*batch)
     return prob_main_info, dict_vt
@@ -160,8 +121,8 @@ if __name__ == "__main__":
     datetime_str = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
     
 
-    args = parser.parse_args(['--task-name', 'neuropdr_'+datetime_str.replace(' ', '_'), '--dim', '128', '--n_rounds', '512',
-                              '--epochs', '256',
+    args = parser.parse_args(['--task-name', 'neuropdr_'+datetime_str.replace(' ', '_'), '--dim', '128', '--n_rounds', '256',
+                              '--epochs', '512',
                               #'--log-dir', str(Path(__file__).parent.parent /'log/tmp/'), \
                               '--train-file', '../dataset/cex2graph/',\
                               '--val-file', '../dataset/cex2graph/',\
@@ -198,7 +159,7 @@ if __name__ == "__main__":
         train_loader = DataLoader(
         dataset=train_dataset,
         batch_size=2,
-        shuffle=False,
+        shuffle=True,
         collate_fn=collate_wrapper,
         num_workers=0)
 
@@ -229,7 +190,7 @@ if __name__ == "__main__":
     loss_fn = nn.BCEWithLogitsLoss(reduction='sum',pos_weight=torch.Tensor([4]).to(device))
     #loss_fn = BCEFocalLoss()
     #loss_fn = WeightedBCELosswithLogits()
-    optim = optim.Adam(net.parameters(), lr=0.0001, weight_decay=1e-10)
+    optim = optim.Adam(net.parameters(), lr=0.04, weight_decay=1e-10)
     sigmoid = nn.Sigmoid()
 
     best_acc = 0.0
@@ -319,6 +280,8 @@ if __name__ == "__main__":
             writer.add_scalar('accuracy_per_iteration/training_accuracy',(TP.item()+TN.item())*1.0/TOT.item(), iteration)
             writer.add_scalar('loss_per_iteration/training_loss', loss.item(), iteration)
 
+            
+
             # Sum up the loss of every batch -> loss for every epoch
             #all_train_loss+=loss 
             all_train_loss=torch.sum(torch.cat([loss, all_train_loss], 0))
@@ -327,6 +290,8 @@ if __name__ == "__main__":
             # Backward and step
             loss.backward()
             optim.step()
+
+            #for name, parms in net.named_parameters(): print('-->name:', name, '-->grad_requirs:', parms.requires_grad, '--weight', torch.mean(parms.data), ' -->grad_value:', torch.mean(parms.grad))
             #all_train_loss_cpu_old = all_train_loss_cpu
             #all_train_loss_cpu = all_train_loss.cpu().item()
             #assert(all_train_loss_cpu>all_train_loss_cpu_old) #Assert that loss is increasing

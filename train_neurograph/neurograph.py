@@ -55,7 +55,7 @@ class NeuroInductiveGeneralization(nn.Module):
         #TODO: Using 2 separated nn.Linear to do literals embedding
         self.and_init = nn.Linear(1,self.dim) #for node return true
         self.not_init = nn.Linear(1, self.dim) #for node return false
-        self.or_init = nn.Linear(1,self.dim) #for node return true
+        #self.or_init = nn.Linear(1,self.dim) #for node return true
         self.var_init = nn.Linear(1,self.dim) #for node return true
         self.inp_init = nn.Linear(1, self.dim) #for node return true
 
@@ -88,8 +88,8 @@ class NeuroInductiveGeneralization(nn.Module):
             elif node['data']['application'].startswith('not') == True:
                 tmp_tensor = self.not_init(init_ts).view(1, 1, -1) #<-assign false init tensor
                 #false_tensor = torch.cat((false_tensor, tmp_false_tensor), dim=1)
-            elif node['data']['application'].startswith('or') == True:
-                tmp_tensor = self.or_init(init_ts).view(1, 1, -1)
+            #elif node['data']['application'].startswith('or') == True:
+                #tmp_tensor = self.or_init(init_ts).view(1, 1, -1)
             elif node['data']['application'].startswith('v') == True:
                 tmp_tensor = self.var_init(init_ts).view(1, 1, -1)
             elif node['data']['application'].startswith('i') == True:
