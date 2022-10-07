@@ -32,7 +32,7 @@ class ExtractCnf(object):
         return ret_clauses
 
     def _find_clause_to_block(self, model_to_block):
-        for idx in range(len(self.clauses)-1, -1, -1): # search backwards
+        for idx in range(len(self.clauses)-1, -1, -1): # search backwards, performas like MIC
             cl = self.clauses[idx]
             slv = z3.Solver()
             slv.add(cl)
@@ -71,9 +71,9 @@ class ExtractCnf(object):
         slv.add(prev)
 
         if prop_only:
-            post = prop
+            post = prop # safty property is prop
         else:
-            post = prev
+            post = prev # predecessor of cex
         
         not_p_prime = z3.Not(z3.substitute(z3.substitute(post, self.v2prime), self.vprime2nxt))
         slv.add(not_p_prime)
@@ -83,7 +83,7 @@ class ExtractCnf(object):
         assert res == z3.sat
         model = slv.model()
         filtered_model, model_list = self._filter_model(model)
-        return filtered_model, model_list
+        return filtered_model, model_list # filtered model is a z3 expression, model_list is [(var_index, sign)]
 
     def _filter_model(self, model): # keep only current state variables
         no_prime_or_input = [l for l in model if str(l)[0] != 'i' and not str(l).endswith('_prime')] #
@@ -93,6 +93,14 @@ class ExtractCnf(object):
         return cex_expr, cex_list
 
     def get_clause_cex_pair(self):
+        '''
+        Important function that returns a pair of a clause and a counterexample
+        Returns:
+            cex_clause_pair_list_prop: list of [sat_model, clauses_inv, output?] pairs that block the property
+            cex_clause_pair_list_ind: None if cex exists
+            is_inductive: check the cex is inductive (fullfil the  `T /\ P /\ not(P_prime)`)
+            has_fewer_clauses: the clauses in inv is not used up
+        '''
         prop = z3.Not(self.aagmodel.output)  # not(bad)
         clause_list = []
         cex_clause_pair_list_prop = []

@@ -7,6 +7,7 @@ import z3
 total_num_node_types = 6
 
 def dump2smt2(cex_clause_pair_list_prop,aag_name,m, return_after_finished = False):
+    aag_name = aag_name.split('.aag')[0]
     cubeliteral_to_str = lambda cube_literals: ','.join(map
                                 (lambda x: str(m.svars[x[0]]).replace('v','') 
                                 if str(x[1])=='1' 
@@ -19,6 +20,11 @@ def dump2smt2(cex_clause_pair_list_prop,aag_name,m, return_after_finished = Fals
     if return_after_finished:
         print('program finished, only dump cti to file')
         return 'Finish all the work!'
+
+def to_graph(cex_clause_pair_list_prop,aag_name,m, return_after_finished = False):
+    '''
+    convert the file to .smt2 format
+    '''
         
 
 def convert_one_aag(aag_name, cnf_name, g1_list, g2_list):
@@ -46,6 +52,7 @@ def convert_one_aag(aag_name, cnf_name, g1_list, g2_list):
         idx += 1
 
 def test():
+    #case = "nusmv.syncarb5^2.B"
     case = "nusmv.reactor^4.C"
     g1_list = []
     g2_list = []
