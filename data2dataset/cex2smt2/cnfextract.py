@@ -82,7 +82,7 @@ class ExtractCnf(object):
         # new a folder to store the smt2 files
         if not os.path.exists(f"../../dataset/bad_cube_cex2graph/expr_to_build_graph/{self.model_name}"): os.makedirs(f"../../dataset/bad_cube_cex2graph/expr_to_build_graph/{self.model_name}")
         filename = f"../../dataset/bad_cube_cex2graph/expr_to_build_graph/{self.model_name}/{self.model_name}_{len(self.cex_generalization_ground_truth)}.smt2"
-        data = {'inductive_check': self.model_name} # create a dictionary that store the smt2 file name and its corresponding ground truth
+        data = {'inductive_check': f"{self.model_name}_{len(self.cex_generalization_ground_truth)}.smt2"} # create a dictionary that store the smt2 file name and its corresponding ground truth
         with open(filename, mode='w') as f: f.write(s_smt.to_smt2())
         f.close() 
 

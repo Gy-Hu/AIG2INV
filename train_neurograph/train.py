@@ -124,8 +124,8 @@ if __name__ == "__main__":
     args = parser.parse_args(['--task-name', 'neuropdr_'+datetime_str.replace(' ', '_'), '--dim', '128', '--n_rounds', '256',
                               '--epochs', '512',
                               #'--log-dir', str(Path(__file__).parent.parent /'log/tmp/'), \
-                              '--train-file', '../dataset/cex2graph/',\
-                              '--val-file', '../dataset/cex2graph/',\
+                              '--train-file', '../dataset/bad_cube_cex2graph/json_to_graph_pickle/',  
+                              '--val-file', '../dataset/bad_cube_cex2graph/json_to_graph_pickle/',
                               '--mode', 'debug'
                               ])
 
