@@ -1,7 +1,7 @@
 from z3 import *
 
 class BMC:
-    def __init__(self, primary_inputs, literals, primes, init, trans, post, pv2next, primes_inp):
+    def __init__(self, primary_inputs=None, literals=None, primes=None, init=None, trans=None, post=None, pv2next=None, primes_inp=None):
         '''
         :param primary_inputs:
         :param literals: Boolean Variables

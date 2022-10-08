@@ -264,7 +264,7 @@ class PDR:
         self.pv2next = pv2next
         self.initprime = substitute(self.init.cube(), self.primeMap)
         # for debugging purpose
-        self.bmc = BMC(primary_inputs=primary_inputs, literals=literals, primes=primes,
+        self.bmc = BMC(primary_inputs=primary_inputs, literals=literals.copy(), primes=primes,
                        init=init, trans=trans, post=post, pv2next=pv2next, primes_inp = primes_inp)
         self.generaliztion_data_GP = []# Store the ground truth data of generalized predecessor
         self.generaliztion_data_IG = []# Store the ground truth data of inductive generalization 
@@ -1962,12 +1962,14 @@ class PDR:
             #print(m)
             #model_lst.append(m)
             #assert(len(model_lst) == 1)
+           
             block = []
             for var in m: block.append(var() != m[var])
             s.add(Or(block))
             res = s.check()
             res2tcube = tCube(t)
             res2tcube.addModel(self.lMap, m, remove_input=True)
+            assert len(res2tcube.cubeLiterals) == len(self.literals), "The model length is not equal to the number of latch variables"
             if res2tcube not in tCube_lst:
                 s_enumerate = self.generate_GT_no_enumerate(res2tcube)
                 tCube_lst.append(res2tcube)

@@ -43,4 +43,5 @@ class Clauses(object):
                         vlist.append((var, sign))
                     self.clauses.append(vlist)
         elif clauses:
+            # only if the number of state variables is 0 and fname is not given
             self.clauses = clauses
