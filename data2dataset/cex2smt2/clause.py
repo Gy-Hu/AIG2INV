@@ -29,7 +29,7 @@ class Clauses(object):
                 assert header[1] != "0"
                 assert num_input+num_sv > 0
                 n_clause = int(header[1])
-                for cidx in range(n_clause):
+                for _ in range(n_clause):
                     l = fin.readline()
                     literals = l.split()
                     lit = [int(l) for l in literals]
