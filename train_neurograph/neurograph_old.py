@@ -4,8 +4,6 @@ import z3
 import numpy as np
 import pandas as pd
 
-#from code.data_gen import problem
-
 
 '''
 -----------------Non-linear MLP--------------------
@@ -21,7 +19,6 @@ class MLP(nn.Module):
     self.f2 = nn.ReLU()
     self.l3 = nn.Linear(hidden_dim, out_dim)
 
-
   def forward(self, x):
     x = self.l1(x)
     x = self.l1_dropout(x)
@@ -29,34 +26,28 @@ class MLP(nn.Module):
     x = self.l2(x)
     x = self.l2_dropout(x)
     x = self.f2(x)
-    return self.l3(x)
+    output = self.l3(x)
+
+    return output
 
 
-class NeuroInductiveGeneralization(nn.Module):
+
+class NeuroPredessor(nn.Module):
     def __init__(self,args = None):
-        super(NeuroInductiveGeneralization, self).__init__()
+        super(NeuroPredessor, self).__init__()
         self.args = args
+        self.dim = 128
         if args!=None:
             self.n_rounds = args.n_rounds
-            if args.inf_dev == 'gpu':
-                self.inf_device = 'cuda'
-            elif args.inf_dev == 'cpu':
-                self.inf_device = 'cpu'
-            self.dim = args.dim
         else:
             self.n_rounds = 120
-            self.inf_device = 'cuda'
-            self.dim = 128
 
         self.init_ts = torch.ones(1)
         self.init_ts.requires_grad = False
 
         #TODO: Using 2 separated nn.Linear to do literals embedding
-        self.and_init = nn.Linear(1,self.dim) #for node return true
-        self.not_init = nn.Linear(1, self.dim) #for node return false
-        self.or_init = nn.Linear(1,self.dim) #for node return true
-        self.var_init = nn.Linear(1,self.dim) #for node return true
-        self.inp_init = nn.Linear(1, self.dim) #for node return true
+        self.true_init = nn.Linear(1,self.dim) #for node return true
+        self.false_init = nn.Linear(1, self.dim) #for node return false
 
         self.children_msg = MLP(self.dim, self.dim, self.dim) #for children to pass message
         self.parent_msg = MLP(self.dim, self.dim, self.dim) #for parents to pass message
@@ -69,28 +60,28 @@ class NeuroInductiveGeneralization(nn.Module):
         self.denom = torch.sqrt(torch.Tensor([self.dim]))
 
 
-    def forward(self, wrapper):
-        problem = wrapper[0]
-        dict_vt = wrapper[1]
-        init_ts = self.init_ts.to(self.inf_device)
+    def forward(self, problem):
+        n_var = problem.n_vars #TODO: Refine here (modify in data_gen.py)
+        n_node = problem.n_nodes #TODO: Refine here (modify in data_gen.py)
+        # ts_var_unpack_indices = torch.Tensor(problem.adj_matrix).t().long() #TODO: refine the adj matrix here
+        # unpack = torch.sparse.FloatTensor(ts_var_unpack_indices, torch.ones(problem.n_cells), #TODO: refine the n_cells.. here
+                                          # torch.Size([n_var, n_node])).to_dense().cuda()
+        unpack = (torch.from_numpy(problem.adj_matrix.astype(np.float32).values)).cuda()
+        init_ts = self.init_ts.cuda()
 
         # TODO: change the init part to true/false init
-        # dict_vt = dict(zip((problem.value_table).index, (problem.value_table).Value))
+        dict_vt = dict(zip((problem.value_table).index, (problem.value_table).Value))
 
-        #true_tensor = torch.tensor([]).to('cuda')
-        #false_tensor = torch.tensor([]).to('cuda')
-        all_init = torch.tensor([]).to(self.inf_device)
-        for node in dict_vt:
-            if node['data']['application'].startswith('and') == True:
-                tmp_tensor = self.and_init(init_ts).view(1, 1, -1) #<-assign true init tensor
-            elif node['data']['application'].startswith('not') == True:
-                tmp_tensor = self.not_init(init_ts).view(1, 1, -1) #<-assign false init tensor
-            elif node['data']['application'].startswith('or') == True:
-                tmp_tensor = self.or_init(init_ts).view(1, 1, -1)
-            elif node['data']['application'].startswith('v') == True:
-                tmp_tensor = self.var_init(init_ts).view(1, 1, -1)
-            elif node['data']['application'].startswith('i') == True:
-                tmp_tensor = self.inp_init(init_ts).view(1, 1, -1)
+        #true_tensor = torch.tensor([]).cuda()
+        #false_tensor = torch.tensor([]).cuda()
+        all_init = torch.tensor([]).cuda()
+        for key, value in dict_vt.items():
+            if value == 1:
+                tmp_tensor = self.true_init(init_ts).view(1, 1, -1) #<-assign true init tensor
+                #true_tensor = torch.cat((true_tensor,tmp_true_tensor),dim=1)
+            else:
+                tmp_tensor = self.false_init(init_ts).view(1, 1, -1) #<-assign false init tensor
+                #false_tensor = torch.cat((false_tensor, tmp_false_tensor), dim=1)
             all_init = torch.cat((all_init,tmp_tensor),dim=1)
 
         #all_init = torch.cat((true_tensor, false_tensor),dim=1)
@@ -100,7 +91,7 @@ class NeuroInductiveGeneralization(nn.Module):
         # var_init = var_init.repeat(1, n_var, 1)
         # node_init = node_init.repeat(1, n_node, 1)
 
-        var_state = (all_init[:], torch.zeros(1, problem['n_vars'], self.dim).to(self.inf_device)) # resize for LSTM, (ht, ct)
+        var_state = (all_init[:], torch.zeros(1, n_var, self.dim).cuda()) # resize for LSTM, (ht, ct)
         '''
         var_state[:] -> all node includes input, input_prime, variable
         var_state[:?] -> node exclude input, input_prime, variable
@@ -114,34 +105,23 @@ class NeuroInductiveGeneralization(nn.Module):
         for _ in range(self.n_rounds): #TODO: Using LSTM to eliminate the error brought by symmetry
 
             var_pre_msg = self.children_msg(var_state[:][0].squeeze(0))
-            child_to_par_msg = torch.matmul(problem['unpack'], var_pre_msg) #TODO: ask question "two embedding of m here"
+            child_to_par_msg = torch.matmul(unpack, var_pre_msg) #TODO: ask question "two embedding of m here"
             #FIXME: Expected hidden[0] size (1, 204, 128), got (1, 231, 128), fix the size in adj_matrix (where's prime needed?) , and re-run this
             #var_state_slice = ((var_state[0])[:,:problem.n_nodes,:], (var_state[1])[:,:problem.n_nodes,:])
-            #assert not torch.all(torch.eq((var_state[0].squeeze(0))[problem['n_nodes']:,:], (var_state[0].squeeze(0))[problem['n_nodes']:,:][0]))
-            var_node_state = ((var_state[0])[:, :problem['n_nodes'], :], (var_state[1])[:, :problem['n_nodes'], :])
-            var_rest_state = ((var_state[0])[:, problem['n_nodes']: , :], (var_state[1])[:, problem['n_nodes']: , :])
+            var_node_state = ((var_state[0])[:, :problem.n_nodes, :], (var_state[1])[:, :problem.n_nodes, :])
+            var_rest_state = ((var_state[0])[:, problem.n_nodes: , :], (var_state[1])[:, problem.n_nodes: , :])
             _, var_node_state = self.var_update(child_to_par_msg.unsqueeze(0), var_node_state)
             #_, ((var_state[0])[:, :problem.n_nodes, :], (var_state[1])[:, :problem.n_nodes, :]) = self.var_update(child_to_par_msg.unsqueeze(0), ((var_state[0])[:, :problem.n_nodes, :], (var_state[1])[:, :problem.n_nodes, :]))
             #_, var_state = self.var_update(torch.cat(child_to_par_msg.unsqueeze(0), ((var_state[0])[:,:problem.n_nodes,:], (var_state[1])[:,:problem.n_nodes,:])))  #TODO: replace node_state with the partial var_state
             var_state = (torch.cat((var_node_state[0],var_rest_state[0]),dim=1),torch.cat((var_node_state[1],var_rest_state[1]),dim=1))
 
-            #assert not torch.all(torch.eq((var_state[0].squeeze(0))[problem['n_nodes']:,:], (var_state[0].squeeze(0))[problem['n_nodes']:,:][0]))
-            
-            node_pre_msg = self.parent_msg(((var_state[0])[:,:problem['n_nodes'],:]).squeeze(0))
-            #TODO: fix the bug here, problem['unpack'] may have issue
-            par_to_child_msg = torch.matmul(problem['unpack'].t(), node_pre_msg)
+            node_pre_msg = self.parent_msg(((var_state[0])[:,:problem.n_nodes,:]).squeeze(0))
+            par_to_child_msg = torch.matmul(unpack.t(), node_pre_msg)
             _, var_state = self.node_update(par_to_child_msg.unsqueeze(0), var_state)
-            assert not torch.all(torch.eq((var_state[0].squeeze(0))[problem['n_nodes']:,:][-1], (var_state[0].squeeze(0))[problem['n_nodes']:,:][-2]))
 
         logits = var_state[0].squeeze(0)
         #TODO: update here with the correct number
-        vote = self.var_vote(logits[problem['n_nodes']:,:]) # (a+b) * dim -> a * dim
-        
-        #assert not all the logits are the same
-        assert not torch.all(torch.eq(logits[problem['n_nodes']:,:], logits[problem['n_nodes']:,:][0]))
-
-        #return the index of larger value
-        #vote = torch.argmax(vote, dim=1)
+        vote = self.var_vote(logits[problem.n_nodes:,:]) # (a+b) * dim -> a * dim
         #vote_mean = torch.mean(vote, dim=1)
         return vote.squeeze()
 

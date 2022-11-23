@@ -25,6 +25,8 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import torch.nn.functional as F
 from natsort import natsorted
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+import random
 
 '''
 Assertion:
@@ -83,8 +85,9 @@ class GraphDataset(Dataset):
         #lambda function to sum up the true value in a list
         sum_true = lambda x: sum(i == True for i in x)
         graph_info = self.samples[idx][1]
+        # transpose matrix to the adj_matrix
         # only keep the top n_nodes rows of the adj_matrix
-        adj_matrix = (self.samples[idx][2].head(sum_true([graph_info[i]['data']['type']=='node' for i in range(len(graph_info))])))
+        adj_matrix = ((self.samples[idx][2].T).head(sum_true([graph_info[i]['data']['type']=='node' for i in range(len(graph_info))])))
         ground_truth_label_row = self.samples[idx][3]
         file_name = self.samples[idx][4]
         lat_var_index_in_graph = [i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('v')]
@@ -130,7 +133,15 @@ def collate_wrapper(batch):
     prob_main_info, dict_vt = zip(*batch)
     return prob_main_info, dict_vt
 
+def setup_seed(seed):
+     torch.manual_seed(seed)
+     torch.cuda.manual_seed_all(seed)
+     np.random.seed(seed)
+     random.seed(seed)
+     torch.backends.cudnn.deterministic = True
+
 if __name__ == "__main__":
+    #setup_seed(3407)
     #device = 'cuda'
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     datetime_str = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
@@ -202,10 +213,12 @@ if __name__ == "__main__":
         args.log_dir, args.task_name + '_detail.log'), 'a+')
 
     #loss_fn = nn.BCELoss(reduction='sum')
-    loss_fn = nn.BCEWithLogitsLoss(reduction='sum',pos_weight=torch.Tensor([4]).to(device))
+    loss_fn = nn.BCEWithLogitsLoss(reduction='sum', pos_weight=torch.tensor([4]).to(device))
+    #loss_fn = nn.BCEWithLogitsLoss(reduction='sum')
     #loss_fn = BCEFocalLoss()
     #loss_fn = WeightedBCELosswithLogits()
-    optim = optim.Adam(net.parameters(), lr=0.1, weight_decay=1e-10)
+    optim = optim.Adam(net.parameters(), lr=0.0001, weight_decay=1e-10)
+    scheduler = ReduceLROnPlateau(optim, 'min', factor=0.0001, patience=10, verbose=True)
     sigmoid = nn.Sigmoid()
 
     best_acc = 0.0
@@ -276,11 +289,13 @@ if __name__ == "__main__":
 
                 #assert(outputs.size() == target.size())
                 this_loss = loss_fn(outputs, target)
+                if torch.any(torch.isnan(this_loss)):
+                    assert False, print ("!!! loss NAN!!!")
                 loss = loss+this_loss # loss for every batch
 
                 # Calulate the perfect accuracy
                 outputs = sigmoid(outputs)
-                preds = torch.where(outputs > 0.6, torch.ones(
+                preds = torch.where(outputs > 0.5, torch.ones(
                 outputs.shape).to(device), torch.zeros(outputs.shape).to(device))
                 all = all + 1
                 if target.equal(preds): perfection_rate = perfection_rate + 1
@@ -308,10 +323,30 @@ if __name__ == "__main__":
             #all_train_loss+=loss 
             all_train_loss=torch.sum(torch.cat([loss, all_train_loss], 0))
             all_train_loss=all_train_loss.unsqueeze(0) # Add one dimension
+
             
             # Backward and step
             loss.backward()
-            optim.step()
+            with torch.no_grad():
+                maxgrad = torch.zeros(1).to(device)
+            
+                for param in net.parameters():
+                    if param.grad is not None:
+                        if torch.any(torch.isnan(param.grad)):
+                            print ('grad NaN!!!')
+                            exit(1)
+                        param_grad_max = torch.max(torch.abs(param.grad))
+                        if param_grad_max.item() > maxgrad.item():
+                            maxgrad = param_grad_max
+            
+            # optim.step()
+            # for param in net.parameters():
+            #     if torch.any(torch.isnan(param)):
+            #         print ('param after grad decent NaN!!!')
+            #         exit(1)
+            #scheduler.step(loss)
+            
+            
 
             #for name, parms in net.named_parameters(): print('-->name:', name, '-->grad_requirs:', parms.requires_grad, '--weight', torch.mean(parms.data), ' -->grad_value:', torch.mean(parms.grad))
             #all_train_loss_cpu_old = all_train_loss_cpu
@@ -359,7 +394,7 @@ if __name__ == "__main__":
                 loss = loss.unsqueeze(0)
 
                 outputs = sigmoid(outputs)
-                preds = torch.where(outputs > 0.7, torch.ones(
+                preds = torch.where(outputs > 5, torch.ones(
                     outputs.shape).to(device), torch.zeros(outputs.shape).to(device))
 
                 # Calulate the perfect accuracy
@@ -391,6 +426,12 @@ if __name__ == "__main__":
         writer.add_scalar('accuracy/validation_accuracy', acc, epoch)
         writer.add_scalar('precision/validation_precision', val_precision, epoch)
 
+        scheduler.step(loss)
+        for param in net.parameters():
+                if torch.any(torch.isnan(param)):
+                    print ('param after grad decent NaN!!!')
+                    exit(1)
+
         '''
         ------------------------testing-----------------------------------
         '''
@@ -416,7 +457,7 @@ if __name__ == "__main__":
                 loss = loss.unsqueeze(0)
 
                 outputs = sigmoid(outputs)
-                preds = torch.where(outputs > 0.8, torch.ones(
+                preds = torch.where(outputs > 5, torch.ones(
                     outputs.shape).to(device), torch.zeros(outputs.shape).to(device))
 
                 # Calulate the perfect accuracy
