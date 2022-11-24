@@ -57,6 +57,8 @@ class NeuroInductiveGeneralization(nn.Module):
         self.or_init = nn.Linear(1,self.dim) #for node return true
         self.var_init = nn.Linear(1,self.dim) #for node return true
         self.inp_init = nn.Linear(1, self.dim) #for node return true
+        self.false_init = nn.Linear(1, self.dim) #for node return false
+        self.true_init = nn.Linear(1, self.dim) #for node return true
 
         self.children_msg = MLP(self.dim, self.dim, self.dim) #for children to pass message
         self.parent_msg = MLP(self.dim, self.dim, self.dim) #for parents to pass message
@@ -91,6 +93,10 @@ class NeuroInductiveGeneralization(nn.Module):
                 tmp_tensor = self.var_init(init_ts).view(1, 1, -1)
             elif node['data']['application'].startswith('i') == True:
                 tmp_tensor = self.inp_init(init_ts).view(1, 1, -1)
+            elif node['data']['application'].startswith('f') == True:
+                tmp_tensor = self.false_init(init_ts).view(1, 1, -1)
+            elif node['data']['application'].startswith('t') == True:
+                tmp_tensor = self.true_init(init_ts).view(1, 1, -1)
             all_init = torch.cat((all_init,tmp_tensor),dim=1)
 
         #all_init = torch.cat((true_tensor, false_tensor),dim=1)
@@ -131,6 +137,7 @@ class NeuroInductiveGeneralization(nn.Module):
             #TODO: fix the bug here, problem['unpack'] may have issue
             par_to_child_msg = torch.matmul(problem['unpack'].t(), node_pre_msg)
             _, var_state = self.node_update(par_to_child_msg.unsqueeze(0), var_state)
+            # the state variable is updated -> if not, assertion error
             assert not torch.all(torch.eq((var_state[0].squeeze(0))[problem['n_nodes']:,:][-1], (var_state[0].squeeze(0))[problem['n_nodes']:,:][-2]))
 
         logits = var_state[0].squeeze(0)

@@ -28,12 +28,12 @@ void walk(int tab, expr e, vector<expr> & bfs_queue)
 
     if(e.is_const())
     {
-        cout << blanks << "ARGUMENT"<<"(id:"<<e.id()<<")"<<": "<< e << endl;
+        //cout << blanks << "ARGUMENT"<<"(id:"<<e.id()<<")"<<": "<< e << endl;
         bfs_queue.push_back(e);
     }
     else
     {
-        cout << blanks << "APP: " <<"(id:"<<e.id()<<")"<<": "<< e.decl().name() << endl;
+        //cout << blanks << "APP: " <<"(id:"<<e.id()<<")"<<": "<< e.decl().name() << endl;
         bfs_queue.push_back(e);
         for(int i = 0; i < e.num_args(); i++)
         {
@@ -114,8 +114,8 @@ int main(int argc, char ** argv) {
     //Z3_ast_vector b = Z3_parse_smtlib2_file(ctx, "nusmv.syncarb5^2.B_10.smt2", 0, 0, 0, 0, 0, 0);
 
     //travsersal the smt2 file in "../../dataset/IG2graph/generalize_IG_no_enumerate/" and store file name to a vector
-    //const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C";
-    const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
+    const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C";
+    //const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
     vector<string> filenames;
     GetFileNames(filePath,filenames);
 
@@ -176,10 +176,11 @@ int main(int argc, char ** argv) {
         cout<<"set_expr_edge size: "<<set_expr_edge.size()<<endl;
         //print all edge in the set set_expr_edge
         set<pair<int, int>>::iterator it;
-        for(it=set_expr_edge.begin();it!=set_expr_edge.end();it++)
-        {
-            printf("%d %d\n",it->first,it->second);
-        }
+        // print edge list
+        // for(it=set_expr_edge.begin();it!=set_expr_edge.end();it++)
+        // {
+        //     printf("%d %d\n",it->first,it->second);
+        // }
 
         //export to json
         json json_nodes;

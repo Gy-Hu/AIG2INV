@@ -3,6 +3,9 @@ import pickle
 import os
 
 from zmq import device
+# for dpp
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 from tqdm import tqdm
 import sys
@@ -27,6 +30,8 @@ import torch.nn.functional as F
 from natsort import natsorted
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import random
+
+
 
 '''
 Assertion:
@@ -87,13 +92,13 @@ class GraphDataset(Dataset):
         graph_info = self.samples[idx][1]
         # transpose matrix to the adj_matrix
         # only keep the top n_nodes rows of the adj_matrix
-        adj_matrix = ((self.samples[idx][2].T).head(sum_true([graph_info[i]['data']['type']=='node' for i in range(len(graph_info))])))
+        adj_matrix = ((self.samples[idx][2].T).head(sum_true([graph_info[i]['data']['type']=='node' or graph_info[i]['data']['application'].startswith('f') or graph_info[i]['data']['application'].startswith('t') for i in range(len(graph_info))])))
         ground_truth_label_row = self.samples[idx][3]
         file_name = self.samples[idx][4]
         lat_var_index_in_graph = [i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('v')]
         inp_var_index_in_graph = [i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('i')]
         assert lat_var_index_in_graph[0] > inp_var_index_in_graph[0], "BUG: the sequence of node in graph_info is not correct, check the collect.py, should be node->input->latch"
-        number_of_node_except_svars = sum_true([graph_info[i]['data']['type']=='node' for i in range(len(graph_info))])
+        number_of_node_except_svars = sum_true([graph_info[i]['data']['type']=='node' or graph_info[i]['data']['application'].startswith('f') or graph_info[i]['data']['application'].startswith('t') for i in range(len(graph_info))])
         # assert the lat_var_index_in_graph is sorted
         assert lat_var_index_in_graph == natsorted(lat_var_index_in_graph), "BUG: var_index_in_graph is not sorted, check the json2graph function"
         # achieve the first row first column of the ground_truth_label_row
@@ -102,16 +107,31 @@ class GraphDataset(Dataset):
             'n_vars' : len(graph_info), #include m and variable (all node)
             'n_inp_vars' : len([i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('i')]),
             'n_lat_vars' : len([i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('v')]),
+            'n_false_constant' : len([i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('f')]),
+            'n_true_constant' : len([i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('t')]),
             # count the number of 'node' in the graph_info (node exclude input, input_prime, variable)
             'n_nodes' : number_of_node_except_svars,
-            'unpack' : (torch.from_numpy(adj_matrix.astype(np.float32).values)).to(device),
+            #'unpack' : (torch.from_numpy(adj_matrix.astype(np.float32).values)).to(device),
+            # convert the adj_matrix to sparse tensor
+            'unpack' : torch.sparse_coo_tensor(torch.LongTensor(np.vstack((adj_matrix.astype(np.float32).values.nonzero()))),torch.FloatTensor(adj_matrix.astype(np.float32).values[adj_matrix.astype(np.float32).values.nonzero()]),torch.Size(adj_matrix.astype(np.float32).values.shape)).to(device),
             'label' : self.__df_to_np(ground_truth_label_row,graph_info),
             # find the last element in the graph_info that is 'node'
             'refined_output' : list(map(lambda x: x-number_of_node_except_svars,lat_var_index_in_graph)),
             'file_name' : file_name
         }
+        '''
+        # find a exception that is not node type, iterate the graph_info and check
+        for i in range(len(graph_info)):
+            if graph_info[i]['data']['type'] != 'node' and not(graph_info[i]['data']['application'].startswith('i')) and not(graph_info[i]['data']['application'].startswith('v')):
+                print("BUG: the graph_info is not correct, check the collect.py")
+                break
+        '''
+
+        # assert the number of input variable + number of latch variable + number of node is equal to the number of node in the graph_info
+        assert prob_main_info['n_inp_vars'] + prob_main_info['n_lat_vars'] + prob_main_info['n_nodes'] == prob_main_info['n_vars'], "BUG: the number of input variable + number of latch variable + number of node is not equal to the number of node in the graph_info"
         # assert the number of input variable and latch variable is not 0
-        assert prob_main_info['n_inp_vars'] != 0 and prob_main_info['n_lat_vars'] != 0, "BUG: n_inp_vars or n_lat_vars is 0, check the data"
+        assert prob_main_info['n_inp_vars'] != 0 and prob_main_info['n_lat_vars'] != 0, "BUG: n_inp_vars and n_lat_vars is 0, check the data"
+        assert prob_main_info['n_inp_vars'] != 0 or prob_main_info['n_lat_vars'] != 0, "BUG: n_inp_vars or n_lat_vars is 0, check the data"
         assert(len(prob_main_info['label']) == len(prob_main_info['refined_output']))
         # assert sum of prob_main_info['label'] > 1
         assert(sum(prob_main_info['label']) >= 1)
@@ -120,7 +140,7 @@ class GraphDataset(Dataset):
     def __init_dataset(self):
         if self.mode == 'debug':
             train_lst = walkFile(self.data_root)
-            for train_file in train_lst[:100]:
+            for train_file in train_lst[:278]: #big cases
                 with open(train_file, 'rb') as f:
                     self.samples.append(pickle.load(f))
         else:
@@ -147,12 +167,13 @@ if __name__ == "__main__":
     datetime_str = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
     
 
-    args = parser.parse_args(['--task-name', 'neuropdr_'+datetime_str.replace(' ', '_'), '--dim', '128', '--n_rounds', '256',
-                              '--epochs', '512',
+    args = parser.parse_args(['--task-name', 'neuropdr_'+datetime_str.replace(' ', '_'), '--dim', '128', '--n_rounds', '512',
+                              '--epochs', '256',
                               #'--log-dir', str(Path(__file__).parent.parent /'log/tmp/'), \
                               '--train-file', '../dataset/bad_cube_cex2graph/json_to_graph_pickle/',  
                               '--val-file', '../dataset/bad_cube_cex2graph/json_to_graph_pickle/',
-                              '--mode', 'debug'
+                              '--mode', 'debug',
+                              #'--local_rank', '2',
                               ])
 
     if args.mode == 'debug':
@@ -164,6 +185,11 @@ if __name__ == "__main__":
     all_train = []
     train = []
     val = []
+
+    #for dpp initialization
+    if args.local_rank != -1:
+        torch.cuda.set_device(args.local_rank)
+        dist.init_process_group(backend='nccl') 
 
     all_graph = GraphDataset(args.train_file,args.mode)
 
@@ -182,12 +208,21 @@ if __name__ == "__main__":
         #validation_dataset = torch.utils.data.Subset(all_graph, range(train_size, train_size + validation_size))
         #test_dataset = torch.utils.data.Subset(all_graph, range(validation_size, len(all_graph)))
 
-        train_loader = DataLoader(
-        dataset=train_dataset,
-        batch_size=2,
-        shuffle=True,
-        collate_fn=collate_wrapper,
-        num_workers=0)
+        if args.local_rank != -1: #use dpp
+            train_loader = DataLoader(
+            dataset=train_dataset,
+            batch_size=2,
+            shuffle=False,
+            collate_fn=collate_wrapper,
+            sampler=torch.utils.data.distributed.DistributedSampler(train_dataset),
+            num_workers=0)
+        else: #not use dpp
+            train_loader = DataLoader(
+            dataset=train_dataset,
+            batch_size=1,
+            shuffle=False,
+            collate_fn=collate_wrapper,
+            num_workers=0)
 
         validation_loader = DataLoader(
         dataset=validation_dataset,
@@ -203,8 +238,16 @@ if __name__ == "__main__":
         collate_fn=collate_wrapper,
         num_workers=0)
 
-    net = NeuroInductiveGeneralization(args)
-    net = net.to(device)  # TODO: modify to accept both CPU and GPU version
+    # for dpp
+    if args.local_rank != -1:
+        device = torch.device("cuda", args.local_rank)
+        net = NeuroInductiveGeneralization(args)
+        net = net.to(device)
+    else: # for dp
+        net = NeuroInductiveGeneralization(args)
+        #net = torch.nn.DataParallel(net, device_ids=[0, 1])
+        net = net.to(device)  # TODO: modify to accept both CPU and GPU version
+        
     # if torch.cuda.device_count() > 1:
     #     net = torch.nn.DataParallel(net)
 
@@ -218,7 +261,7 @@ if __name__ == "__main__":
     #loss_fn = BCEFocalLoss()
     #loss_fn = WeightedBCELosswithLogits()
     optim = optim.Adam(net.parameters(), lr=0.0001, weight_decay=1e-10)
-    scheduler = ReduceLROnPlateau(optim, 'min', factor=0.0001, patience=10, verbose=True)
+    #scheduler = ReduceLROnPlateau(optim, 'min', factor=0.0001, patience=10, verbose=True)
     sigmoid = nn.Sigmoid()
 
     best_acc = 0.0
@@ -253,6 +296,9 @@ if __name__ == "__main__":
               args.epochs, best_precision), file=detail_log_file, flush=True)
         print('==> %d/%d epoch, previous best accuracy: %.3f' %
               (epoch+1, args.epochs, best_acc), file=detail_log_file, flush=True)
+        
+        if args.local_rank != -1:
+            train_loader.sampler.set_epoch(epoch)
         '''
         -----------------------train----------------------------------
         '''
@@ -295,7 +341,7 @@ if __name__ == "__main__":
 
                 # Calulate the perfect accuracy
                 outputs = sigmoid(outputs)
-                preds = torch.where(outputs > 0.5, torch.ones(
+                preds = torch.where(outputs > 0.6, torch.ones(
                 outputs.shape).to(device), torch.zeros(outputs.shape).to(device))
                 all = all + 1
                 if target.equal(preds): perfection_rate = perfection_rate + 1
@@ -339,11 +385,11 @@ if __name__ == "__main__":
                         if param_grad_max.item() > maxgrad.item():
                             maxgrad = param_grad_max
             
-            # optim.step()
-            # for param in net.parameters():
-            #     if torch.any(torch.isnan(param)):
-            #         print ('param after grad decent NaN!!!')
-            #         exit(1)
+            optim.step()
+            for param in net.parameters():
+                if torch.any(torch.isnan(param)):
+                    print ('param after grad decent NaN!!!')
+                    exit(1)
             #scheduler.step(loss)
             
             
@@ -384,6 +430,8 @@ if __name__ == "__main__":
                 q_index = prob[0]['refined_output']
                 #optim.zero_grad()
                 outputs = net((prob[0],vt_dict[0]))
+                # if args.local_rank != 0:
+                #     output = DDP(model, device_ids=[args.local_rank], output_device=args.local_rank)
                 target = torch.Tensor(prob[0]['label'][:]).to(device).float()
                 torch_select = torch.Tensor(q_index).to(device).int()
                 outputs = torch.index_select(outputs, 0, torch_select)
@@ -394,7 +442,7 @@ if __name__ == "__main__":
                 loss = loss.unsqueeze(0)
 
                 outputs = sigmoid(outputs)
-                preds = torch.where(outputs > 5, torch.ones(
+                preds = torch.where(outputs > 0.7, torch.ones(
                     outputs.shape).to(device), torch.zeros(outputs.shape).to(device))
 
                 # Calulate the perfect accuracy
@@ -426,7 +474,7 @@ if __name__ == "__main__":
         writer.add_scalar('accuracy/validation_accuracy', acc, epoch)
         writer.add_scalar('precision/validation_precision', val_precision, epoch)
 
-        scheduler.step(loss)
+        #scheduler.step(loss)
         for param in net.parameters():
                 if torch.any(torch.isnan(param)):
                     print ('param after grad decent NaN!!!')
@@ -457,7 +505,7 @@ if __name__ == "__main__":
                 loss = loss.unsqueeze(0)
 
                 outputs = sigmoid(outputs)
-                preds = torch.where(outputs > 5, torch.ones(
+                preds = torch.where(outputs > 0.8, torch.ones(
                     outputs.shape).to(device), torch.zeros(outputs.shape).to(device))
 
                 # Calulate the perfect accuracy
