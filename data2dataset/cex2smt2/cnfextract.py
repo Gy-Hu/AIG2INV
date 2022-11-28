@@ -203,4 +203,4 @@ class ExtractCnf(object):
         return cex_clause_pair_list_prop, cex_clause_pair_list_ind, is_inductive, has_fewer_clauses
 
     # now, we can start to build the graphs
-    
+    #TODO: Map the CTI list to smt2 (sequence should be defined in CTI.txt)

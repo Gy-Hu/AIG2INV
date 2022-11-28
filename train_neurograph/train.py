@@ -6,7 +6,7 @@ from zmq import device
 # for dpp
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 from tqdm import tqdm
 import sys
 import torch
@@ -66,10 +66,12 @@ class BCEFocalLoss(nn.Module):
 
 
 class GraphDataset(Dataset):
-    def __init__(self,data_root,mode='train'):
+    def __init__(self,data_root,mode='train',case_name=None,device=None):
         self.data_root = data_root
         self.mode = mode
         self.samples = []
+        self.aig_name = case_name
+        self.device = device
         self.__init_dataset()
 
     def __len__(self):
@@ -113,7 +115,7 @@ class GraphDataset(Dataset):
             'n_nodes' : number_of_node_except_svars,
             #'unpack' : (torch.from_numpy(adj_matrix.astype(np.float32).values)).to(device),
             # convert the adj_matrix to sparse tensor
-            'unpack' : torch.sparse_coo_tensor(torch.LongTensor(np.vstack((adj_matrix.astype(np.float32).values.nonzero()))),torch.FloatTensor(adj_matrix.astype(np.float32).values[adj_matrix.astype(np.float32).values.nonzero()]),torch.Size(adj_matrix.astype(np.float32).values.shape)).to(device),
+            'unpack' : torch.sparse_coo_tensor(torch.LongTensor(np.vstack((adj_matrix.astype(np.float32).values.nonzero()))),torch.FloatTensor(adj_matrix.astype(np.float32).values[adj_matrix.astype(np.float32).values.nonzero()]),torch.Size(adj_matrix.astype(np.float32).values.shape)).to(self.device),
             'label' : self.__df_to_np(ground_truth_label_row,graph_info),
             # find the last element in the graph_info that is 'node'
             'refined_output' : list(map(lambda x: x-number_of_node_except_svars,lat_var_index_in_graph)),
@@ -143,8 +145,15 @@ class GraphDataset(Dataset):
             for train_file in train_lst[:278]: #big cases
                 with open(train_file, 'rb') as f:
                     self.samples.append(pickle.load(f))
-        else:
+        elif self.mode == 'train':
             train_lst = walkFile(self.data_root)
+            for train_file in train_lst[:]:
+                with open(train_file, 'rb') as f:
+                    self.samples.append(pickle.load(f))
+        elif self.mode == 'predict':
+            train_lst = walkFile(self.data_root)
+            #filter the file list train_lst with the self.aig_name
+            train_lst = list(filter(lambda x: self.aig_name in x, train_lst))
             for train_file in train_lst[:]:
                 with open(train_file, 'rb') as f:
                     self.samples.append(pickle.load(f))
@@ -168,7 +177,7 @@ if __name__ == "__main__":
     
 
     args = parser.parse_args(['--task-name', 'neuropdr_'+datetime_str.replace(' ', '_'), '--dim', '128', '--n_rounds', '512',
-                              '--epochs', '256',
+                              '--epochs', '500',
                               #'--log-dir', str(Path(__file__).parent.parent /'log/tmp/'), \
                               '--train-file', '../dataset/bad_cube_cex2graph/json_to_graph_pickle/',  
                               '--val-file', '../dataset/bad_cube_cex2graph/json_to_graph_pickle/',
@@ -256,11 +265,11 @@ if __name__ == "__main__":
         args.log_dir, args.task_name + '_detail.log'), 'a+')
 
     #loss_fn = nn.BCELoss(reduction='sum')
-    loss_fn = nn.BCEWithLogitsLoss(reduction='sum', pos_weight=torch.tensor([4]).to(device))
+    loss_fn = nn.BCEWithLogitsLoss(reduction='sum', pos_weight=torch.tensor([8]).to(device))
     #loss_fn = nn.BCEWithLogitsLoss(reduction='sum')
     #loss_fn = BCEFocalLoss()
     #loss_fn = WeightedBCELosswithLogits()
-    optim = optim.Adam(net.parameters(), lr=0.0001, weight_decay=1e-10)
+    optim = optim.Adam(net.parameters(), lr=0.00001, weight_decay=1e-10)
     #scheduler = ReduceLROnPlateau(optim, 'min', factor=0.0001, patience=10, verbose=True)
     sigmoid = nn.Sigmoid()
 
@@ -390,7 +399,9 @@ if __name__ == "__main__":
                 if torch.any(torch.isnan(param)):
                     print ('param after grad decent NaN!!!')
                     exit(1)
-            #scheduler.step(loss)
+        
+        #update learning rate
+        #scheduler.step(loss)
             
             
 
