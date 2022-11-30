@@ -21,7 +21,7 @@ from time import sleep
 import z3
 # add "../utils" to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils.toolbox import walkFile
+#from utils.toolbox import walkFile
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 from torch.utils.data import Dataset, DataLoader
@@ -32,6 +32,12 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import random
 
 
+
+def walkFile(dir):
+    for root, _, files in os.walk(dir):
+        files = natsorted(files)
+        files = [os.path.join(root,f) for f in files]
+    return files
 
 '''
 Assertion:

@@ -4,17 +4,82 @@ import os
 import sys
 import torch
 from tqdm import tqdm
-sys.path.append('./train_neurograph/')
+# append './train_neurograph/' to the path
+sys.path.append(os.path.join(os.getcwd(), 'train_neurograph'))
+# append './data2dataset/cex2smt2/' to the path
+sys.path.append(os.path.join(os.getcwd(), 'data2dataset/cex2smt2'))
 from train_neurograph.train import GraphDataset
 from train_neurograph.neurograph_old import NeuroInductiveGeneralization
-# add "../utils" to sys.path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils.toolbox import walkFile
+from data2dataset.cex2smt2.clause import Clauses
+from data2dataset.cex2smt2.aigmodel import AAGmodel
+from data2dataset.cex2smt2.aig2graph import AigGraph
+from data2dataset.cex2smt2.cnfextract import ExtractCnf
 # add "train_neurograph" to sys.path
 import torch.nn as nn
-
+from natsort import natsorted
+import z3
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+'''
+---------------------------------------------------------
+Checker to check if the predicted clauses is satisfiable
+---------------------------------------------------------
+'''
+class CNF_Filter(ExtractCnf):
+    def __init__(self, aagmodel, clause, name):
+       super(CNF_Filter, self).__init__(aagmodel, clause, name)
+    
+    def _solve_relative_update(self, clauses_to_check):
+        # sourcery skip: extract-duplicate-method, inline-immediately-returned-variable
+        check_init = z3.sat
+        slv = z3.Solver()
+        slv.add(self.init.cube()) # init -> !s ?
+        slv.add(clauses_to_check)
+        check_init = slv.check()
+
+        check_relative = z3.sat # init & !s & T -> !s' ?
+        cubePrime = z3.substitute(z3.substitute(clauses_to_check, self.primeMap),self.inp_map)
+        s = z3.Solver()
+        s.add(z3.Not(clauses_to_check))
+        s.add(self.init.cube())
+        s.add(cubePrime)  # F[i - 1] and T and Not(badCube) and badCube'
+        check_relative = s.check()
+
+        if check_init == z3.unsat and check_relative == z3.unsat:
+            return 'pass the check'
+        else:
+            return 'not pass'
+
+    def _check_and_reduce(self):
+        for i in range(len(self.clauses)):
+            if self._solve_relative_update(self.clauses[i]) == 'not pass':
+                self.clauses.pop(i)
+                return self._check_and_reduce()
+        Predict_Clauses_After_Filtering = 'case4test/hwmcc_simple/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B_predicted_clauses_after_filtering.cnf'
+        print(f"Dump the predicted clauses after filtering to {Predict_Clauses_After_Filtering}")
+        
+        # prop = z3.Not(self.aagmodel.output) # get the property
+        # slv = z3.Solver()
+        # prev = z3.And([prop]) # the property, also known as the initial state
+        # slv.add(prev)
+
+        # post = prop
+        # # get the !s'
+        # not_p_prime = z3.Not(z3.substitute(z3.substitute(post, self.v2prime), self.vprime2nxt))
+        # slv.add(not_p_prime) # solver: Rk−1 ∧ T ∧ s′ is SAT? 
+        # res = slv.check()
+
+'''
+-----------------------
+Global Used Functions  
+-----------------------
+'''
+def walkFile(self):
+    for root, _, files in os.walk(self):
+        files = natsorted(files)
+        files = [os.path.join(root,f) for f in files]
+    return files
 
 if __name__ == "__main__":
     sigmoid = nn.Sigmoid()
@@ -64,6 +129,8 @@ if __name__ == "__main__":
         # if the literal in original_CTI[i] is not in final_predicted_clauses[i], then remove it
         cls = [literal for literal in original_CTI[i] if literal in final_predicted_clauses[i] or str(int(literal)-1) in final_predicted_clauses[i]]
         final_generate_res.append(cls)
+    
+    
     # write final_generate_res to Predict_Clauses_File
     with open(Predict_Clauses_File,'w') as f:
         # write the first line with basic info
@@ -71,6 +138,17 @@ if __name__ == "__main__":
         for clause in final_generate_res:
             f.write(' '.join(clause))
             f.write('\n')
+
+    # check the final_generate_res with ic3ref -> whether it is fulfill the property
+    case = "nusmv.syncarb5^2.B"
+    aag_name = f"./case4test/hwmcc_simple/{case}/{case}.aag"
+    cnf_name = f"./case4test/hwmcc_simple/{case}/{case}_inv_CTI_predicted.txt"
+    model_name = case
+    m = AAGmodel()
+    m.from_file(aag_name)
+    predicted_clauses = Clauses(fname=cnf_name, num_sv = len(m.svars), num_input = len(m.inputs))
+    predicted_clauses_filter = CNF_Filter(aagmodel = m, clause = predicted_clauses ,name = model_name)
+    predicted_clauses_filter.check_and_reduce()
             
 #TODO: Check the final result, all use them????
 

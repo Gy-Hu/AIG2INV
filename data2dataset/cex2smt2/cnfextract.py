@@ -24,6 +24,20 @@ class ExtractCnf(object):
 
         self.model_name = name
         self.cex_generalization_ground_truth = []
+        
+    def _build_clauses(self, svars, clauses):
+        ret_clauses = []
+        ret_clauses_var_lst = []
+        for cl in clauses:
+            cl_z3 = []
+            for var,sign in cl:
+                lit = svars[var]
+                if sign == -1:
+                    lit = z3.Not(lit)
+                cl_z3.append(lit)
+            ret_clauses_var_lst.append(cl_z3)
+            ret_clauses.append(z3.Not(z3.And(cl_z3)))
+        return ret_clauses, ret_clauses_var_lst
 
     def _build_clauses(self, svars, clauses):
         ret_clauses = []
