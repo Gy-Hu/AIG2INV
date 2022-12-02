@@ -29,20 +29,24 @@ Checker to check if the predicted clauses is satisfiable
 class CNF_Filter(ExtractCnf):
     def __init__(self, aagmodel, clause, name):
        super(CNF_Filter, self).__init__(aagmodel, clause, name)
+       self.init = aagmodel.init
     
-    def _solve_relative_update(self, clauses_to_check):
+    def _solveRelative_upgrade(self, clauses_to_block):
         # sourcery skip: extract-duplicate-method, inline-immediately-returned-variable
+        # not(clauses_to_block) is the counterexample (which is also call s)
+        # self.aagmodel.output is the bad state
+        # prop = safety property which is !bad
         check_init = z3.sat
         slv = z3.Solver()
-        slv.add(self.init.cube()) # init -> !s ?
-        slv.add(clauses_to_check)
+        slv.add(self.init) # init -> !s ?
+        slv.add(z3.Not((clauses_to_block)))
         check_init = slv.check()
 
         check_relative = z3.sat # init & !s & T -> !s' ?
-        cubePrime = z3.substitute(z3.substitute(clauses_to_check, self.primeMap),self.inp_map)
+        cubePrime = z3.substitute(z3.substitute(z3.Not(clauses_to_block), self.v2prime), self.vprime2nxt)
         s = z3.Solver()
-        s.add(z3.Not(clauses_to_check))
-        s.add(self.init.cube())
+        s.add(clauses_to_block)
+        s.add(self.init)
         s.add(cubePrime)  # F[i - 1] and T and Not(badCube) and badCube'
         check_relative = s.check()
 
@@ -51,13 +55,19 @@ class CNF_Filter(ExtractCnf):
         else:
             return 'not pass'
 
-    def _check_and_reduce(self):
-        for i in range(len(self.clauses)):
-            if self._solve_relative_update(self.clauses[i]) == 'not pass':
-                self.clauses.pop(i)
-                return self._check_and_reduce()
+    def check_and_reduce(self):
+        prop = z3.Not(self.aagmodel.output) # prop - safety property
+        pass_clauses = [i for i in range(len(self.clauses)) if self._solveRelative_upgrade(self.clauses[i]) == 'pass the check']
+        Predict_Clauses_Before_Filtering = 'case4test/hwmcc_simple/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B_inv_CTI_predicted.txt'
         Predict_Clauses_After_Filtering = 'case4test/hwmcc_simple/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B_predicted_clauses_after_filtering.cnf'
         print(f"Dump the predicted clauses after filtering to {Predict_Clauses_After_Filtering}")
+        # copy the line in Predict_Clauses_Before_Filtering to Predict_Clauses_After_Filtering according to pass_clauses
+        with open(Predict_Clauses_Before_Filtering, 'r') as f:
+            lines = f.readlines()
+        with open(Predict_Clauses_After_Filtering, 'w') as f:
+            f.write(f'unsat {len(pass_clauses)}' + '\n')
+            for i in pass_clauses:
+                f.write(lines[i+1])
         
         # prop = z3.Not(self.aagmodel.output) # get the property
         # slv = z3.Solver()

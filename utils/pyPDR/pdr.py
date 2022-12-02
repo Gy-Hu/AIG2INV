@@ -2019,7 +2019,7 @@ class PDR:
         s = Solver() #TODO: the input should also map to input'(prime)
         s.add(substitute(substitute(Not(self.post.cube()), self.primeMap),self.inp_map)) #TODO: Check the correctness here
         s.add(self.frames[-1].cube())
-        s.add(self.trans.cube())
+        s.add(self.trans.cube()) # check F[i-1] & T -> P' 
 
         if s.check() == sat: #F[-1] /\ T /\ !P(s') is sat! CTI (cex to induction) found!
             

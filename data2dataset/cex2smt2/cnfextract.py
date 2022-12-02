@@ -135,7 +135,7 @@ class ExtractCnf(object):
         '''
         prop: the property to be checked
         cnfs: the clauses has been added for blocking
-        prop_only: consider the clauses in cnfs ? prev=cnfs + prop : prev= prop
+        prop_only: consider the clauses in cnfs ? prev = (cnfs + prop) : prev= prop
         '''
         # initially, we will remove the props
         # then, maybe we can also remove the additional states
@@ -145,7 +145,7 @@ class ExtractCnf(object):
         prev = z3.And(cnfs+[prop]) # all the added claused (for blocking) + the property
         slv.add(prev)
 
-        post = prop if prop_only else prev
+        post = prop if prop_only else prev # check F[i-1](P) /\ T -> P'?
         not_p_prime = z3.Not(z3.substitute(z3.substitute(post, self.v2prime), self.vprime2nxt))
         slv.add(not_p_prime)
         res = slv.check()
@@ -182,7 +182,7 @@ class ExtractCnf(object):
             is_inductive: check the cex is inductive (fullfil the  `T /\ P /\ not(P_prime)`)
             has_fewer_clauses: the clauses in inv is not used up
         '''
-        prop = z3.Not(self.aagmodel.output)  # not(bad)
+        prop = z3.Not(self.aagmodel.output)
         clause_list = []
         cex_clause_pair_list_prop = []
         cex_clause_pair_list_ind = []
