@@ -36,6 +36,8 @@ class CNF_Filter(ExtractCnf):
         # not(clauses_to_block) is the counterexample (which is also call s)
         # self.aagmodel.output is the bad state
         # prop = safety property which is !bad
+        
+        # init /\ s is SAT?
         check_init = z3.sat
         slv = z3.Solver()
         slv.add(self.init) # init -> !s ?
