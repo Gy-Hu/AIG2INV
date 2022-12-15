@@ -8,8 +8,12 @@ from tqdm import tqdm
 sys.path.append(os.path.join(os.getcwd(), 'train_neurograph'))
 # append './data2dataset/cex2smt2/' to the path
 sys.path.append(os.path.join(os.getcwd(), 'data2dataset/cex2smt2'))
+from data2dataset.cex2smt2.tCube import tCube
 from train_neurograph.train import GraphDataset
+# for old(small) cases
 from train_neurograph.neurograph_old import NeuroInductiveGeneralization
+# for new(complicated/large) cases
+from train_neurograph.neurograph import NeuroInductiveGeneralization
 from data2dataset.cex2smt2.clause import Clauses
 from data2dataset.cex2smt2.aigmodel import AAGmodel
 from data2dataset.cex2smt2.aig2graph import AigGraph
@@ -29,7 +33,8 @@ Checker to check if the predicted clauses is satisfiable
 class CNF_Filter(ExtractCnf):
     def __init__(self, aagmodel, clause, name):
        super(CNF_Filter, self).__init__(aagmodel, clause, name)
-       self.init = aagmodel.init
+       # self.init = aagmodel.init
+       self.perform_ig = True
     
     def _solveRelative_upgrade(self, clauses_to_block):
         # sourcery skip: extract-duplicate-method, inline-immediately-returned-variable
@@ -52,14 +57,96 @@ class CNF_Filter(ExtractCnf):
         s.add(cubePrime)  # F[i - 1] and T and Not(badCube) and badCube'
         check_relative = s.check()
 
-        if check_init == z3.unsat and check_relative == z3.unsat:
+        if check_init == z3.unsat and check_relative == z3.unsat and self.perform_ig == False:
+            return 'pass the check'
+        if check_init == z3.unsat and check_relative == z3.unsat and self.perform_ig == True:
+            self._inductive_generalization(clauses_to_block)
             return 'pass the check'
         else:
             return 'not pass'
 
+    def _inductive_generalization(self, clauses_to_block):
+        # performs unsat core generalization
+        # pass
+
+        # perform mic generalization
+        pass
+        # tcube2generalize = tCube(0)
+        # tcube2generalize.cubeLiterals = clauses_to_block
+        # self._MIC(tcube2generalize)
+
+    def _unsatcore_reduce(self, q:  tCube, trans, frame):
+        # (( not(q) /\ F /\ T ) \/ init' ) /\ q'   is unsat
+        slv = z3.Solver()
+        slv.set(unsat_core=True)
+
+        l = z3.Or( z3.And(z3.Not(q.cube()), (z3.substitute(z3.substitute(frame, self.v2prime), self.vprime2nxt))), (z3.substitute(z3.substitute(self.init, self.v2prime), self.vprime2nxt)))
+        slv.add(l)
+
+        plist = []
+        for idx, literal in enumerate(q.cubeLiterals):
+            p = 'p'+str(idx)
+            slv.assert_and_track(z3.substitute(z3.substitute(literal, self.primeMap),self.inp_map), p)
+            plist.append(p)
+        res = slv.check()
+        if res == z3.sat:
+            model = slv.model()
+            print(model.eval(self.initprime))
+            assert False
+        assert (res == z3.unsat)
+        core = slv.unsat_core()
+        for idx, p in enumerate(plist):
+            if z3.Bool(p) not in core:
+                q.cubeLiterals[idx] = True
+        return q
+    
+    def _MIC(self, q: tCube):
+        sz = q.true_size()
+        self._unsatcore_reduce(q, trans=self.trans.cube(), frame=self.frames[q.t-1].cube())
+        print('unsatcore', sz, ' --> ', q.true_size())
+        q.remove_true()
+
+        for i in range(len(q.cubeLiterals)):
+            if q.cubeLiterals[i] is True: #This true does not indicate the literals are true
+                continue
+            q1 = q.delete(i)
+            print(f'MIC try idx:{i}')
+            if self._down(q1): 
+                q = q1
+        q.remove_true()
+        print (q)
+        return q
+
+    def _down(self, q: tCube):
+        while True:
+            print(q.true_size(), end=',')
+            s = z3.Solver()
+            s.push()
+            #s.add(And(self.frames[0].cube(), Not(q.cube())))
+            s.add(self.frames[0].cube())
+            s.add(q.cube())
+            #if unsat == s.check():
+            if z3.sat == s.check():
+                print('F')
+                return False
+            s.pop()
+            s.push()
+            s.add(z3.And(self.frames[q.t-1].cube(), z3.Not(q.cube()), self.trans.cube(), #TODO: Check here is t-1 or t
+                      z3.substitute(z3.substitute(q.cube(), self.primeMap),self.inp_map)))  # Fi-1 ! and not(q) and T and q'
+            if z3.unsat == s.check():
+                print('T')
+                return True
+            
+            m = s.model()
+            has_removed = q.join(m)
+            s.pop()
+            assert (has_removed)
+
     def check_and_reduce(self):
         prop = z3.Not(self.aagmodel.output) # prop - safety property
         pass_clauses = [i for i in range(len(self.clauses)) if self._solveRelative_upgrade(self.clauses[i]) == 'pass the check']
+        # process the inductive generalization of the passed clauses -> basic generalization (unsat core) and mic
+        # generalized_clauses = [i for i in range(len(pass_clauses)) if self._inductive_generalization(pass_clauses[i]) == 'generalized successfully']
         Predict_Clauses_Before_Filtering = 'case4test/hwmcc_simple/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B_inv_CTI_predicted.txt'
         Predict_Clauses_After_Filtering = 'case4test/hwmcc_simple/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B_predicted_clauses_after_filtering.cnf'
         print(f"Dump the predicted clauses after filtering to {Predict_Clauses_After_Filtering}")
@@ -101,7 +188,10 @@ if __name__ == "__main__":
 
     # load pytorch model
     net = NeuroInductiveGeneralization()
-    model = torch.load('./neurograph_model/neuropdr_2022-11-24_11:30:11_last.pth.tar',map_location=device)
+    # for small case
+    # model = torch.load('./neurograph_model/neuropdr_2022-11-24_11:30:11_last.pth.tar',map_location=device)
+    # for large case
+    model = torch.load('./neurograph_model/neuropdr_2022-11-28_15:23:41_last.pth.tar',map_location=device)
     net.load_state_dict(model['state_dict'])
     net = net.to(device)
     net.eval()
@@ -113,7 +203,7 @@ if __name__ == "__main__":
         outputs = net(data)
         torch_select = torch.Tensor(q_index).to(device).int()
         outputs = sigmoid(torch.index_select(outputs, 0, torch_select))
-        preds = torch.where(outputs > 0.8, torch.ones(outputs.shape).to(device), torch.zeros(outputs.shape).to(device))
+        preds = torch.where(outputs > 0.4, torch.ones(outputs.shape).to(device), torch.zeros(outputs.shape).to(device))
         # choose the state varible based on the preds, and select the 
         # element based on torch_select
         svar_lst = [(data[1][data[0]['n_nodes']:])[i] for i in torch_select.tolist()]
@@ -142,7 +232,9 @@ if __name__ == "__main__":
         cls = [literal for literal in original_CTI[i] if literal in final_predicted_clauses[i] or str(int(literal)-1) in final_predicted_clauses[i]]
         final_generate_res.append(cls)
     
-    
+    # remove the duplicate clause in final_generate_res
+    final_generate_res = [list(t) for t in set(tuple(element) for element in final_generate_res)]
+
     # write final_generate_res to Predict_Clauses_File
     with open(Predict_Clauses_File,'w') as f:
         # write the first line with basic info

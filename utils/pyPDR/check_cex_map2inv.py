@@ -74,8 +74,8 @@ if __name__ == '__main__':
     file_path_prefix = "/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/"
     #file_suffix = "cmu.dme1.B"
     #file_suffix = "eijk.S208o.S"
-    file_suffix = "nusmv.syncarb10^2.B"
-    #file_suffix = "nusmv.reactor^4.C"
+    #file_suffix = "nusmv.syncarb10^2.B"
+    file_suffix = "nusmv.reactor^4.C"
     inv_cnf = file_path_prefix + file_suffix + "/inv.cnf"
     with open(inv_cnf, 'r') as f:
         lines = f.readlines()
@@ -89,7 +89,9 @@ if __name__ == '__main__':
 
     #cex_file_path = "./cex_before_generalization_without_unsat.txt"
     #cex_file_path = "./nusmv.syncarb10^2.B_complete_CTI.txt"
-    cex_file_path = f"./{file_suffix}_complete_CTI.txt"
+    #cex_file_path = f"./{file_suffix}_complete_CTI.txt"
+    #cex_file_path = f"./{file_suffix}_inv_CTI_no_comment.txt"
+    cex_file_path = f"./{file_suffix}_inv_CTI_comment_second.txt"
     with open(cex_file_path, 'r') as f:
         lines = f.readlines()
         f.close()

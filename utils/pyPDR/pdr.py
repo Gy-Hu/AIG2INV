@@ -1433,7 +1433,7 @@ class PDR:
         slv = Solver()
         slv.set(unsat_core=True)
 
-        l = Or( And(Not(q.cube()), trans, frame), self.initprime)
+        l = Or(And(Not(q.cube()), trans, frame), self.initprime)
         slv.add(l)
 
         plist = []

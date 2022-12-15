@@ -3,9 +3,12 @@ from numpy import var
 import z3
 import pandas as pd
 import os
+import ternary_sim
+from tCube import tCube
 
 class ExtractCnf(object):
     def __init__(self, aagmodel, clause, name):
+        
         # build clauses
         self.aagmodel = aagmodel
         self.clause_unexpanded = clause.clauses
@@ -13,17 +16,25 @@ class ExtractCnf(object):
 
         assert len(aagmodel.inputs) == len(aagmodel.primed_inputs)
         assert len(aagmodel.svars) == len(aagmodel.primed_svars)
+        # input to input', var to var'
         self.v2prime = dict(list(zip(aagmodel.inputs, aagmodel.primed_inputs )) + list(zip(aagmodel.svars, aagmodel.primed_svars)))
         # latch2next
         self.vprime2nxt = {self.v2prime[v]:expr for v, expr in aagmodel.latch2next.items()}
-        
+        # to list
         self.v2prime = list(self.v2prime.items())
         self.vprime2nxt = list(self.vprime2nxt.items())
-        
+
+        self.init = aagmodel.init
         self.lMap = {str(v):v for v in aagmodel.svars}
+        self.Inp_SVars_Map = {str(l): l for l in aagmodel.inputs + aagmodel.svars + aagmodel.primed_inputs + aagmodel.primed_svars}
 
         self.model_name = name
         self.cex_generalization_ground_truth = []
+
+        # initialize the ternary simulator
+        self.ternary_simulator = ternary_sim.AIGBuffer()
+        for _, updatefun in self.vprime2nxt:
+            self.ternary_simulator.register_expr(updatefun)
         
     def _build_clauses(self, svars, clauses):
         ret_clauses = []
@@ -152,15 +163,109 @@ class ExtractCnf(object):
         if res == z3.unsat:
             return None, None, None
         assert res == z3.sat
+        # res is SAT! counterexample found, now we can generalize it use unsat core and ternary simulation
         model = slv.model()
+        model_after_generalization = self._generalize_predecessor(model, z3.Not(post))
+        # make model_after_generalization back to z3 model, this is a naive way to do it
+        # model = [literals for literals in model if str(model[literals]) in str(model_after_generalization.cubeLiterals)]
+        # assert len(model) != 0 and len(model) <= len(model_after_generalization.cubeLiterals), "BUG: the model is empty after generalization or failed to generalize the model with the naive way"
+        
+        # make a new z3 ModelRef that copy the model_after_generalization
+        if True:
+            slv = z3.Solver()
+            for literals in model_after_generalization.cubeLiterals: slv.add(literals)
+            res = slv.check() ; model = slv.model()
+            assert len(model)!=0, "BUG: the model is empty after generalization"
+            assert len(model)==len(model_after_generalization.cubeLiterals), "BUG: the model failed to generalize"
+
         filtered_model, model_list, model_var_list = self._filter_model(model)
         assert len(model_var_list)!=0, "BUG: the model is empty after removing input and prime variable (includes input primes)"
         return filtered_model, model_list, model_var_list # filtered model is a z3 expression, model_list is [(var_index, sign)], var_lst is [vx == T, vx == F...]
 
+    def _extract(self,literaleq):
+        # we require the input looks like v==val
+        children = literaleq.children()
+        assert(len(children) == 2)
+        if str(children[0]) in {'True', 'False'}:
+            v = children[1]
+            val = children[0]
+        elif str(children[1]) in {'True', 'False'}:
+            v = children[0]
+            val = children[1]
+        else:
+            assert(False)
+        return v, val
+
+    def _generalize_predecessor(self, prev_cube, next_cube_expr):    #smt2_gen_GP is a switch to trun on/off .smt file generation
+        '''
+        :param prev_cube: sat model of CTI (v1 == xx , v2 == xx , v3 == xxx ...)
+        :param next_cube_expr: bad state (or CTI), like !P ( ? /\ ? /\ ? /\ ? .....)
+        :return:
+        '''
+        tcube_cp = tCube(0)
+        tcube_cp.addModel(self.Inp_SVars_Map, prev_cube, remove_input=False)
+
+        print("original size of CTI (including input variable): ", len(tcube_cp.cubeLiterals))
+        print("Begin to generalize predessor")
+
+        #replace the state as the next state (by trans) -> !P (s')
+        nextcube = z3.substitute(z3.substitute(next_cube_expr,  self.v2prime),self.vprime2nxt)
+
+        s = z3.Solver()
+        for index, literals in enumerate(tcube_cp.cubeLiterals):
+            s.assert_and_track(literals, f'p{str(index)}')
+        # prof.Zhang's suggestion
+        #s.add(prevF)
+        s.add(z3.Not(nextcube))
+        assert(s.check() == z3.unsat)
+        core = s.unsat_core()
+        core = [str(core[i]) for i in range(len(core))]
+
+        for idx in range(len(tcube_cp.cubeLiterals)):
+            if f'p{str(idx)}' not in core:
+                tcube_cp.cubeLiterals[idx] = True
+
+        tcube_cp.remove_true()
+        size_after_unsat_core = len(tcube_cp.cubeLiterals)
+        print("size of CTI after removing according to unsat core: ", size_after_unsat_core)
+
+        # this is the beginning of ternary simulation-based variable reduction
+        simulator = self.ternary_simulator.clone() # I just don't want to mess up between two ternary simulations for different outputs
+        simulator.register_expr(nextcube)
+        simulator.set_initial_var_assignment(dict([self._extract(c) for c in tcube_cp.cubeLiterals]))
+
+        out = simulator.get_val(nextcube)
+        if out == ternary_sim._X:  # this is possible because we already remove once according to the unsat core
+            return tcube_cp
+        assert out == ternary_sim._TRUE
+        for i in range(len(tcube_cp.cubeLiterals)):
+            v, val = self._extract(tcube_cp.cubeLiterals[i])
+            simulator.set_Li(v, ternary_sim._X)
+            out = simulator.get_val(nextcube)
+            if out == ternary_sim._X:
+                simulator.set_Li(v, ternary_sim.encode(val))  # set to its original value
+                if simulator.get_val(nextcube) != ternary_sim._TRUE:
+                    # This is just to help print debug info in case I made mistakes in coding
+                    simulator._check_consistency()
+                # after you recover the original input value, the output node should be true again
+                assert simulator.get_val(nextcube) == ternary_sim._TRUE
+            else: # the literal is removable
+                # we should never get _FALSE
+                if simulator.get_val(nextcube) != ternary_sim._TRUE:
+                    # This is just to help print debug info in case I made mistakes in coding
+                    simulator._check_consistency()
+                assert simulator.get_val(nextcube) == ternary_sim._TRUE
+                tcube_cp.cubeLiterals[i] = True
+        tcube_cp.remove_true()
+        size_after_ternary_sim = len(tcube_cp.cubeLiterals)
+        print("size of CTI after removing according to ternary simulation: ", size_after_ternary_sim)
+        return tcube_cp
+
+
     def _filter_model(self, model): # keep only current state variables
         no_prime_or_input = [l for l in model if str(l)[0] != 'i' and not str(l).endswith('_prime')]
         # assert the length of no_prime_or_input is the same as the number of state variables in aagmodel.svars
-        assert len(no_prime_or_input) == len(self.aagmodel.svars), "Bug occurs because length of model is not the same as the number of latch state variables"
+        assert len(no_prime_or_input) <= len(self.aagmodel.svars), "Bug occurs because length of model is not the same as the number of latch state variables"
         cex_expr = z3.And([z3.simplify(self.lMap[str(l)] == model[l]) for l in no_prime_or_input])
         cex_list = [ (self.aagmodel.svars.index(self.lMap[str(l)]), 1 if str(model[l]) == 'True' else -1) for l in no_prime_or_input ]
         var_list = [(self.lMap[str(l)] == model[l]) for l in no_prime_or_input]
@@ -202,7 +307,9 @@ class ExtractCnf(object):
 
         '''
         Everytime the clauses in clause_list and safety property are considered to generate the counterexample
-        '''
+        which is used to check c -> s (c & !s is unsat) 
+        but this is not necessary!
+
         cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=False)
         while cex is not None:
             clause, clause_m = self._find_clause_to_block(cex,var_lst,generate_smt2=True)
@@ -210,6 +317,7 @@ class ExtractCnf(object):
             cex_prime_expr = self._make_cex_prime(cex)
             cex_clause_pair_list_ind.append((cex_m, clause_m, cex_prime_expr)) # model generated with using inv.cnf
             cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=False)
+        '''
 
         is_inductive = self._check_inductive(clause_list)
         has_fewer_clauses = len(clause_list) < len(self.clauses)
