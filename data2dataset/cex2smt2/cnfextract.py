@@ -142,7 +142,7 @@ class ExtractCnf(object):
     def _make_cex_prime(self, cex):
         return z3.substitute(z3.substitute(cex, self.v2prime), self.vprime2nxt)
 
-    def _solve_relative(self, prop, cnfs, prop_only): # -> a dict of only the curr_vars
+    def _solve_relative(self, prop, cnfs, prop_only, generalize=False): # -> a dict of only the curr_vars
         '''
         prop: the property to be checked
         cnfs: the clauses has been added for blocking
@@ -165,14 +165,15 @@ class ExtractCnf(object):
         assert res == z3.sat
         # res is SAT! counterexample found, now we can generalize it use unsat core and ternary simulation
         model = slv.model()
-        model_after_generalization = self._generalize_predecessor(model, z3.Not(post))
+        
         # make model_after_generalization back to z3 model, this is a naive way to do it
         # model = [literals for literals in model if str(model[literals]) in str(model_after_generalization.cubeLiterals)]
         # assert len(model) != 0 and len(model) <= len(model_after_generalization.cubeLiterals), "BUG: the model is empty after generalization or failed to generalize the model with the naive way"
         
         # make a new z3 ModelRef that copy the model_after_generalization
-        if True:
-            slv = z3.Solver()
+        if generalize: #if generalize is True, we will use the predecssor generalization method
+            model_after_generalization = self._generalize_predecessor(model, z3.Not(post))
+            slv = z3.Solver() # initialize a new solver for model conversion
             for literals in model_after_generalization.cubeLiterals: slv.add(literals)
             res = slv.check() ; model = slv.model()
             assert len(model)!=0, "BUG: the model is empty after generalization"
@@ -303,7 +304,7 @@ class ExtractCnf(object):
             clause_list = list(set(clause_list))
             cex_prime_expr = self._make_cex_prime(cex) # find the cex expression in z3
             cex_clause_pair_list_prop.append((cex_m, clause_m, cex_prime_expr)) # model generated without using inv.cnf
-            cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=True)
+            cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=True, generalize=False)
 
         '''
         Everytime the clauses in clause_list and safety property are considered to generate the counterexample
