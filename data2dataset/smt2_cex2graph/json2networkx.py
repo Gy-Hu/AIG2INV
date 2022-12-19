@@ -96,13 +96,13 @@ def json2graph_pickle(filename,ground_truth_path):
 # and convert it to a networkx graph
 # only load .json file
 
-#json_file_path = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B"
-json_file_path = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C"
+json_file_path = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B"
+#json_file_path = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C"
 json_file_list = os.listdir(json_file_path)
 json_file_list = [x for x in json_file_list if x.endswith(".json")]
 
-#ground_truth_file_path = "../../dataset/bad_cube_cex2graph/ground_truth_table/nusmv.syncarb5^2.B"
-ground_truth_file_path = "../../dataset/bad_cube_cex2graph/ground_truth_table/nusmv.reactor^4.C"
+ground_truth_file_path = "../../dataset/bad_cube_cex2graph/ground_truth_table/nusmv.syncarb5^2.B"
+#ground_truth_file_path = "../../dataset/bad_cube_cex2graph/ground_truth_table/nusmv.reactor^4.C"
 ground_truth_file_list = os.listdir(ground_truth_file_path)
 ground_truth_file_list = [x for x in ground_truth_file_list if x.endswith(".csv")]
 

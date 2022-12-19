@@ -13,7 +13,10 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from config import parser
-from neurograph import NeuroInductiveGeneralization
+# for simple graph (exclude false and true node)
+from neurograph_old import NeuroInductiveGeneralization
+# for complex graph (include false and true node)
+# from neurograph import NeuroInductiveGeneralization
 import pandas as pd
 from pathlib import Path
 from sklearn.model_selection import train_test_split
@@ -105,7 +108,7 @@ class GraphDataset(Dataset):
         file_name = self.samples[idx][4]
         lat_var_index_in_graph = [i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('v')]
         inp_var_index_in_graph = [i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('i')]
-        assert lat_var_index_in_graph[0] > inp_var_index_in_graph[0], "BUG: the sequence of node in graph_info is not correct, check the collect.py, should be node->input->latch"
+        if (inp_var_index_in_graph != []): assert (lat_var_index_in_graph[0] > inp_var_index_in_graph[0]) , "BUG: the sequence of node in graph_info is not correct, check the collect.py, should be node->input->latch"
         number_of_node_except_svars = sum_true([graph_info[i]['data']['type']=='node' or graph_info[i]['data']['application'].startswith('f') or graph_info[i]['data']['application'].startswith('t') for i in range(len(graph_info))])
         # assert the lat_var_index_in_graph is sorted
         assert lat_var_index_in_graph == natsorted(lat_var_index_in_graph), "BUG: var_index_in_graph is not sorted, check the json2graph function"
@@ -138,8 +141,9 @@ class GraphDataset(Dataset):
         # assert the number of input variable + number of latch variable + number of node is equal to the number of node in the graph_info
         assert prob_main_info['n_inp_vars'] + prob_main_info['n_lat_vars'] + prob_main_info['n_nodes'] == prob_main_info['n_vars'], "BUG: the number of input variable + number of latch variable + number of node is not equal to the number of node in the graph_info"
         # assert the number of input variable and latch variable is not 0
-        assert prob_main_info['n_inp_vars'] != 0 and prob_main_info['n_lat_vars'] != 0, "BUG: n_inp_vars and n_lat_vars is 0, check the data"
-        assert prob_main_info['n_inp_vars'] != 0 or prob_main_info['n_lat_vars'] != 0, "BUG: n_inp_vars or n_lat_vars is 0, check the data"
+        assert prob_main_info['n_lat_vars']!=0, "BUG: n_lat_vars is 0, check the data"
+        #assert prob_main_info['n_inp_vars'] != 0 and prob_main_info['n_lat_vars'] != 0, "BUG: n_inp_vars or n_lat_vars is 0, check the data"
+        assert prob_main_info['n_inp_vars'] != 0 or prob_main_info['n_lat_vars'] != 0, "BUG: n_inp_vars and n_lat_vars is 0, check the data"
         assert(len(prob_main_info['label']) == len(prob_main_info['refined_output']))
         # assert sum of prob_main_info['label'] > 1
         assert(sum(prob_main_info['label']) >= 1)
@@ -148,7 +152,8 @@ class GraphDataset(Dataset):
     def __init_dataset(self):
         if self.mode == 'debug':
             train_lst = walkFile(self.data_root)
-            for train_file in train_lst[:278]: #big cases
+            #for train_file in train_lst[:278]: #big cases
+            for train_file in train_lst[278:]:
                 with open(train_file, 'rb') as f:
                     self.samples.append(pickle.load(f))
         elif self.mode == 'train':
@@ -206,7 +211,7 @@ if __name__ == "__main__":
         torch.cuda.set_device(args.local_rank)
         dist.init_process_group(backend='nccl') 
 
-    all_graph = GraphDataset(args.train_file,args.mode)
+    all_graph = GraphDataset(args.train_file,args.mode,None,device)
 
     
     if args.mode == 'train' or args.mode == 'debug':
@@ -271,11 +276,12 @@ if __name__ == "__main__":
         args.log_dir, args.task_name + '_detail.log'), 'a+')
 
     #loss_fn = nn.BCELoss(reduction='sum')
-    loss_fn = nn.BCEWithLogitsLoss(reduction='sum', pos_weight=torch.tensor([8]).to(device))
-    #loss_fn = nn.BCEWithLogitsLoss(reduction='sum')
+    #loss_fn = nn.BCEWithLogitsLoss(reduction='sum', pos_weight=torch.tensor([8]).to(device))
+    loss_fn = nn.BCEWithLogitsLoss(reduction='sum')
     #loss_fn = BCEFocalLoss()
     #loss_fn = WeightedBCELosswithLogits()
-    optim = optim.Adam(net.parameters(), lr=0.00001, weight_decay=1e-10)
+    #optim = optim.Adam(net.parameters(), lr=0.00001, weight_decay=1e-10)
+    optim = optim.Adam(net.parameters(), lr=0.01, weight_decay=1e-10)
     #scheduler = ReduceLROnPlateau(optim, 'min', factor=0.0001, patience=10, verbose=True)
     sigmoid = nn.Sigmoid()
 

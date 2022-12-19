@@ -35,7 +35,9 @@ class CNF_Filter(ExtractCnf):
     def __init__(self, aagmodel, clause, name):
        super(CNF_Filter, self).__init__(aagmodel, clause, name)
        # self.init = aagmodel.init
-       self.perform_ig = True
+       
+       # adjust to perform inductive generalization or not
+       self.perform_ig = False
     
     def _solveRelative_upgrade(self, clauses_to_block):
         # sourcery skip: extract-duplicate-method, inline-immediately-returned-variable

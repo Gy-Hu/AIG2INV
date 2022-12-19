@@ -296,7 +296,7 @@ class ExtractCnf(object):
         '''
         Everytime only the property is considered to generate the counterexample
         '''
-        cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=True)
+        cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=True, generalize=True)
         while cex is not None:
             clause, clause_m = self._find_clause_to_block(cex,var_lst,generate_smt2=True) # find the clause to block the cex
             clause_list.append(clause) # add the clause (that has been added to solver for blocking) to the list
@@ -304,7 +304,7 @@ class ExtractCnf(object):
             clause_list = list(set(clause_list))
             cex_prime_expr = self._make_cex_prime(cex) # find the cex expression in z3
             cex_clause_pair_list_prop.append((cex_m, clause_m, cex_prime_expr)) # model generated without using inv.cnf
-            cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=True, generalize=False)
+            cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=True, generalize=True)
 
         '''
         Everytime the clauses in clause_list and safety property are considered to generate the counterexample
