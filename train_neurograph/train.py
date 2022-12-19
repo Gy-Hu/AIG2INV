@@ -122,9 +122,9 @@ class GraphDataset(Dataset):
             'n_true_constant' : len([i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('t')]),
             # count the number of 'node' in the graph_info (node exclude input, input_prime, variable)
             'n_nodes' : number_of_node_except_svars,
-            #'unpack' : (torch.from_numpy(adj_matrix.astype(np.float32).values)).to(device),
+            'unpack' : (torch.from_numpy(adj_matrix.astype(np.float32).values)).to(device),
             # convert the adj_matrix to sparse tensor
-            'unpack' : torch.sparse_coo_tensor(torch.LongTensor(np.vstack((adj_matrix.astype(np.float32).values.nonzero()))),torch.FloatTensor(adj_matrix.astype(np.float32).values[adj_matrix.astype(np.float32).values.nonzero()]),torch.Size(adj_matrix.astype(np.float32).values.shape)).to(self.device),
+            # 'unpack' : torch.sparse_coo_tensor(torch.LongTensor(np.vstack((adj_matrix.astype(np.float32).values.nonzero()))),torch.FloatTensor(adj_matrix.astype(np.float32).values[adj_matrix.astype(np.float32).values.nonzero()]),torch.Size(adj_matrix.astype(np.float32).values.shape)).to(self.device),
             'label' : self.__df_to_np(ground_truth_label_row,graph_info),
             # find the last element in the graph_info that is 'node'
             'refined_output' : list(map(lambda x: x-number_of_node_except_svars,lat_var_index_in_graph)),
@@ -277,11 +277,11 @@ if __name__ == "__main__":
 
     #loss_fn = nn.BCELoss(reduction='sum')
     #loss_fn = nn.BCEWithLogitsLoss(reduction='sum', pos_weight=torch.tensor([8]).to(device))
-    loss_fn = nn.BCEWithLogitsLoss(reduction='sum')
+    loss_fn = nn.BCEWithLogitsLoss(reduction='sum', pos_weight=torch.tensor([2]).to(device))
     #loss_fn = BCEFocalLoss()
     #loss_fn = WeightedBCELosswithLogits()
     #optim = optim.Adam(net.parameters(), lr=0.00001, weight_decay=1e-10)
-    optim = optim.Adam(net.parameters(), lr=0.01, weight_decay=1e-10)
+    optim = optim.Adam(net.parameters(), lr=0.0001, weight_decay=1e-10)
     #scheduler = ReduceLROnPlateau(optim, 'min', factor=0.0001, patience=10, verbose=True)
     sigmoid = nn.Sigmoid()
 
