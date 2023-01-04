@@ -91,7 +91,7 @@ if __name__ == '__main__':
     #cex_file_path = "./nusmv.syncarb10^2.B_complete_CTI.txt"
     #cex_file_path = f"./{file_suffix}_complete_CTI.txt"
     #cex_file_path = f"./{file_suffix}_inv_CTI_no_comment.txt"
-    cex_file_path = f"./{file_suffix}_inv_CTI_comment_second.txt"
+    cex_file_path = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/cti_for_inv_map_checking/{file_suffix}/{file_suffix}_inv_CTI.txt"
     with open(cex_file_path, 'r') as f:
         lines = f.readlines()
         f.close()

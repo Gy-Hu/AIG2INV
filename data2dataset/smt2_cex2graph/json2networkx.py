@@ -11,6 +11,21 @@ def json2graph_pickle(filename,ground_truth_path):
     with open(filename) as f:
         json_data = json.loads(f.read())
 
+    # since we have already make constant boolean to "constant_true" or "constant_false", we make a assertion here
+    assert all(
+        elem['data']['application'] not in ['true', 'false']
+        for elem in json_data
+        if elem['data']['type'] == 'variable'
+    ), 'Constant boolean value should be changed to "constant_true" or "constant_false"! Which should be ranked before input variable and latch variable!'
+
+    # change the node in json_data if it is a constant value like true, false -> can be done as double check
+    '''
+    for elem in json_data:
+        if elem['data']['type'] == 'variable' and elem['data']['application'] in ['true', 'false']:
+            # append 'constant_' to the name of the constant value
+            elem['data']['application'] = 'constant_' + elem['data']['application']
+    '''
+
     # rank json_data by 'type' and 'id', node - input_var - variable -> sequence like this
     json_data = sorted(json_data, key=lambda x: (x['data']['type'], x['data']['application']))
 
@@ -39,22 +54,22 @@ def json2graph_pickle(filename,ground_truth_path):
     # )
 
     # Print the graph by matplotlib
-    pos = nx.random_layout(G)
-    nx.draw_networkx_nodes(G, pos, node_color = 'r', node_size = 100, alpha = 1)
-    ax = plt.gca()
-    for e in G.edges:
-        ax.annotate("",
-                    xy=pos[e[0]], xycoords='data',
-                    xytext=pos[e[1]], textcoords='data',
-                    arrowprops=dict(arrowstyle="->", color="0.5",
-                                    shrinkA=5, shrinkB=5,
-                                    patchA=None, patchB=None,
-                                    connectionstyle="arc3,rad=rrr".replace('rrr',str(0.3*e[2])
-                                    ),
-                                    ),
-                    )
-    plt.axis('off')
-    plt.show()
+    # pos = nx.random_layout(G)
+    # nx.draw_networkx_nodes(G, pos, node_color = 'r', node_size = 100, alpha = 1)
+    # ax = plt.gca()
+    # for e in G.edges:
+    #     ax.annotate("",
+    #                 xy=pos[e[0]], xycoords='data',
+    #                 xytext=pos[e[1]], textcoords='data',
+    #                 arrowprops=dict(arrowstyle="->", color="0.5",
+    #                                 shrinkA=5, shrinkB=5,
+    #                                 patchA=None, patchB=None,
+    #                                 connectionstyle="arc3,rad=rrr".replace('rrr',str(0.3*e[2])
+    #                                 ),
+    #                                 ),
+    #                 )
+    # plt.axis('off')
+    # plt.show()
 
     # Convert graph to numpy matrix
     A=np.array(nx.to_numpy_matrix(G))
@@ -96,13 +111,13 @@ def json2graph_pickle(filename,ground_truth_path):
 # and convert it to a networkx graph
 # only load .json file
 
-json_file_path = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B"
-#json_file_path = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C"
+#json_file_path = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B"
+json_file_path = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C"
 json_file_list = os.listdir(json_file_path)
 json_file_list = [x for x in json_file_list if x.endswith(".json")]
 
-ground_truth_file_path = "../../dataset/bad_cube_cex2graph/ground_truth_table/nusmv.syncarb5^2.B"
-#ground_truth_file_path = "../../dataset/bad_cube_cex2graph/ground_truth_table/nusmv.reactor^4.C"
+#ground_truth_file_path = "../../dataset/bad_cube_cex2graph/ground_truth_table/nusmv.syncarb5^2.B"
+ground_truth_file_path = "../../dataset/bad_cube_cex2graph/ground_truth_table/nusmv.reactor^4.C"
 ground_truth_file_list = os.listdir(ground_truth_file_path)
 ground_truth_file_list = [x for x in ground_truth_file_list if x.endswith(".csv")]
 

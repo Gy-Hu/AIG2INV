@@ -114,8 +114,8 @@ int main(int argc, char ** argv) {
     //Z3_ast_vector b = Z3_parse_smtlib2_file(ctx, "nusmv.syncarb5^2.B_10.smt2", 0, 0, 0, 0, 0, 0);
 
     //travsersal the smt2 file in "../../dataset/IG2graph/generalize_IG_no_enumerate/" and store file name to a vector
-    //const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C";
-    const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
+    const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C";
+    //const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
     vector<string> filenames;
     GetFileNames(filePath,filenames);
 
@@ -204,7 +204,15 @@ int main(int argc, char ** argv) {
                     flag = true;
                 }
             }
-            json_node["data"]["application"] = it->first.decl().name().str();
+            // if the decl().name().str() is false or true, it is a boolean variable, add "constant_" to the name
+            // this is for keep the sequence of the graph, like node -> constant boolean -> input -> latch
+            if(it->first.decl().name().str() == "false" || it->first.decl().name().str() == "true")
+            {
+                json_node["data"]["application"] = "constant_" + it->first.decl().name().str();
+            }
+            else{
+                json_node["data"]["application"] = it->first.decl().name().str();
+            }
             json_node["data"]["id"] = it->second;
 
             if(!flag){ //if this node is a state variable

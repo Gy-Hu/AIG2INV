@@ -6,7 +6,7 @@ from zmq import device
 # for dpp
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 from tqdm import tqdm
 import sys
 import torch
@@ -14,9 +14,10 @@ import torch.nn as nn
 import torch.optim as optim
 from config import parser
 # for simple graph (exclude false and true node)
-from neurograph_old import NeuroInductiveGeneralization
+# from neurograph_old import NeuroInductiveGeneralization
+
 # for complex graph (include false and true node)
-# from neurograph import NeuroInductiveGeneralization
+from neurograph import NeuroInductiveGeneralization
 import pandas as pd
 from pathlib import Path
 from sklearn.model_selection import train_test_split
@@ -103,13 +104,25 @@ class GraphDataset(Dataset):
         graph_info = self.samples[idx][1]
         # transpose matrix to the adj_matrix
         # only keep the top n_nodes rows of the adj_matrix
-        adj_matrix = ((self.samples[idx][2].T).head(sum_true([graph_info[i]['data']['type']=='node' or graph_info[i]['data']['application'].startswith('f') or graph_info[i]['data']['application'].startswith('t') for i in range(len(graph_info))])))
+        adj_matrix = ((self.samples[idx][2].T).head(sum_true([graph_info[i]['data']['type']=='node' or graph_info[i]['data']['application'].startswith('constant_f') or graph_info[i]['data']['application'].startswith('constant_t') for i in range(len(graph_info))])))
         ground_truth_label_row = self.samples[idx][3]
         file_name = self.samples[idx][4]
         lat_var_index_in_graph = [i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('v')]
         inp_var_index_in_graph = [i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('i')]
-        if (inp_var_index_in_graph != []): assert (lat_var_index_in_graph[0] > inp_var_index_in_graph[0]) , "BUG: the sequence of node in graph_info is not correct, check the collect.py, should be node->input->latch"
-        number_of_node_except_svars = sum_true([graph_info[i]['data']['type']=='node' or graph_info[i]['data']['application'].startswith('f') or graph_info[i]['data']['application'].startswith('t') for i in range(len(graph_info))])
+        constant_var_index_in_graph = [i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('c')]
+        # assert the sequence of node in graph_info is correct, 
+        # which is node(and,not..)->constant(false,true)->input(i2,i4..)->latch(v2,v4..)
+        # this helps to achieve the correct refined_output (index list of the latch)
+        if inp_var_index_in_graph: 
+            if not constant_var_index_in_graph: # if there is no constant var, normal case
+                assert (lat_var_index_in_graph[0] > inp_var_index_in_graph[0]) , "BUG: the sequence of node in graph_info is not correct, check the collect.py, should be node->input->latch"
+            else: # if there is constant var like false, true
+                assert (lat_var_index_in_graph[0] > inp_var_index_in_graph[0] > constant_var_index_in_graph[0]) , "BUG: the sequence of node in graph_info is not correct, check the collect.py, should be node->constant->input->latch"
+        elif (constant_var_index_in_graph != []):
+            assert (lat_var_index_in_graph[0] > constant_var_index_in_graph[0]) , "BUG: the sequence of node in graph_info is not correct, check the collect.py, should be node->constant->latch"
+        else:
+            assert (lat_var_index_in_graph[0] > 0) , "BUG: the sequence of node in graph_info is not correct, check the collect.py, should be node->latch"
+        number_of_node_except_svars = sum_true([graph_info[i]['data']['type']=='node' or graph_info[i]['data']['application'].startswith('constant_f') or graph_info[i]['data']['application'].startswith('constant_t') for i in range(len(graph_info))])
         # assert the lat_var_index_in_graph is sorted
         assert lat_var_index_in_graph == natsorted(lat_var_index_in_graph), "BUG: var_index_in_graph is not sorted, check the json2graph function"
         # achieve the first row first column of the ground_truth_label_row
@@ -118,13 +131,13 @@ class GraphDataset(Dataset):
             'n_vars' : len(graph_info), #include m and variable (all node)
             'n_inp_vars' : len([i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('i')]),
             'n_lat_vars' : len([i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('v')]),
-            'n_false_constant' : len([i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('f')]),
-            'n_true_constant' : len([i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('t')]),
+            'n_false_constant' : len([i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('constant_f')]),
+            'n_true_constant' : len([i for i in range(len(graph_info)) if graph_info[i]['data']['application'].startswith('constant_t')]),
             # count the number of 'node' in the graph_info (node exclude input, input_prime, variable)
             'n_nodes' : number_of_node_except_svars,
-            'unpack' : (torch.from_numpy(adj_matrix.astype(np.float32).values)).to(device),
+            #'unpack' : (torch.from_numpy(adj_matrix.astype(np.float32).values)).to(device),
             # convert the adj_matrix to sparse tensor
-            # 'unpack' : torch.sparse_coo_tensor(torch.LongTensor(np.vstack((adj_matrix.astype(np.float32).values.nonzero()))),torch.FloatTensor(adj_matrix.astype(np.float32).values[adj_matrix.astype(np.float32).values.nonzero()]),torch.Size(adj_matrix.astype(np.float32).values.shape)).to(self.device),
+            'unpack' : torch.sparse_coo_tensor(torch.LongTensor(np.vstack((adj_matrix.astype(np.float32).values.nonzero()))),torch.FloatTensor(adj_matrix.astype(np.float32).values[adj_matrix.astype(np.float32).values.nonzero()]),torch.Size(adj_matrix.astype(np.float32).values.shape)).to(self.device),
             'label' : self.__df_to_np(ground_truth_label_row,graph_info),
             # find the last element in the graph_info that is 'node'
             'refined_output' : list(map(lambda x: x-number_of_node_except_svars,lat_var_index_in_graph)),
@@ -152,8 +165,8 @@ class GraphDataset(Dataset):
     def __init_dataset(self):
         if self.mode == 'debug':
             train_lst = walkFile(self.data_root)
-            #for train_file in train_lst[:278]: #big cases
-            for train_file in train_lst[278:]:
+            for train_file in train_lst[:32]: #big cases
+            #for train_file in train_lst[278:]:
                 with open(train_file, 'rb') as f:
                     self.samples.append(pickle.load(f))
         elif self.mode == 'train':
@@ -181,14 +194,14 @@ def setup_seed(seed):
      torch.backends.cudnn.deterministic = True
 
 if __name__ == "__main__":
-    #setup_seed(3407)
+    setup_seed(3407) # very useful for debugging and reproducibility -> especially for the small dataset
     #device = 'cuda'
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     datetime_str = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
     
 
     args = parser.parse_args(['--task-name', 'neuropdr_'+datetime_str.replace(' ', '_'), '--dim', '128', '--n_rounds', '512',
-                              '--epochs', '500',
+                              '--epochs', '512',
                               #'--log-dir', str(Path(__file__).parent.parent /'log/tmp/'), \
                               '--train-file', '../dataset/bad_cube_cex2graph/json_to_graph_pickle/',  
                               '--val-file', '../dataset/bad_cube_cex2graph/json_to_graph_pickle/',
@@ -563,7 +576,7 @@ if __name__ == "__main__":
         # Save model for every epoch
         torch.save({'epoch': epoch + 1, 'acc': acc, 'precision': test_precision, 'state_dict': net.state_dict()},
                    os.path.join(args.model_dir, args.task_name + '_last.pth.tar'))
-        if test_precision >= best_precision:
+        if test_precision >= best_precision and val_precision >= best_precision:
             best_precision = test_precision
             torch.save({'epoch': epoch + 1, 'acc': acc, 'precision': best_precision, 'state_dict': net.state_dict()},
                        os.path.join(args.model_dir, args.task_name + '_best_precision.pth.tar'))

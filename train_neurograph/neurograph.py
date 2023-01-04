@@ -93,9 +93,9 @@ class NeuroInductiveGeneralization(nn.Module):
                 tmp_tensor = self.var_init(init_ts).view(1, 1, -1)
             elif node['data']['application'].startswith('i') == True:
                 tmp_tensor = self.inp_init(init_ts).view(1, 1, -1)
-            elif node['data']['application'].startswith('f') == True:
+            elif node['data']['application'].startswith('constant_f') == True:
                 tmp_tensor = self.false_init(init_ts).view(1, 1, -1)
-            elif node['data']['application'].startswith('t') == True:
+            elif node['data']['application'].startswith('constant_t') == True:
                 tmp_tensor = self.true_init(init_ts).view(1, 1, -1)
             all_init = torch.cat((all_init,tmp_tensor),dim=1)
 

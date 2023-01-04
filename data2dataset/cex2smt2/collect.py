@@ -45,8 +45,8 @@ def convert_one_aag(aag_name, cnf_name, model_name):
     if dump4check_map(cex_clause_pair_list_prop,cex_clause_pair_list_ind,aag_name,m, return_after_finished = True)!= None: return
 
 def test():
-    case = "nusmv.syncarb5^2.B"
-    #case = "nusmv.reactor^4.C"
+    #case = "nusmv.syncarb5^2.B"
+    case = "nusmv.reactor^4.C"
     convert_one_aag(f"../../case4test/hwmcc_simple/{case}/{case}.aag", f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case)
     
 
