@@ -12,6 +12,7 @@ data2dataset_ignore/
 .history/
 dataset/
 dataset*/
+case4test/
 # deprecated/
 newgraph/
 neuropdr_model/
