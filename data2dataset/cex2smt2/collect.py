@@ -4,6 +4,7 @@ from aigmodel import AAGmodel
 from aig2graph import AigGraph
 import z3
 import os
+import argparse
 
 
 '''
@@ -27,8 +28,8 @@ def dump4check_map(cex_clause_pair_list_prop, cex_clause_pair_list_ind, aag_name
                                 if str(x[1])=='1' 
                                 else str(int(str(m.svars[x[0]]).replace('v',''))+1),cube_literals))
     # open a file for writing
-    if not os.path.exists(f"../../dataset/bad_cube_cex2graph/cti_for_inv_map_checking/{aag_name.split('/')[-1]}"): os.makedirs(f"../../dataset/bad_cube_cex2graph/cti_for_inv_map_checking/{aag_name.split('/')[-1]}")
-    with open(f"../../dataset/bad_cube_cex2graph/cti_for_inv_map_checking/{aag_name.split('/')[-1]}/{aag_name.split('/')[-1]}_inv_CTI.txt", "w") as text_file:
+    if not os.path.exists(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/cti_for_inv_map_checking/{aag_name.split('/')[-1]}"): os.makedirs(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/cti_for_inv_map_checking/{aag_name.split('/')[-1]}")
+    with open(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/cti_for_inv_map_checking/{aag_name.split('/')[-1]}/{aag_name.split('/')[-1]}_inv_CTI.txt", "w") as text_file:
         for cti in cex_clause_pair_list:
             text_file.write(cubeliteral_to_str(cti[0]) + "\n")
     
@@ -47,10 +48,18 @@ def convert_one_aag(aag_name, cnf_name, model_name):
 def test():
     #case = "nusmv.syncarb5^2.B"
     case = "nusmv.reactor^4.C"
-    convert_one_aag(f"../../case4test/hwmcc_simple/{case}/{case}.aag", f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case)
-    
+    convert_one_aag(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc_simple/{case}/{case}.aag", f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case) 
 
 if __name__ == "__main__":
-    test()
+    # for testing only
+    # test()
+
+    # make a argument parser
+    parser = argparse.ArgumentParser(description='Convert aig+inv to graph')
+    parser.add_argument('--aag', type=str, help='aag file')
+    # parse the arguments to test()
+    args = parser.parse_args()
+    case = args.aag.split('/')[-1].split('.aag')[0]
+    convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case)
 
 

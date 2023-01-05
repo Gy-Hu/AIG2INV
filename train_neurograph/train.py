@@ -6,6 +6,9 @@ from zmq import device
 # for dpp
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
+# for small case
+#os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# for large case
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 from tqdm import tqdm
 import sys
@@ -166,7 +169,7 @@ class GraphDataset(Dataset):
         if self.mode == 'debug':
             train_lst = walkFile(self.data_root)
             for train_file in train_lst[:32]: #big cases
-            #for train_file in train_lst[278:]:
+            #for train_file in train_lst[32:]: #small cases
                 with open(train_file, 'rb') as f:
                     self.samples.append(pickle.load(f))
         elif self.mode == 'train':
@@ -300,6 +303,10 @@ if __name__ == "__main__":
 
     best_acc = 0.0
     best_precision = 0.0
+    # assignment a very large number
+    lowest_training_loss = sys.float_info.max
+    # record the last 3 epoch's training loss
+    last_3_epoch_training_loss = []
     start_epoch = 0
 
     if args.restore is not None:
@@ -450,6 +457,18 @@ if __name__ == "__main__":
         writer.add_scalar('accuracy/training_accuracy',(TP.item()+TN.item())*1.0/TOT.item(), epoch)
         writer.add_scalar('loss/training_loss', all_train_loss.item(), epoch)
 
+        # save model if it is the lowest loss so far
+        if all_train_loss.item() < lowest_training_loss:
+            lowest_training_loss = all_train_loss.item()
+            torch.save({'epoch': epoch + 1, 'acc': best_acc, 'precision': best_precision, 'state_dict': net.state_dict()},
+                   os.path.join(args.model_dir, args.task_name + '_lowest_training_loss.pth.tar'))
+
+        # record the training loss in last_3_epoch_training_loss[]
+        last_3_epoch_training_loss.append(all_train_loss.item())
+        if len(last_3_epoch_training_loss) > 3:
+            last_3_epoch_training_loss.pop(0)
+
+
         '''
         -------------------------validation--------------------------------
         '''
@@ -576,13 +595,20 @@ if __name__ == "__main__":
         # Save model for every epoch
         torch.save({'epoch': epoch + 1, 'acc': acc, 'precision': test_precision, 'state_dict': net.state_dict()},
                    os.path.join(args.model_dir, args.task_name + '_last.pth.tar'))
-        if test_precision >= best_precision and val_precision >= best_precision:
-            best_precision = test_precision
-            torch.save({'epoch': epoch + 1, 'acc': acc, 'precision': best_precision, 'state_dict': net.state_dict()},
-                       os.path.join(args.model_dir, args.task_name + '_best_precision.pth.tar'))
+        
+        # Save best testing precision model
+        # if test_precision >= best_precision and val_precision >= best_precision:
+        #     best_precision = test_precision
+        #     torch.save({'epoch': epoch + 1, 'acc': acc, 'precision': best_precision, 'state_dict': net.state_dict()},
+        #                os.path.join(args.model_dir, args.task_name + '_best_precision.pth.tar'))
 
         if acc >= best_acc:
             best_acc = acc
+
+        # if val_precision >= 0.8 and test_precision >= 0.8, 
+        # last_3_epoch_training_loss is consecutive 3 epoch's training loss, if it is not monotonic, break
+        if val_precision >= 0.9 and test_precision >= 0.9 and not(last_3_epoch_training_loss[0] > last_3_epoch_training_loss[1] > last_3_epoch_training_loss[2]):
+            break # result is good enough, break
 
     try:
         writer.close()

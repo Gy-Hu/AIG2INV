@@ -8,3 +8,7 @@ clone modified ic3ref to utils
 https://github.com/zhanghongce/IC3ref - modified Makefile (may not be necessary)
 
 usage: ./IC3 -v -f xxx.cnf < xxx.aig
+
+build_data.py: build data from aag+inv to graph
+train_data.py: train data from graph
+main.py: predict the induction invariant from SAT models

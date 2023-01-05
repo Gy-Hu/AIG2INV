@@ -6,6 +6,8 @@ import pandas as pd
 import pickle
 from natsort import natsorted
 import os
+# parse input arguments
+import argparse
 
 def json2graph_pickle(filename,ground_truth_path):
     with open(filename) as f:
@@ -82,7 +84,7 @@ def json2graph_pickle(filename,ground_truth_path):
     #dump G and json_data to pickle
 
     #define the pickle file name
-    pickle_file_name = '../../dataset/bad_cube_cex2graph/json_to_graph_pickle/' + filename.split('/')[-1].replace('.json', '.pkl')
+    pickle_file_name = '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/json_to_graph_pickle/' + filename.split('/')[-1].replace('.json', '.pkl')
 
     # get ground truth list from '../../dataset/IG2graph/generalization_no_enumerate/' + filename.split('/')[-1].replace('.json', '.csv')
     case_name = ground_truth_path.split('/')[-1]
@@ -111,13 +113,25 @@ def json2graph_pickle(filename,ground_truth_path):
 # and convert it to a networkx graph
 # only load .json file
 
+# parse the input arguments
+parser = argparse.ArgumentParser()
+parser.add_argument('--json_file_path', type=str, default=None, help='the path of the json file')
+parser.add_argument('--ground_truth_path', type=str, default=None, help='the path of the ground truth table')
+args = parser.parse_args()
+
+# assertion for the input arguments
+assert args.json_file_path is not None, "Please specify the path of the json file"
+assert args.ground_truth_path is not None, "Please specify the path of the ground truth table"
+
 #json_file_path = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B"
-json_file_path = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C"
+#json_file_path = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C"
+json_file_path = args.json_file_path
 json_file_list = os.listdir(json_file_path)
 json_file_list = [x for x in json_file_list if x.endswith(".json")]
 
 #ground_truth_file_path = "../../dataset/bad_cube_cex2graph/ground_truth_table/nusmv.syncarb5^2.B"
-ground_truth_file_path = "../../dataset/bad_cube_cex2graph/ground_truth_table/nusmv.reactor^4.C"
+#ground_truth_file_path = "../../dataset/bad_cube_cex2graph/ground_truth_table/nusmv.reactor^4.C"
+ground_truth_file_path = args.ground_truth_path
 ground_truth_file_list = os.listdir(ground_truth_file_path)
 ground_truth_file_list = [x for x in ground_truth_file_list if x.endswith(".csv")]
 

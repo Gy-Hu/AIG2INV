@@ -105,7 +105,9 @@ void GetFileNames(string path,vector<string>& filenames)
 }
 
 int main(int argc, char ** argv) {
-
+    // get the file name from argv
+    string file_name = argv[1];
+    cout<<"file name:"<<file_name<<endl;
 
     z3::context ctx;
     auto&& opt = z3::optimize(ctx);
@@ -113,9 +115,13 @@ int main(int argc, char ** argv) {
     //Z3_ast_vector b = Z3_parse_smtlib2_file(ctx, "nusmv.reactor^4.C_0.smt2", 0, 0, 0, 0, 0, 0);
     //Z3_ast_vector b = Z3_parse_smtlib2_file(ctx, "nusmv.syncarb5^2.B_10.smt2", 0, 0, 0, 0, 0, 0);
 
+
     //travsersal the smt2 file in "../../dataset/IG2graph/generalize_IG_no_enumerate/" and store file name to a vector
-    const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C";
+    //const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C";
     //const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
+    
+    string filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/" + file_name;
+    
     vector<string> filenames;
     GetFileNames(filePath,filenames);
 
