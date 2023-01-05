@@ -169,6 +169,7 @@ class GraphDataset(Dataset):
     def __init_dataset(self):
         if self.mode == 'debug':
             train_lst = walkFile(self.data_root)
+            print(f'{len(train_lst)} files found in ' + self.data_root + ' for training')
             if self.dataset_type == 'toy':
                 for train_file in train_lst[32:]: 
                     with open(train_file, 'rb') as f:
