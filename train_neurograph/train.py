@@ -79,12 +79,13 @@ class BCEFocalLoss(nn.Module):
 
 
 class GraphDataset(Dataset):
-    def __init__(self,data_root,mode='train',case_name=None,device=None):
+    def __init__(self,data_root,mode='train',case_name=None,device=None,dataset_type=None):
         self.data_root = data_root
         self.mode = mode
         self.samples = []
         self.aig_name = case_name
         self.device = device
+        self.dataset_type = dataset_type
         self.__init_dataset()
 
     def __len__(self):
@@ -168,11 +169,14 @@ class GraphDataset(Dataset):
     def __init_dataset(self):
         if self.mode == 'debug':
             train_lst = walkFile(self.data_root)
-            #for train_file in train_lst[:32]: #big cases
-            for train_file in train_lst[32:]: #small cases
-            #for train_file in train_lst[:]: #all cases
-                with open(train_file, 'rb') as f:
-                    self.samples.append(pickle.load(f))
+            if self.dataset_type == 'toy':
+                for train_file in train_lst[32:]: 
+                    with open(train_file, 'rb') as f:
+                        self.samples.append(pickle.load(f))
+            else:
+                for train_file in train_lst[:]:
+                    with open(train_file, 'rb') as f:
+                        self.samples.append(pickle.load(f))
         elif self.mode == 'train':
             train_lst = walkFile(self.data_root)
             for train_file in train_lst[:]:
@@ -231,7 +235,7 @@ if __name__ == "__main__":
         torch.cuda.set_device(args.local_rank)
         dist.init_process_group(backend='nccl') 
 
-    all_graph = GraphDataset(args.train_file,args.mode,None,device)
+    all_graph = GraphDataset(args.train_file,args.mode,None,device,dataset_type=args.dataset_type)
 
     
     if args.mode == 'train' or args.mode == 'debug':

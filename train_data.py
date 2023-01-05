@@ -10,7 +10,7 @@ import argparse
 # neurograph: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_neurograph
 # neurocircuit: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_circuitsat
 
-def choose_train_parameter(experiment_type='toy'):
+def choose_train_parameter(dataset_type='toy'):
     # choose model
     # choose dataset
     # choose hyperparameter
@@ -20,7 +20,7 @@ def choose_train_parameter(experiment_type='toy'):
     number_of_epochs = 0 ; train_file = '' ; val_file = '' ; train_mode = '' ; gpu_id = 0
     task_name = 'neuropdr_'+datetime_str.replace(' ', '_')  ; batch_size = 0
 
-    if experiment_type == 'hwmcc07_complete':
+    if dataset_type == 'hwmcc07_complete':
         model_name = 'neurograph'
         dataset = 'dataset'
         dimension_of_embedding = 128
@@ -31,7 +31,7 @@ def choose_train_parameter(experiment_type='toy'):
         train_mode = 'train'
         gpu_id = 0
         batch_size = 2
-    elif experiment_type == 'small':
+    elif dataset_type == 'small':
         model_name = 'neurograph'
         dataset = 'dataset_20230106_025223_small'
         dimension_of_embedding = 128
@@ -42,7 +42,7 @@ def choose_train_parameter(experiment_type='toy'):
         train_mode = 'debug'
         gpu_id = 0
         batch_size = 8
-    elif experiment_type == 'toy':
+    elif dataset_type == 'toy':
         model_name = 'neurograph'
         dataset = 'dataset_20230106_014957_toy'
         dimension_of_embedding = 128
@@ -59,20 +59,21 @@ def choose_train_parameter(experiment_type='toy'):
         f'--task-name {task_name} --dim {dimension_of_embedding} --n_rounds {number_of_rounds} ' \
         f'--epochs {number_of_epochs} --train-file {train_file} --val-file {val_file} ' \
         f'--mode {train_mode} --gpu-id {gpu_id} ' \
-        f'--batch-size {batch_size}'
+        f'--batch-size {batch_size} ' \
+        f'--dataset-type  {dataset_type}'
     )
 
 
 if __name__ == "__main__":
     # input argument
     parser = argparse.ArgumentParser()
-    parser.add_argument('--experiment-type', type=str, default='toy')
+    parser.add_argument('--dataset-type', type=str, default=None)
     args = parser.parse_args()
-    experiment_type = args.experiment_type
+    dataset_type = args.dataset_type
 
     datetime_str = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
 
-    shell_cmd = choose_train_parameter(experiment_type)
+    shell_cmd = choose_train_parameter(dataset_type)
     os.system(shell_cmd)
     
 
