@@ -11,9 +11,9 @@ sys.path.append(os.path.join(os.getcwd(), 'data2dataset/cex2smt2'))
 from data2dataset.cex2smt2.tCube import tCube
 from train_neurograph.train import GraphDataset
 # for old(small) cases
-from train_neurograph.neurograph_old import NeuroInductiveGeneralization
+#from train_neurograph.neurograph_old import NeuroInductiveGeneralization
 # for new(complicated/large) cases
-# from train_neurograph.neurograph import NeuroInductiveGeneralization
+from train_neurograph.neurograph import NeuroInductiveGeneralization
 
 from data2dataset.cex2smt2.clause import Clauses
 from data2dataset.cex2smt2.aigmodel import AAGmodel
@@ -23,7 +23,7 @@ from data2dataset.cex2smt2.cnfextract import ExtractCnf
 import torch.nn as nn
 from natsort import natsorted
 import z3
-
+import subprocess
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 '''
@@ -32,12 +32,14 @@ Checker to check if the predicted clauses is satisfiable
 ---------------------------------------------------------
 '''
 class CNF_Filter(ExtractCnf):
-    def __init__(self, aagmodel, clause, name):
+    def __init__(self, aagmodel, clause, name, aig_location=None):
        super(CNF_Filter, self).__init__(aagmodel, clause, name)
        # self.init = aagmodel.init
        
        # adjust to perform inductive generalization or not
        self.perform_ig = False
+       # record the original aig location
+       self.aig_location = aig_location
     
     def _solveRelative_upgrade(self, clauses_to_block):
         # sourcery skip: extract-duplicate-method, inline-immediately-returned-variable
@@ -150,12 +152,17 @@ class CNF_Filter(ExtractCnf):
             assert (has_removed)
 
     def check_and_reduce(self):
+        '''
+        Check the predicted clauses, if passed, then dump it without generalization 
+        check_and_reduce or check_and_generalize 2 options
+        choose one of the two options
+        '''
         prop = z3.Not(self.aagmodel.output) # prop - safety property
         pass_clauses = [i for i in range(len(self.clauses)) if self._solveRelative_upgrade(self.clauses[i]) == 'pass the check']
         # process the inductive generalization of the passed clauses -> basic generalization (unsat core) and mic
         # generalized_clauses = [i for i in range(len(pass_clauses)) if self._inductive_generalization(pass_clauses[i]) == 'generalized successfully']
-        Predict_Clauses_Before_Filtering = 'case4test/hwmcc_simple/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B_inv_CTI_predicted.txt'
-        Predict_Clauses_After_Filtering = 'case4test/hwmcc_simple/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B_predicted_clauses_after_filtering.cnf'
+        Predict_Clauses_Before_Filtering = f'{self.aig_location}/{self.model_name}_inv_CTI_predicted.txt'
+        Predict_Clauses_After_Filtering = f'{self.aig_location}/{self.model_name}_predicted_clauses_after_filtering.cnf'
         print(f"Dump the predicted clauses after filtering to {Predict_Clauses_After_Filtering}")
         # copy the line in Predict_Clauses_Before_Filtering to Predict_Clauses_After_Filtering according to pass_clauses
         with open(Predict_Clauses_Before_Filtering, 'r') as f:
@@ -168,6 +175,8 @@ class CNF_Filter(ExtractCnf):
     def check_and_generalize(self):
         '''
         check the predicted clause, if passed, then generalize it -> use unsat core and mic
+        check_and_reduce or check_and_generalize 2 options
+        choose one of the two options
         '''
         prop = z3.Not(self.aagmodel.output)
         pass_and_generalized_clauses = [
@@ -200,7 +209,7 @@ class CNF_Filter(ExtractCnf):
             pass_and_generalized_clauses_converter.append(res)
         pass_and_generalized_clauses = pass_and_generalized_clauses_converter
 
-        Predict_Clauses_After_Filtering_and_Generalization = 'case4test/hwmcc_simple/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B_predicted_clauses_after_filtering_and_generalization.cnf'
+        Predict_Clauses_After_Filtering_and_Generalization = f'{self.aig_location}/{self.model_name}_predicted_clauses_after_filtering_and_generalization.cnf'
         # write final_generate_res to Predict_Clauses_File
         cubeliteral_to_str = lambda cube_literals: ','.join(map
                                 (lambda x: str(x).replace('v','') 
@@ -212,7 +221,7 @@ class CNF_Filter(ExtractCnf):
             # write the first line with basic info
             f.write(f'unsat {len(pass_and_generalized_clauses)}' + '\n')
             for clause in pass_and_generalized_clauses:
-                #FIXME: why every time the clauses are not the same?
+                #FIXME: why every time the clauses are not the same? -> set is disordered
                 f.write((cubeliteral_to_str(clause.cubeLiterals)))
                 f.write('\n')
 
@@ -223,21 +232,97 @@ Global Used Functions
 -----------------------
 '''
 def walkFile(self):
+    files = []
     for root, _, files in os.walk(self):
         files = natsorted(files)
         files = [os.path.join(root,f) for f in files]
+    assert len(files) > 0, f"No files found in {self}"
     return files
+
+def get_dataset(selected_dataset = 'toy'):
+    if selected_dataset == 'complete':
+        return 'dataset'
+    elif selected_dataset == 'toy':
+        return 'dataset_20230106_014957_toy'
+    elif selected_dataset == 'small':
+        return 'dataset_20230106_025223_small'
+
+def compare_ic3ref(aig_original_location, selected_aig_case):
+    # compare with ic3ref
+    
+    '''
+    modified ic3ref located in /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3
+    '''
+
+    # initialize a shell command
+    predicted_clauses_cnf = (f'{aig_original_location}/'+ f'{selected_aig_case}_predicted_clauses_after_filtering.txt')
+    originial_aiger_file = (f'{aig_original_location}/'+ f'{selected_aig_case}.aag')
+    cmd = f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -v -f {predicted_clauses_cnf} < {originial_aiger_file}'
+    # run the shell command, and store stream data in terminal output to a variable
+    try:
+        output = subprocess.check_output(cmd,shell=True,stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e: # normally we will arrive here
+        output = f"command '{e.cmd}' return with error (code {e.returncode}): {e.output}"
+
+    # read output, and split it into lines by "\\n"
+    output = output.split('\\n')
+    # Find the last Level x line, and extract the x
+    last_level = ''
+    for line in output:
+        if 'Level' in line:
+            last_level = line
+    assert last_level != '', 'No Level x line found'
+    last_level = last_level.split(' ')
+    last_level = last_level[1]
+
+    '''
+    original ic3ref located in /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3ref
+    '''
+    # initialize a shell command
+    cmd = f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -v < {originial_aiger_file}'
+    # run the shell command, and store stream data in terminal output to a variable
+    try:
+        output = subprocess.check_output(cmd,shell=True,stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e: # normally we will arrive here
+        output = f"command '{e.cmd}' return with error (code {e.returncode}): {e.output}"
+    
+    # read output, and split it into lines by "\\n"
+    output = output.split('\\n')
+    # Find the last Level x line, and extract the x
+    last_level_ic3ref = ''
+    for line in output:
+        if 'Level' in line:
+            last_level_ic3ref = line
+    assert last_level_ic3ref != '', 'ic3ref has not found a solution'
+    last_level_ic3ref = last_level_ic3ref.split(' ')
+    last_level_ic3ref = last_level_ic3ref[1]
+
+    # compare the last level
+    if last_level == last_level_ic3ref:
+        print('NN-IC3ref has not improved the result')
+    else:
+        print('NN-IC3ref has improved the result by ', int(last_level_ic3ref) - int(last_level), 'frames')
+
+    print('compare with ic3ref done')
+
 
 if __name__ == "__main__":
     sigmoid = nn.Sigmoid()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    extracted_bad_cube = 'dataset/bad_cube_cex2graph/json_to_graph_pickle/'
-    extracted_bad_cube_after_post_processing = GraphDataset(extracted_bad_cube,mode='predict',case_name='nusmv.syncarb5^2.B',device=device)
+    # choose the dataset that you want to test
+    extracted_bad_cube_prefix = get_dataset(selected_dataset='toy')
+    # choose the case that you want to test
+    selected_aig_case = 'nusmv.syncarb5^2.B' #TAG: adjust aig case name here
+    extracted_bad_cube_after_post_processing = GraphDataset(f'{extracted_bad_cube_prefix}/bad_cube_cex2graph/json_to_graph_pickle/',mode='predict',case_name=selected_aig_case,device=device)
 
     # load pytorch model
     net = NeuroInductiveGeneralization()
+    # choose the NN model that you want to test
+    NN_model_to_load = 'neuropdr_2023-01-05_15:53:59_lowest_training_loss.pth.tar' #TAG: adjust NN model name here
+    #NN_model_to_load = 'neuropdr_2022-11-24_11:30:11_last.pth.tar'
+    model = torch.load(f'./neurograph_model/{NN_model_to_load}',map_location=device)
     # for small case
-    model = torch.load('./neurograph_model/neuropdr_2022-11-24_11:30:11_last.pth.tar',map_location=device)
+    #model = torch.load(f'./neurograph_model/neuropdr_2022-11-24_11:30:11_last.pth.tar',map_location=device)
     # for large case
     #model = torch.load('./neurograph_model/neuropdr_2022-11-28_15:23:41_last.pth.tar',map_location=device)
     net.load_state_dict(model['state_dict'])
@@ -261,9 +346,15 @@ if __name__ == "__main__":
 
     # print final_predicted_clauses line by line
     for clause in final_predicted_clauses: print(clause)
-    # parse file from case4test/hwmcc_simple
-    CTI_file = 'dataset/bad_cube_cex2graph/cti_for_inv_map_checking/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B_inv_CTI.txt'
-    Predict_Clauses_File = 'case4test/hwmcc_simple/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B_inv_CTI_predicted.txt'
+    
+    # parse file from aig original location
+    aig_original_location = f'case4test/hwmcc_simple/{selected_aig_case}' #TAG: adjust the aig original location
+    
+    # number_of_subset = 1 #TAG: adjust the number of subset
+    # aig_original_location = f'case4test/hwmcc2007/subset{number_of_subset}/{selected_aig_case}'
+    
+    CTI_file = f'{extracted_bad_cube_prefix}/bad_cube_cex2graph/cti_for_inv_map_checking/{selected_aig_case}/{selected_aig_case}_inv_CTI.txt'
+    Predict_Clauses_File = f'{aig_original_location}/{selected_aig_case}_inv_CTI_predicted.txt'
     with open(CTI_file,'r') as f:
         original_CTI = f.readlines()
     # remove the last '\n'
@@ -295,17 +386,18 @@ if __name__ == "__main__":
             f.write('\n')
 
     # check the final_generate_res with ic3ref -> whether it is fulfill the property
-    case = "nusmv.syncarb5^2.B"
-    aag_name = f"./case4test/hwmcc_simple/{case}/{case}.aag"
-    cnf_name = f"./case4test/hwmcc_simple/{case}/{case}_inv_CTI_predicted.txt"
+    case = selected_aig_case
+    aag_name = f"./{aig_original_location}/{case}.aag" 
+    cnf_name = f"./{aig_original_location}/{case}_inv_CTI_predicted.txt"
     model_name = case
     m = AAGmodel()
     m.from_file(aag_name)
     predicted_clauses = Clauses(fname=cnf_name, num_sv = len(m.svars), num_input = len(m.inputs))
-    predicted_clauses_filter = CNF_Filter(aagmodel = m, clause = predicted_clauses ,name = model_name)
-    #predicted_clauses_filter.check_and_reduce()
-    predicted_clauses_filter.check_and_generalize()
-            
+    predicted_clauses_filter = CNF_Filter(aagmodel = m, clause = predicted_clauses ,name = model_name, aig_location=aig_original_location)
+    predicted_clauses_filter.check_and_reduce()
+    #predicted_clauses_filter.check_and_generalize()#FIXME: Encounter error, the cnf file will become empty
+    
+    compare_ic3ref(aig_original_location=aig_original_location,selected_aig_case=selected_aig_case)
 #TODO: Check the final result, all use them????
 
     

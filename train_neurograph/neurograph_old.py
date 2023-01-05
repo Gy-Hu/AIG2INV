@@ -117,6 +117,8 @@ class NeuroInductiveGeneralization(nn.Module):
 
         # message passing procedure
         #TODO: refine the n_rounds
+
+        invalid_passing = []
         for _ in range(self.n_rounds): #TODO: Using LSTM to eliminate the error brought by symmetry
 
             var_pre_msg = self.children_msg(var_state[:][0].squeeze(0))
@@ -138,7 +140,12 @@ class NeuroInductiveGeneralization(nn.Module):
             par_to_child_msg = torch.matmul(problem['unpack'].t(), node_pre_msg)
             _, var_state = self.node_update(par_to_child_msg.unsqueeze(0), var_state)
             # the state variable is updated -> if not, assertion error
-            assert not torch.all(torch.eq((var_state[0].squeeze(0))[problem['n_nodes']:,:][-1], (var_state[0].squeeze(0))[problem['n_nodes']:,:][-2]))
+            if torch.all(torch.eq((var_state[0].squeeze(0))[problem['n_nodes']:,:][-1], (var_state[0].squeeze(0))[problem['n_nodes']:,:][-2])):
+                invalid_passing.append(True)
+            # if the last three logits are the same, then the model is not learning
+            if len(invalid_passing) > 3:
+                invalid_passing.pop(0)
+                assert not all(invalid_passing), "The model is not learning, please check the model"
 
         logits = var_state[0].squeeze(0)
         #TODO: update here with the correct number

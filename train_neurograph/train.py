@@ -9,7 +9,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 # for small case
 #os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 # for large case
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 from tqdm import tqdm
 import sys
 import torch
@@ -168,8 +168,9 @@ class GraphDataset(Dataset):
     def __init_dataset(self):
         if self.mode == 'debug':
             train_lst = walkFile(self.data_root)
-            for train_file in train_lst[:32]: #big cases
-            #for train_file in train_lst[32:]: #small cases
+            #for train_file in train_lst[:32]: #big cases
+            for train_file in train_lst[32:]: #small cases
+            #for train_file in train_lst[:]: #all cases
                 with open(train_file, 'rb') as f:
                     self.samples.append(pickle.load(f))
         elif self.mode == 'train':
@@ -201,8 +202,8 @@ if __name__ == "__main__":
     #device = 'cuda'
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     datetime_str = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
-    
 
+    '''
     args = parser.parse_args(['--task-name', 'neuropdr_'+datetime_str.replace(' ', '_'), '--dim', '128', '--n_rounds', '512',
                               '--epochs', '512',
                               #'--log-dir', str(Path(__file__).parent.parent /'log/tmp/'), \
@@ -211,6 +212,9 @@ if __name__ == "__main__":
                               '--mode', 'debug',
                               #'--local_rank', '2',
                               ])
+    '''
+    args = parser.parse_args()
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id)
 
     if args.mode == 'debug':
         writer = SummaryWriter('../log/tmp/tensorboard'+'-' + datetime_str.replace(' ', '_'))
@@ -247,7 +251,7 @@ if __name__ == "__main__":
         if args.local_rank != -1: #use dpp
             train_loader = DataLoader(
             dataset=train_dataset,
-            batch_size=2,
+            batch_size=args.batch_size,
             shuffle=False,
             collate_fn=collate_wrapper,
             sampler=torch.utils.data.distributed.DistributedSampler(train_dataset),
@@ -255,7 +259,7 @@ if __name__ == "__main__":
         else: #not use dpp
             train_loader = DataLoader(
             dataset=train_dataset,
-            batch_size=1,
+            batch_size=args.batch_size,
             shuffle=False,
             collate_fn=collate_wrapper,
             num_workers=0)
@@ -308,6 +312,8 @@ if __name__ == "__main__":
     # record the last 3 epoch's training loss
     last_3_epoch_training_loss = []
     start_epoch = 0
+    # best pefection rate
+    best_perfection_rate = 0.0
 
     if args.restore is not None:
         print('restoring from', args.restore, file=log_file, flush=True)
@@ -467,7 +473,11 @@ if __name__ == "__main__":
         last_3_epoch_training_loss.append(all_train_loss.item())
         if len(last_3_epoch_training_loss) > 3:
             last_3_epoch_training_loss.pop(0)
-
+        
+        if perfection_rate*1.0/all > best_perfection_rate:
+            best_perfection_rate = perfection_rate*1.0/all
+            torch.save({'epoch': epoch + 1, 'acc': best_acc, 'precision': best_precision, 'state_dict': net.state_dict()},
+                   os.path.join(args.model_dir, args.task_name + '_best_perfection_rate.pth.tar'))
 
         '''
         -------------------------validation--------------------------------
@@ -607,7 +617,8 @@ if __name__ == "__main__":
 
         # if val_precision >= 0.8 and test_precision >= 0.8, 
         # last_3_epoch_training_loss is consecutive 3 epoch's training loss, if it is not monotonic, break
-        if val_precision >= 0.9 and test_precision >= 0.9 and not(last_3_epoch_training_loss[0] > last_3_epoch_training_loss[1] > last_3_epoch_training_loss[2]):
+        #if val_precision >= 0.9 and test_precision >= 0.9 and not(last_3_epoch_training_loss[0] > last_3_epoch_training_loss[1] > last_3_epoch_training_loss[2]):
+        if best_perfection_rate > 0.85:
             break # result is good enough, break
 
     try:

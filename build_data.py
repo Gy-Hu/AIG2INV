@@ -56,6 +56,8 @@ def walkFile(dir):
         files = natsorted(files)
         #files = [os.path.join(root,f) for f in files if ".aag" not in f]
     assert len(files) > 0, "No files in the folder!"
+    # filtered the files, only keep the .aag file
+    files = [file for file in files if file.endswith(".aag")]
     return files
 
 def generate_smt2():

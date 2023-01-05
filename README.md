@@ -7,7 +7,7 @@ aag+inv to cnf
 clone modified ic3ref to utils
 https://github.com/zhanghongce/IC3ref - modified Makefile (may not be necessary)
 
-usage: ./IC3 -v -f xxx.cnf < xxx.aig
+usage: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -v -f xxx.cnf < xxx.aig
 
 build_data.py: build data from aag+inv to graph
 
