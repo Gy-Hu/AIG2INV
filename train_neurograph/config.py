@@ -36,3 +36,7 @@ parser.add_argument('--mode', type=str, default=None, help='mode to train or deb
 parser.add_argument('--gpu-id', type=int, default=0, help='gpu id to use')
 parser.add_argument('--batch-size', type=int, default=2, help='batch size')
 parser.add_argument('--dataset-type', type=str, default=None, help='dataset type, default is None, speical is "toy", will do clipping to train list')
+# add arguments to adjust positive weight in BCEWithLogitsLoss
+parser.add_argument('--pos-weight', type=float, default=1.0, help='positive weight in BCEWithLogitsLoss')
+# add arguments to adjust learning rate
+parser.add_argument('--lr', type=float, default=0.00001, help='learning rate')

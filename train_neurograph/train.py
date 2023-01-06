@@ -302,11 +302,11 @@ if __name__ == "__main__":
 
     #loss_fn = nn.BCELoss(reduction='sum')
     #loss_fn = nn.BCEWithLogitsLoss(reduction='sum', pos_weight=torch.tensor([8]).to(device))
-    loss_fn = nn.BCEWithLogitsLoss(reduction='sum', pos_weight=torch.tensor([2]).to(device))
+    loss_fn = nn.BCEWithLogitsLoss(reduction='sum', pos_weight=torch.tensor([args.pos_weight]).to(device))
     #loss_fn = BCEFocalLoss()
     #loss_fn = WeightedBCELosswithLogits()
     #optim = optim.Adam(net.parameters(), lr=0.00001, weight_decay=1e-10)
-    optim = optim.Adam(net.parameters(), lr=0.0001, weight_decay=1e-10)
+    optim = optim.Adam(net.parameters(), lr=args.lr, weight_decay=1e-10)
     #scheduler = ReduceLROnPlateau(optim, 'min', factor=0.0001, patience=10, verbose=True)
     sigmoid = nn.Sigmoid()
 
@@ -623,7 +623,7 @@ if __name__ == "__main__":
         # if val_precision >= 0.8 and test_precision >= 0.8, 
         # last_3_epoch_training_loss is consecutive 3 epoch's training loss, if it is not monotonic, break
         #if val_precision >= 0.9 and test_precision >= 0.9 and not(last_3_epoch_training_loss[0] > last_3_epoch_training_loss[1] > last_3_epoch_training_loss[2]):
-        if best_perfection_rate > 0.85:
+        if best_perfection_rate > 0.9:
             break # result is good enough, break
 
     try:

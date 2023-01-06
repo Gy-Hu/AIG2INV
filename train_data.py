@@ -31,6 +31,8 @@ def choose_train_parameter(dataset_type='toy'):
         train_mode = 'train'
         gpu_id = 0
         batch_size = 2
+        possitive_weight_for_loss_fun = 4
+        learning_rate = 0.00001
     elif dataset_type == 'small':
         model_name = 'neurograph'
         dataset = 'dataset_20230106_025223_small'
@@ -42,6 +44,8 @@ def choose_train_parameter(dataset_type='toy'):
         train_mode = 'debug'
         gpu_id = 0
         batch_size = 8
+        possitive_weight_for_loss_fun = 2
+        learning_rate = 0.0001
     elif dataset_type == 'toy':
         model_name = 'neurograph'
         dataset = 'dataset_20230106_014957_toy'
@@ -53,6 +57,8 @@ def choose_train_parameter(dataset_type='toy'):
         train_mode = 'debug'
         gpu_id = 0
         batch_size = 1
+        possitive_weight_for_loss_fun = 2
+        learning_rate = 0.00001
     
     return (
         f'python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_{model_name}/train.py ' \
@@ -60,6 +66,8 @@ def choose_train_parameter(dataset_type='toy'):
         f'--epochs {number_of_epochs} --train-file {train_file} --val-file {val_file} ' \
         f'--mode {train_mode} --gpu-id {gpu_id} ' \
         f'--batch-size {batch_size} ' \
+        f'--pos-weight {possitive_weight_for_loss_fun} ' \
+        f'--lr {learning_rate} ' \
         f'--dataset-type  {dataset_type}'
     )
 
