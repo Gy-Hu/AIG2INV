@@ -24,7 +24,9 @@ import torch.nn as nn
 from natsort import natsorted
 import z3
 import subprocess
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+# add input arguments
+import argparse
 
 '''
 ---------------------------------------------------------
@@ -326,18 +328,27 @@ def compare_ic3ref(aig_original_location, selected_aig_case):
     if last_level == last_level_ic3ref:
         print('NN-IC3ref has not improved the result')
     else:
-        print('NN-IC3ref has improved the result by ', int(last_level_ic3ref) - int(last_level), 'frames')
+        print('NN-IC3ref has improved the result by ',int(last_level_ic3ref) - int(last_level),' frames')
 
     print('compare with ic3ref done')
 
 
 if __name__ == "__main__":
+    # input arguments to adjust the test case, thershold, and model
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--threshold', type=float, default=0.9, help='threshold for the output of the NN model')
+    parser.add_argument('--aig-case-name', type=str, default='nusmv.syncarb5^2.B', help='case name')
+    parser.add_argument('--NN-model', type=str, default='neuropdr_2023-01-06_07:56:57_last.pth.tar', help='model name')
+    parser.add_argument('--gpu-id', type=str, default='0', help='gpu id')
+    args = parser.parse_args()
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
+
     sigmoid = nn.Sigmoid()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # choose the dataset that you want to test
     extracted_bad_cube_prefix = get_dataset(selected_dataset='toy')
     # choose the case that you want to test
-    selected_aig_case = 'nusmv.syncarb5^2.B' #TAG: adjust aig case name here
+    selected_aig_case = args.aig_case_name
     extracted_bad_cube_after_post_processing = GraphDataset(f'{extracted_bad_cube_prefix}/bad_cube_cex2graph/json_to_graph_pickle/',mode='predict',case_name=selected_aig_case,device=device)
 
     # load pytorch model
@@ -346,7 +357,9 @@ if __name__ == "__main__":
     
     #NN_model_to_load = 'neuropdr_2023-01-05_15:53:59_lowest_training_loss.pth.tar' #TAG: adjust NN model name here
     #NN_model_to_load = 'neuropdr_2022-11-24_11:30:11_last.pth.tar'
-    NN_model_to_load = 'neuropdr_2023-01-06_07:56:57_last.pth.tar'
+    #NN_model_to_load = 'neuropdr_2023-01-06_07:56:57_last.pth.tar'
+
+    NN_model_to_load = args.NN_model
     model = torch.load(f'./neurograph_model/{NN_model_to_load}',map_location=device)
     
     # for small case
@@ -364,7 +377,7 @@ if __name__ == "__main__":
         outputs = net(data)
         torch_select = torch.Tensor(q_index).to(device).int()
         outputs = sigmoid(torch.index_select(outputs, 0, torch_select))
-        preds = torch.where(outputs > 0.8, torch.ones(outputs.shape).to(device), torch.zeros(outputs.shape).to(device))
+        preds = torch.where(outputs > args.threshold, torch.ones(outputs.shape).to(device), torch.zeros(outputs.shape).to(device))
         # choose the state varible based on the preds, and select the 
         # element based on torch_select
         svar_lst = [(data[1][data[0]['n_nodes']:])[i] for i in torch_select.tolist()]
