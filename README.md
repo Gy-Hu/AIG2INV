@@ -14,3 +14,5 @@ build_data.py: build data from aag+inv to graph
 train_data.py: train data from graph
 
 main.py: predict the induction invariant from SAT models
+
+clean_trival_log.py: clean the trivial logs (line <= 20)

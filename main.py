@@ -336,10 +336,10 @@ def compare_ic3ref(aig_original_location, selected_aig_case):
 if __name__ == "__main__":
     # input arguments to adjust the test case, thershold, and model
     parser = argparse.ArgumentParser()
-    parser.add_argument('--threshold', type=float, default=0.9, help='threshold for the output of the NN model')
+    parser.add_argument('--threshold', type=float, default=0.8, help='threshold for the output of the NN model')
     parser.add_argument('--aig-case-name', type=str, default='nusmv.syncarb5^2.B', help='case name')
     parser.add_argument('--NN-model', type=str, default='neuropdr_2023-01-06_07:56:57_last.pth.tar', help='model name')
-    parser.add_argument('--gpu-id', type=str, default='0', help='gpu id')
+    parser.add_argument('--gpu-id', type=str, default='1', help='gpu id')
     args = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
