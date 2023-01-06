@@ -151,6 +151,30 @@ class CNF_Filter(ExtractCnf):
             s.pop()
             assert (has_removed)
 
+    def _sort_passed_clauses(self,lines, passed_clauses):
+        '''
+        sort the passed clauses according to the number of literals
+        lines: the list of clauses
+        passed_clauses: the list of passed clauses
+        '''
+        # get the passed clauses list according to passed_clauses
+        passed_clauses = [lines[i+1] for i in passed_clauses]
+        # initialize a sorted list to store the clauses
+        passed_clauses_sorted = []
+        # strip the newline character
+        passed_clauses_sorted = [i.strip() for i in passed_clauses]
+        # make the clauses to list of string
+        passed_clauses_sorted = [i.split(' ') for i in passed_clauses_sorted]
+        # for every clause, smaller literals first
+        for clause in passed_clauses_sorted: clause.sort()
+        # sort the clauses according to first literal
+        passed_clauses_sorted.sort(key=lambda x: x[0])
+        # sort the clauses according to the length of the clauses and the number of literals
+        passed_clauses_sorted.sort(key=lambda x: (len(x), x))
+        # change to list of clauses to string, append the newline character
+        passed_clauses_sorted = [' '.join(i) + '\n' for i in passed_clauses_sorted]
+        return passed_clauses_sorted
+
     def check_and_reduce(self):
         '''
         Check the predicted clauses, if passed, then dump it without generalization 
@@ -158,19 +182,20 @@ class CNF_Filter(ExtractCnf):
         choose one of the two options
         '''
         prop = z3.Not(self.aagmodel.output) # prop - safety property
-        pass_clauses = [i for i in range(len(self.clauses)) if self._solveRelative_upgrade(self.clauses[i]) == 'pass the check']
+        passed_clauses = [i for i in range(len(self.clauses)) if self._solveRelative_upgrade(self.clauses[i]) == 'pass the check']
         # process the inductive generalization of the passed clauses -> basic generalization (unsat core) and mic
-        # generalized_clauses = [i for i in range(len(pass_clauses)) if self._inductive_generalization(pass_clauses[i]) == 'generalized successfully']
-        Predict_Clauses_Before_Filtering = f'{self.aig_location}/{self.model_name}_inv_CTI_predicted.txt'
+        # generalized_clauses = [i for i in range(len(passed_clauses)) if self._inductive_generalization(passed_clauses[i]) == 'generalized successfully']
+        Predict_Clauses_Before_Filtering = f'{self.aig_location}/{self.model_name}_inv_CTI_predicted.cnf'
         Predict_Clauses_After_Filtering = f'{self.aig_location}/{self.model_name}_predicted_clauses_after_filtering.cnf'
-        print(f"Dump the predicted clauses after filtering to {Predict_Clauses_After_Filtering}")
-        # copy the line in Predict_Clauses_Before_Filtering to Predict_Clauses_After_Filtering according to pass_clauses
+        #print(f"Dump the predicted clauses after filtering to {Predict_Clauses_After_Filtering}")
+        print("Finish dumping the predicted clauses after filtering passed clauses (solve relative checking)!!")
+        # copy the line in Predict_Clauses_Before_Filtering to Predict_Clauses_After_Filtering according to passed_clauses
         with open(Predict_Clauses_Before_Filtering, 'r') as f:
             lines = f.readlines()
         with open(Predict_Clauses_After_Filtering, 'w') as f:
-            f.write(f'unsat {len(pass_clauses)}' + '\n')
-            for i in pass_clauses:
-                f.write(lines[i+1])
+            f.write(f'unsat {len(passed_clauses)}' + '\n')
+            passed_and_sorted_clauses =  self._sort_passed_clauses(lines, passed_clauses) # finish filtering the clauses, and sort the clauses
+            for clause in passed_and_sorted_clauses: f.write(clause)
         
     def check_and_generalize(self):
         '''
@@ -255,7 +280,7 @@ def compare_ic3ref(aig_original_location, selected_aig_case):
     '''
 
     # initialize a shell command
-    predicted_clauses_cnf = (f'{aig_original_location}/'+ f'{selected_aig_case}_predicted_clauses_after_filtering.txt')
+    predicted_clauses_cnf = (f'{aig_original_location}/'+ f'{selected_aig_case}_predicted_clauses_after_filtering.cnf')
     originial_aiger_file = (f'{aig_original_location}/'+ f'{selected_aig_case}.aag')
     cmd = f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -v -f {predicted_clauses_cnf} < {originial_aiger_file}'
     # run the shell command, and store stream data in terminal output to a variable
@@ -318,9 +343,12 @@ if __name__ == "__main__":
     # load pytorch model
     net = NeuroInductiveGeneralization()
     # choose the NN model that you want to test
-    NN_model_to_load = 'neuropdr_2023-01-05_15:53:59_lowest_training_loss.pth.tar' #TAG: adjust NN model name here
+    
+    #NN_model_to_load = 'neuropdr_2023-01-05_15:53:59_lowest_training_loss.pth.tar' #TAG: adjust NN model name here
     #NN_model_to_load = 'neuropdr_2022-11-24_11:30:11_last.pth.tar'
+    NN_model_to_load = 'neuropdr_2023-01-06_07:56:57_last.pth.tar'
     model = torch.load(f'./neurograph_model/{NN_model_to_load}',map_location=device)
+    
     # for small case
     #model = torch.load(f'./neurograph_model/neuropdr_2022-11-24_11:30:11_last.pth.tar',map_location=device)
     # for large case
@@ -345,7 +373,7 @@ if __name__ == "__main__":
         final_predicted_clauses.append([svar_lst[i]['data']['application'] for i in range(len(preds)) if preds[i] == 1])
 
     # print final_predicted_clauses line by line
-    for clause in final_predicted_clauses: print(clause)
+    # for clause in final_predicted_clauses: print(clause) #TAG: uncomment this line to print the predicted clauses
     
     # parse file from aig original location
     aig_original_location = f'case4test/hwmcc_simple/{selected_aig_case}' #TAG: adjust the aig original location
@@ -354,7 +382,7 @@ if __name__ == "__main__":
     # aig_original_location = f'case4test/hwmcc2007/subset{number_of_subset}/{selected_aig_case}'
     
     CTI_file = f'{extracted_bad_cube_prefix}/bad_cube_cex2graph/cti_for_inv_map_checking/{selected_aig_case}/{selected_aig_case}_inv_CTI.txt'
-    Predict_Clauses_File = f'{aig_original_location}/{selected_aig_case}_inv_CTI_predicted.txt'
+    Predict_Clauses_File = f'{aig_original_location}/{selected_aig_case}_inv_CTI_predicted.cnf'
     with open(CTI_file,'r') as f:
         original_CTI = f.readlines()
     # remove the last '\n'
@@ -388,7 +416,7 @@ if __name__ == "__main__":
     # check the final_generate_res with ic3ref -> whether it is fulfill the property
     case = selected_aig_case
     aag_name = f"./{aig_original_location}/{case}.aag" 
-    cnf_name = f"./{aig_original_location}/{case}_inv_CTI_predicted.txt"
+    cnf_name = f"./{aig_original_location}/{case}_inv_CTI_predicted.cnf"
     model_name = case
     m = AAGmodel()
     m.from_file(aag_name)
