@@ -4,6 +4,10 @@ aag2graph (directly convert from aag):
 aag+inv to cnf
 /data/hongcezh/clause-learning/data-collect/aig2cexcnfmap
 
+script to run ic3ref
+/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/run_single.sh
+/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/collect.sh
+
 clone modified ic3ref to utils
 https://github.com/zhanghongce/IC3ref - modified Makefile (may not be necessary)
 

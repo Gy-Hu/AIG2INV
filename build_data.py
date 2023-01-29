@@ -66,18 +66,28 @@ def generate_smt2():
     subset_dir_lst = [subset_dir+str(i) for i in range(23)] # 10 is the number for test subset
     pool = ThreadPool(multiprocessing.cpu_count())
     results = []
+    # get all the generated inductive invariants cases' name
+    # store all folder name in '/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip'
+    cases_with_inductive_invariants = os.listdir('/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip')
+
     for subset in subset_dir_lst:
         # get file name in each subset
         case_name_lst = walkFile(subset)
-        results.extend(
-            pool.apply_async(
-                call_proc,
-                (
-                    f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {subset}/{file}",
-                ),
+        # filter the case name list, only keep the case name in cases_with_inductive_invariants
+        if case_name_lst := [ # if case_name_lst is not empty
+            case
+            for case in case_name_lst
+            if case in cases_with_inductive_invariants
+        ]:
+            results.extend(
+                pool.apply_async(
+                    call_proc,
+                    (
+                        f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {subset}/{file}",
+                    ),
+                )
+                for file in case_name_lst
             )
-            for file in case_name_lst
-        )
     pool.close()
     pool.join()
     for result in results:
