@@ -5,9 +5,13 @@ import pandas as pd
 import os
 import ternary_sim
 from tCube import tCube
+from natsort import natsorted
 
 class ExtractCnf(object):
-    def __init__(self, aagmodel, clause, name):
+    def __init__(self, aagmodel, clause, name, generalize):
+
+        # generalize the predescessor?
+        self.generalize = generalize
         
         # build clauses
         self.aagmodel = aagmodel
@@ -123,8 +127,11 @@ class ExtractCnf(object):
         for idx in range(len(mic_like_res)):
             var2str = convert_var_to_str(mic_like_res[idx])
             data[str(var2str)] = 1 # Mark q-like as 1
+        #print(list(data.keys()))
+        #print(sorted(list(data.keys())))
+        
         # assert the sequence of the ground truth has been sorted
-        assert list(data.keys()) == sorted(list(data.keys())), "BUG: the sequence of the ground truth has not been sorted automatically"
+        assert list(data.keys()) == natsorted(list(data.keys())), "BUG: the sequence of the ground truth has not been sorted automatically"
         self.cex_generalization_ground_truth.append(data)
 
     def _check_inductive(self, clause_list):
@@ -142,11 +149,12 @@ class ExtractCnf(object):
     def _make_cex_prime(self, cex):
         return z3.substitute(z3.substitute(cex, self.v2prime), self.vprime2nxt)
 
-    def _solve_relative(self, prop, cnfs, prop_only, generalize=False): # -> a dict of only the curr_vars
+    def _solve_relative(self, prop, cnfs, prop_only, generalize): # -> a dict of only the curr_vars
         '''
         prop: the property to be checked
         cnfs: the clauses has been added for blocking
         prop_only: consider the clauses in cnfs ? prev = (cnfs + prop) : prev= prop
+        generalize: generalize predecessor or not
         '''
         # initially, we will remove the props
         # then, maybe we can also remove the additional states
@@ -296,7 +304,7 @@ class ExtractCnf(object):
         '''
         Everytime only the property is considered to generate the counterexample
         '''
-        cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=True, generalize=True)
+        cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=True, generalize=self.generalize)
         while cex is not None:
             clause, clause_m = self._find_clause_to_block(cex,var_lst,generate_smt2=True) # find the clause to block the cex
             clause_list.append(clause) # add the clause (that has been added to solver for blocking) to the list
@@ -304,7 +312,7 @@ class ExtractCnf(object):
             clause_list = list(set(clause_list))
             cex_prime_expr = self._make_cex_prime(cex) # find the cex expression in z3
             cex_clause_pair_list_prop.append((cex_m, clause_m, cex_prime_expr)) # model generated without using inv.cnf
-            cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=True, generalize=True)
+            cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=True, generalize=self.generalize)
 
         '''
         Everytime the clauses in clause_list and safety property are considered to generate the counterexample

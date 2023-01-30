@@ -64,8 +64,8 @@ def generate_smt2():
     #generate smt2 file for prediction -> SAT model/conterexample
     subset_dir = '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_'
     subset_dir_lst = [subset_dir+str(i) for i in range(23)] # 10 is the number for test subset
-    pool = ThreadPool(multiprocessing.cpu_count())
-    results = []
+    #pool = ThreadPool(multiprocessing.cpu_count())
+    pool = multiprocessing.Pool(32)
     # get all the generated inductive invariants cases' name
     # store all folder name in '/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip'
     cases_with_inductive_invariants = os.listdir('/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip')
@@ -76,37 +76,28 @@ def generate_smt2():
         if os.path.exists(f'/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf')
     ]
 
-    '''
-    Deprecated
-    
-    # walk in all subset and get all the case name into list
-    all_case_name_lst = []
-    all_case_name_lst.extend( # extend the list
-        walkFile(subset)
-        for subset in subset_dir_lst
-    )
-    # make all the case name into a single list
-    all_case_name_lst = [case for case_lst in all_case_name_lst for case in case_lst]
-    '''
-
+    all_cases_name_lst = [] # put into multi-threading pool
     for subset in subset_dir_lst:
         # get file name in each subset
-        case_name_lst = walkFile(subset)
+        _ = walkFile(subset)
         # filter the case name list, only keep the case name in cases_with_inductive_invariants
-        if case_name_lst := [ # if case_name_lst is not empty
+        if _ := [ # if case_name_lst is not empty
             case
-            for case in case_name_lst
+            for case in _
             if case.split('.aag')[0] in cases_with_inductive_invariants
-        ]:
-            results.extend(
-                pool.apply_async(
-                    call_proc,
-                    (
-                        f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {subset}/{file}",
-                    ),
-                )
-                for file in case_name_lst
-            )
+        ]: 
+            all_cases_name_lst.extend(f'{subset}/{case}' for case in _)
+
+    results = []
+    print(f"Start to generate smt2 for {len(all_cases_name_lst)} aiger in all the subset!")
+    for _, aig_to_generate_smt2 in enumerate(all_cases_name_lst):
+        print(f"Start to generate smt2 for No.{_} aiger: {(aig_to_generate_smt2.split('/')[-1]).split('.aag')[0]}")
+        results.append(pool.apply_async(
+            call_proc,
+            (
+                f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2}",
+            ),
+        ))
     pool.close()
     pool.join()
     for result in results:

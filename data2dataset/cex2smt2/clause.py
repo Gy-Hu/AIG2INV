@@ -24,6 +24,7 @@ class Clauses(object):
             with open(fname) as fin:
                 header = fin.readline()
                 header = header.split()
+                if len(header) < 2 or header[1] == "0" : self.report2log(fname, header, "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/log.txt")
                 assert len(header) >= 2
                 assert header[0] == 'unsat'
                 assert header[1] != "0"
@@ -42,4 +43,12 @@ class Clauses(object):
                     self.clauses.append(vlist)
         elif clauses:
             self.clauses = clauses
+
+    def report2log(self, fname, header, log_file):
+        # append the error message to the log file
+        with open(log_file, "a+") as fout:
+            fout.write(f"Error: {fname} has abormal header: {header} \n")
+        fout.close()
+        
+        
 

@@ -37,11 +37,11 @@ def dump4check_map(cex_clause_pair_list_prop, cex_clause_pair_list_ind, aag_name
         print('program finished, only dump cti to file')
         return 'Finish all the work!'
 
-def convert_one_aag(aag_name, cnf_name, model_name):
+def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor):
     m = AAGmodel()
     m.from_file(aag_name)
     inv_cnf = Clauses(fname=cnf_name, num_sv = len(m.svars), num_input = len(m.inputs))
-    extractor = ExtractCnf(aagmodel = m, clause = inv_cnf, name = model_name)
+    extractor = ExtractCnf(aagmodel = m, clause = inv_cnf, name = model_name, generalize = generalize_predecessor)
     cex_clause_pair_list_prop, cex_clause_pair_list_ind, is_inductive, has_fewer_clauses = extractor.get_clause_cex_pair()
     if dump4check_map(cex_clause_pair_list_prop,cex_clause_pair_list_ind,aag_name,m, return_after_finished = True)!= None: return
 
@@ -50,6 +50,16 @@ def test():
     case = "nusmv.reactor^4.C"
     convert_one_aag(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc_simple/{case}/{case}.aag", f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case) 
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 if __name__ == "__main__":
     # for testing only
     # test()
@@ -57,9 +67,10 @@ if __name__ == "__main__":
     # make a argument parser
     parser = argparse.ArgumentParser(description='Convert aig+inv to graph')
     parser.add_argument('--aag', type=str, help='aag file')
+    parser.add_argument('--generalize', type=str2bool, default=True, help='generalize the predesessor')
     # parse the arguments to test()
     args = parser.parse_args()
     case = args.aag.split('/')[-1].split('.aag')[0]
-    convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case)
+    convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case, args.generalize)
 
 
