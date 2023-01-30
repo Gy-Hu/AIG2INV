@@ -69,6 +69,25 @@ def generate_smt2():
     # get all the generated inductive invariants cases' name
     # store all folder name in '/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip'
     cases_with_inductive_invariants = os.listdir('/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip')
+    # check whether it contains inv.cnf in subfolder
+    cases_with_inductive_invariants = [
+        case
+        for case in cases_with_inductive_invariants
+        if os.path.exists(f'/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf')
+    ]
+
+    '''
+    Deprecated
+    
+    # walk in all subset and get all the case name into list
+    all_case_name_lst = []
+    all_case_name_lst.extend( # extend the list
+        walkFile(subset)
+        for subset in subset_dir_lst
+    )
+    # make all the case name into a single list
+    all_case_name_lst = [case for case_lst in all_case_name_lst for case in case_lst]
+    '''
 
     for subset in subset_dir_lst:
         # get file name in each subset
@@ -77,7 +96,7 @@ def generate_smt2():
         if case_name_lst := [ # if case_name_lst is not empty
             case
             for case in case_name_lst
-            if case in cases_with_inductive_invariants
+            if case.split('.aag')[0] in cases_with_inductive_invariants
         ]:
             results.extend(
                 pool.apply_async(
