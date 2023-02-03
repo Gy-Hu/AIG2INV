@@ -23,3 +23,4 @@ old_models_train/
 saved_models/
 neurograph_model/
 IC3ref/
+inv.cnf

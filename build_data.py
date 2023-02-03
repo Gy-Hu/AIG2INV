@@ -43,12 +43,17 @@ def initialization(old_dir_name):
     print("Finish initialization!")
 
 def call_proc(cmd):
-    """ This runs in a separate thread. """
+    """ This runs in a separate thread. Serializes the command and run"""
     #subprocess.call(shlex.split(cmd))  # This will block until cmd finishes
     p = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     _, err = p.communicate()
     return (_, err)
 
+def run_cmd(cmd):
+    " This directly runs the command "
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    _, err = p.communicate()
+    return (_, err)
 
 def walkFile(dir):
     files = []
@@ -60,12 +65,11 @@ def walkFile(dir):
     files = [file for file in files if file.endswith(".aag")]
     return files
 
-def generate_smt2():
+def find_case_in_selected_dataset_with_inv():
     #generate smt2 file for prediction -> SAT model/conterexample
     subset_dir = '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_'
     subset_dir_lst = [subset_dir+str(i) for i in range(23)] # 10 is the number for test subset
-    #pool = ThreadPool(multiprocessing.cpu_count())
-    pool = multiprocessing.Pool(32)
+    
     # get all the generated inductive invariants cases' name
     # store all folder name in '/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip'
     cases_with_inductive_invariants = os.listdir('/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip')
@@ -88,6 +92,18 @@ def generate_smt2():
         ]: 
             all_cases_name_lst.extend(f'{subset}/{case}' for case in _)
 
+    return all_cases_name_lst
+    
+
+def generate_smt2():
+    #pool = ThreadPool(multiprocessing.cpu_count())
+    pool = multiprocessing.Pool(64)
+    '''
+    First, go to the select dataset, check whether the case has inductive invariants generated in advance,
+    if yes, then generate smt2 file for the case, otherwise, skip it.
+    '''
+    all_cases_name_lst = find_case_in_selected_dataset_with_inv()
+
     results = []
     print(f"Start to generate smt2 for {len(all_cases_name_lst)} aiger in all the subset!")
     for _, aig_to_generate_smt2 in enumerate(all_cases_name_lst):
@@ -108,6 +124,62 @@ def generate_smt2():
         else:
             print("Congruatulations, no error in subprocess!")
     print("Finish all the subprocess, all the subset has generated smt2.")
+
+    #print error information in log/error_handle/abnormal_header.log if file exist
+    if os.path.exists("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/abnormal_header.log"):
+        print("However, there are some errors occurred, please check them!")
+        with open("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/abnormal_header.log", "r") as f:
+            error_info = f.read()
+        print(f"Error information: {error_info}")
+
+    #print mismatched inv.cnf in log/error_handle/mismatched_inv.log
+    if os.path.exists("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log"):
+        print("There are some mismatched inv.cnf, please check them!")
+        with open("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log", "r") as f:
+            mismatched_inv_info = f.read()
+        print(f"Mismatched inv.cnf information: {mismatched_inv_info}") 
+        generate_smt2_error_handle(all_cases_name_lst,"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
+
+def generate_smt2_error_handle(log_file=None):
+    # parse the log file, find the cases that has mismatched inductive invariants
+    # read lines from log file
+    with open(log_file, "r") as f:
+        lines = f.readlines()
+    # get the case name that has mismatched inductive invariants in each line in lines
+    cases_with_mismatched_inv = [
+        line.split(" ")[1]
+        for line in lines
+    ]
+
+    print("Begin to re-generate the inv.cnf for the cases that has mismatched inductive invariants!")
+    #mkdir for the cases that has mismatched inductive invariants
+    for case in cases_with_mismatched_inv:
+        if not os.path.exists(f"log/error_handle/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}"):
+            os.mkdir(f"log/error_handle/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}")
+    # call IC3 to re-generate the inv.cnf for the cases that has mismatched inductive invariants
+    pool = ThreadPool(multiprocessing.cpu_count())
+    results = []
+    results.extend(
+        pool.apply_async(
+            run_cmd,
+            (
+                f"cd log/error_handle/re-generate_inv/{case.split('/')[-1].split('.aag')[0]} && /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -d < {case}",
+            ),
+        )
+        for case in cases_with_mismatched_inv
+    )
+    pool.close()
+    pool.join()
+    for result in results:
+        _, err = result.get()
+        # if err is not None, print it 
+        if err != b'':
+            print(f"err: {err}")
+        else:
+            print("Congruatulations, no error in subprocess!")
+    print("Finish all the subprocess, all the abnormal cases have been fixed.")
+    # remove the log file
+    os.remove(log_file)
 
 def generate_pre_graph():
     # generate pre-graph, constructed as json
@@ -170,6 +242,11 @@ def generate_post_graph():
 
 
 if __name__ == '__main__':
+    generate_smt2_error_handle("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
+    
+    # terminate in advance
+    exit(0)
+
     '''
     ---------------------------------------------------------
     step zero, change the directory name of 
@@ -188,6 +265,14 @@ if __name__ == '__main__':
     '''
     # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py
     generate_smt2()
+
+    '''
+    -----------------------------------------------------------------
+    handle some errors! some aiger's inv.cnf is mismatch
+    -----------------------------------------------------------------
+    '''
+    # re-run the smt2 generation process with the error aiger file - inv.cnf mismatch
+    # generate_smt2_error_handle() # I have put this in generate_smt2() function
     
     '''
     ---------------------------------------------------------

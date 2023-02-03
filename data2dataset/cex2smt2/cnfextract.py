@@ -8,7 +8,8 @@ from tCube import tCube
 from natsort import natsorted
 
 class ExtractCnf(object):
-    def __init__(self, aagmodel, clause, name, generalize):
+    def __init__(self, aagmodel, clause, name, generalize, aig_path):
+        self.aig_path = aig_path
 
         # generalize the predescessor?
         self.generalize = generalize
@@ -84,8 +85,16 @@ class ExtractCnf(object):
         print (model_to_block)
         for idx in range(len(self.clauses)-1, -1, -1): 
             print(idx,':', self.clauses[idx])
+        # record this case due to mismatched inv.cnf
+        print("Mismatched inductive invariant!!")
+        self._report2log(self.aig_path, "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
         assert False, "BUG: cannot find clause to block bad state"
 
+    def _report2log(self, aig_path, log_file):
+        # append the error message to the log file
+        with open(log_file, "a+") as fout:
+            fout.write(f"Error: {aig_path} has mismatched inductive invariants. \n")
+        fout.close()
 
     def _generate_smt2_and_ground_truth(self, model_to_block, model_var_lst, cl_info):    #smt2_gen_IG is a switch to trun on/off .smt file generation 
         '''

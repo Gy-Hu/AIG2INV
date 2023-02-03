@@ -37,11 +37,11 @@ def dump4check_map(cex_clause_pair_list_prop, cex_clause_pair_list_ind, aag_name
         print('program finished, only dump cti to file')
         return 'Finish all the work!'
 
-def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor):
+def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, file_path):
     m = AAGmodel()
     m.from_file(aag_name)
     inv_cnf = Clauses(fname=cnf_name, num_sv = len(m.svars), num_input = len(m.inputs))
-    extractor = ExtractCnf(aagmodel = m, clause = inv_cnf, name = model_name, generalize = generalize_predecessor)
+    extractor = ExtractCnf(aagmodel = m, clause = inv_cnf, name = model_name, generalize = generalize_predecessor, aig_path=file_path)
     cex_clause_pair_list_prop, cex_clause_pair_list_ind, is_inductive, has_fewer_clauses = extractor.get_clause_cex_pair()
     if dump4check_map(cex_clause_pair_list_prop,cex_clause_pair_list_ind,aag_name,m, return_after_finished = True)!= None: return
 
@@ -53,9 +53,9 @@ def test():
 def str2bool(v):
     if isinstance(v, bool):
         return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+    if v.lower() in ('yes', 'true', 't', 'y', '1','True','T'):
         return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+    elif v.lower() in ('no', 'false', 'f', 'n', '0','False','F'):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
@@ -71,6 +71,6 @@ if __name__ == "__main__":
     # parse the arguments to test()
     args = parser.parse_args()
     case = args.aag.split('/')[-1].split('.aag')[0]
-    convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case, args.generalize)
+    convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case, args.generalize,args.aag)
 
 
