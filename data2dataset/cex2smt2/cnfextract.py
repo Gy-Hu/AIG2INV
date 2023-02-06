@@ -86,7 +86,7 @@ class ExtractCnf(object):
         for idx in range(len(self.clauses)-1, -1, -1): 
             print(idx,':', self.clauses[idx])
         # record this case due to mismatched inv.cnf
-        print("Mismatched inductive invariant!!")
+        print(f"{self.model_name} Mismatched inductive invariant!! Path:{self.aig_path}")
         self._report2log(self.aig_path, "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
         assert False, "BUG: cannot find clause to block bad state"
 

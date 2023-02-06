@@ -37,7 +37,8 @@ def dump4check_map(cex_clause_pair_list_prop, cex_clause_pair_list_ind, aag_name
         print('program finished, only dump cti to file')
         return 'Finish all the work!'
 
-def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, file_path):
+def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor):
+    file_path = aag_name
     m = AAGmodel()
     m.from_file(aag_name)
     inv_cnf = Clauses(fname=cnf_name, num_sv = len(m.svars), num_input = len(m.inputs))
@@ -68,9 +69,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Convert aig+inv to graph')
     parser.add_argument('--aag', type=str, help='aag file')
     parser.add_argument('--generalize', type=str2bool, default=True, help='generalize the predesessor')
+    parser.add_argument('--cnf', type=str, default=None, help='cnf file')
     # parse the arguments to test()
     args = parser.parse_args()
     case = args.aag.split('/')[-1].split('.aag')[0]
-    convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case, args.generalize,args.aag)
-
+    if args.cnf is None: 
+        convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case, args.generalize)
+    else:
+        convert_one_aag(args.aag, args.cnf, case, args.generalize)
 

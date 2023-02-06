@@ -19,29 +19,50 @@ import subprocess
 import shlex
 from multiprocessing.pool import ThreadPool
 from threading import Timer
+import shutil
+import time
 
-def initialization(old_dir_name):
-    import time
-    import shutil
-    new_dir_name = f"{old_dir_name}_" + time.strftime(
-        "%Y%m%d_%H%M%S", time.localtime()
-    )
-    # if old directory exists and file size is not zero, then move it to new directory
-    if os.path.exists(old_dir_name):
-        if os.listdir(f"{old_dir_name}/bad_cube_cex2graph/json_to_graph_pickle")!= [] and os.path.getsize(f"{old_dir_name}/bad_cube_cex2graph/json_to_graph_pickle") >= 4096: # exist and not empty, change the name
-            shutil.move(old_dir_name, new_dir_name)
-        else: # exist but empty, delete it
-            # use trash command to delete the empty directory
-            os.system(f"trash {old_dir_name}")
-    # old directory has been handled, then create new directory
-    os.mkdir(old_dir_name)
-    # make file folder under old_dir_name
-    os.mkdir(f"{old_dir_name}/bad_cube_cex2graph")
-    os.mkdir(f"{old_dir_name}/bad_cube_cex2graph/expr_to_build_graph")
-    os.mkdir(f"{old_dir_name}/bad_cube_cex2graph/cti_for_inv_map_checking")
-    os.mkdir(f"{old_dir_name}/bad_cube_cex2graph/ground_truth_table")
-    os.mkdir(f"{old_dir_name}/bad_cube_cex2graph/json_to_graph_pickle")
-    print("Finish initialization!")
+def initialization(old_dir_name, with_re_generate_inv=False):
+    
+    '''
+    with_re-generate_inv: if True, process clean folder function
+    
+    the folder structure:
+    ./dataset
+    ├── bad_cube_cex2graph
+    │   ├── cti_for_inv_map_checking -> should be empty
+    │   ├── expr_to_build_graph -> should be empty
+    │   ├── ground_truth_table -> should be empty
+    │   └── json_to_graph_pickle -> should be empty
+    └── re-generate_inv
+        ├── cmu.dme1.B
+        ├── cmu.dme2.B
+        ├── .......
+    '''
+    mkdir_cmd = lambda dir_name: os.system(f"mkdir {dir_name}/bad_cube_cex2graph && mkdir {dir_name}/bad_cube_cex2graph/expr_to_build_graph {dir_name}/bad_cube_cex2graph/cti_for_inv_map_checking {dir_name}/bad_cube_cex2graph/ground_truth_table {dir_name}/bad_cube_cex2graph/json_to_graph_pickle")
+    if with_re_generate_inv==False:
+        new_dir_name = f"{old_dir_name}_" + time.strftime(
+            "%Y%m%d_%H%M%S", time.localtime()
+        )
+        # if old directory exists and file size is not zero, then move it to new directory
+        if os.path.exists(old_dir_name):
+            if os.listdir(f"{old_dir_name}/bad_cube_cex2graph/json_to_graph_pickle")!= [] and os.path.getsize(f"{old_dir_name}/bad_cube_cex2graph/json_to_graph_pickle") >= 4096: # exist and not empty, change the name
+                shutil.move(old_dir_name, new_dir_name)
+            else: # exist but empty, delete it
+                # use trash command to delete the empty directory
+                os.system(f"trash {old_dir_name}")
+        # old directory has been handled, then create new directory
+        os.mkdir(old_dir_name)
+        shutil.move()
+        # make file folder under old_dir_name
+        mkdir_cmd(old_dir_name)
+        print("Finish initialization!")
+    else:
+        # clean all the files in the folder bad_cube_cex2graph
+        os.system(f"trash {old_dir_name}/bad_cube_cex2graph")
+        # make file folder under old_dir_name
+        mkdir_cmd(old_dir_name)
+        print("Finish cleaning the folder bad_cube_cex2graph!")
 
 def call_proc(cmd):
     """ This runs in a separate thread. Serializes the command and run"""
@@ -140,11 +161,12 @@ def generate_smt2():
     print("Finish all the subprocess, all the subset has generated smt2.")
 
     #print error information in log/error_handle/abnormal_header.log if file exist
-    if os.path.exists("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/abnormal_header.log"):
-        print("However, there are some errors occurred, please check them!")
-        with open("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/abnormal_header.log", "r") as f:
+    if os.path.exists("log/error_handle/abnormal_header.log"):
+        with open("log/error_handle/abnormal_header.log", "r") as f:
             error_info = f.read()
         print(f"Error information: {error_info}")
+        # rename the abnormal_header.log to abnormal_header.log.{time_stamp}
+        shutil.move("log/error_handle/abnormal_header.log", f"log/error_handle/abnormal_header.log.{time.time()}")
 
     #print mismatched inv.cnf in log/error_handle/mismatched_inv.log
     if os.path.exists("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log"):
@@ -154,7 +176,7 @@ def generate_smt2():
         print(f"Mismatched inv.cnf information: {mismatched_inv_info}") 
         generate_smt2_error_handle(all_cases_name_lst,"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
 
-def generate_smt2_error_handle(log_file=None):
+def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False):
     # parse the log file, find the cases that has mismatched inductive invariants
     # read lines from log file
     with open(log_file, "r") as f:
@@ -164,6 +186,9 @@ def generate_smt2_error_handle(log_file=None):
         line.split(" ")[1]
         for line in lines
     ]
+    
+    # make a copy that record this in cases4re_generate_inv
+    cases4re_generate_inv = cases_with_mismatched_inv[:]
 
     print("Begin to re-generate the inv.cnf for the cases that has mismatched inductive invariants!")
     #mkdir for the cases that has mismatched inductive invariants
@@ -179,31 +204,59 @@ def generate_smt2_error_handle(log_file=None):
             ):    
                 # if the inv.cnf and the folder does not exist, then we create the folder
                 os.mkdir(f"dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}")
-    # call IC3 to re-generate the inv.cnf for the cases that has mismatched inductive invariants
-    pool = ThreadPool(multiprocessing.cpu_count())
-    results = []
-    results.extend(
-        pool.apply_async(
-            run_cmd_with_timer,
-            (
-                f"cd dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]} && /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -d < {case}",
-            ),
+        # call IC3 to re-generate the inv.cnf for the cases that has mismatched inductive invariants
+        pool = ThreadPool(multiprocessing.cpu_count())
+        results = []
+        results.extend(
+            pool.apply_async(
+                run_cmd_with_timer,
+                (
+                    f"cd dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]} && /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -d < {case}",
+                ),
+            )
+            for case in cases_with_mismatched_inv
         )
-        for case in cases_with_mismatched_inv
-    )
-    pool.close()
-    pool.join()
-    for result in results:
-        _, err = result.get()
-        # if err is not None, print it 
-        if err != b'':
-            print(f"err: {err}")
-        else:
-            print("Congruatulations, no error in subprocess!")
-    print("Finish all the subprocess, all the abnormal cases have been fixed.")
-    # remove the log file
-    os.remove(log_file)
-
+        pool.close()
+        pool.join()
+        for result in results:
+            _, err = result.get()
+            # if err is not None, print it 
+            if err != b'':
+                print(f"err: {err}")
+            else:
+                print("Congruatulations, no error in subprocess!")
+        print("Finish all the subprocess, all the abnormal cases have been fixed.")
+    
+    
+    if only_re_generate_inv==False:
+        pool = ThreadPool(multiprocessing.cpu_count())
+        # begin to generate the smt2 file for the cases that has mismatched inductive invariants
+        results = []
+        assert cases4re_generate_inv != [], "BUG: cases4re_generate_inv should not be empty! Check the copy operation!"
+        print(f"Start to generate smt2 for {len(cases4re_generate_inv)} aiger with mismated inv!")
+        for _, aig_to_generate_smt2 in enumerate(cases4re_generate_inv):
+            print(f"Start to re-generate smt2 for No.{_} aiger due to mismatched inv.cnf: {(aig_to_generate_smt2.split('/')[-1]).split('.aag')[0]}")
+            results.append(pool.apply_async(
+                call_proc,
+                (
+                    f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2} --cnf dataset/re-generate_inv/{aig_to_generate_smt2.split('/')[-1].split('.aag')[0]}/inv.cnf",
+                ),
+            ))
+        pool.close()
+        pool.join()
+        for result in results:
+            _, err = result.get()
+            # if err is not None, print it 
+            if err != b'':
+                print(f"err: {err}")
+            else:
+                print("Congruatulations, no error in subprocess!")
+        print("Finish all the subprocess, all the mismatched error cases have re-generated smt2.")
+        
+    # rename the mismatched_inv.log to mismatched_inv.log.{time_stamp}
+    shutil.move("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log", f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log.{time.time()}")
+    
+    
 def generate_pre_graph():
     # generate pre-graph, constructed as json
     smt2_dir = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/"
@@ -263,43 +316,57 @@ def generate_post_graph():
             print("Congruatulations, no error in subprocess!")
     print("Finish all the subprocess, all the subset has generated serialization pickle for training.")
 
-
+    
 if __name__ == '__main__':
-    generate_smt2_error_handle("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
     
-    # terminate in advance
-    exit(0)
-
     '''
     ---------------------------------------------------------
-    step zero, change the directory name of 
-    "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset"
-    with time stamp
+    Attention:
+    If you are the first time to run this script, do not need to set any option.
     ---------------------------------------------------------
     '''
-
+    
+    parser = argparse.ArgumentParser()
+    # this option only for that you have .log with mismatched cases list
+    parser.add_argument('--only_re_generate_inv', action='store_true', help='only re-generate the inv.cnf for the cases that has mismatched inductive invariants')
+    parser.add_argument('--initialization_with_inv_generated', action='store_true', help='initialization with inv generated')
+    args = parser.parse_args(['--initialization_with_inv_generated'])
+    '''
+    ---------------------------------------------------------
+    only re-generate the inv.cnf for the cases that has mismatched inductive invariants?
+    
+    (only has error log, want to generate the inv.cnf only)
+    ---------------------------------------------------------
+    '''
+    if args.only_re_generate_inv:
+        assert not os.path.exists("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv"), "dataset/re-generate_inv/ folder already exists, please remove it first"
+        os.mkdir("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/"); os.mkdir("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv")
+        generate_smt2_error_handle("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log", only_re_generate_inv=True)
+        exit(0)
+    
+    '''
+    ---------------------------------------------------------
+    (step 0: )change the directory name of "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset" with time stamp
+    
+    Choose mode:
+    1. Generate_smt2 for all cases -> default
+    2. Generate_smt2 for error cases -> with_re_generate_inv set to True in initialization()
+    
+    (step 1: )Then, generate smt2 file for prediction (-> inducitve invariant)
+    ---------------------------------------------------------
+    '''
     old_dir_name = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset"
-    initialization(old_dir_name)
-
-    '''
-    -----------------------------------------------------------------
-    first, generate smt2 file for prediction (-> inducitve invariant)
-    -----------------------------------------------------------------
-    '''
-    # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py
-    generate_smt2()
-
-    '''
-    -----------------------------------------------------------------
-    handle some errors! some aiger's inv.cnf is mismatch
-    -----------------------------------------------------------------
-    '''
-    # re-run the smt2 generation process with the error aiger file - inv.cnf mismatch
-    # generate_smt2_error_handle() # I have put this in generate_smt2() function
+    if args.initialization_with_inv_generated:
+        initialization(old_dir_name, with_re_generate_inv=True)
+        generate_smt2_error_handle("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
+    else:
+        initialization(old_dir_name, with_re_generate_inv=False)
+        # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py
+        generate_smt2()
     
     '''
     ---------------------------------------------------------
-    second, generate graph file for training
+    (step2: )generate graph file for training
     ---------------------------------------------------------
     '''
     # generate pre-graph (json format)
