@@ -168,14 +168,20 @@ def generate_smt2_error_handle(log_file=None):
     print("Begin to re-generate the inv.cnf for the cases that has mismatched inductive invariants!")
     #mkdir for the cases that has mismatched inductive invariants
     for case in cases_with_mismatched_inv:
-        if not os.path.exists(f"dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}"):
+        if os.path.exists(f"dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}/inv.cnf"):
+            # if the inv.cnf already exist, then skip it, delete it in list
+            cases_with_mismatched_inv.remove(case)
+        elif not os.path.exists(
+            f"dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}"
+        ):    
+            # if the inv.cnf and the folder does not exist, then we create the folder
             os.mkdir(f"dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}")
     # call IC3 to re-generate the inv.cnf for the cases that has mismatched inductive invariants
     pool = ThreadPool(multiprocessing.cpu_count())
     results = []
     results.extend(
         pool.apply_async(
-            run_cmd,
+            run_cmd_with_timer,
             (
                 f"cd dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]} && /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -d < {case}",
             ),
