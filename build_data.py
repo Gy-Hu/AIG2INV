@@ -18,6 +18,7 @@ import multiprocessing
 import subprocess
 import shlex
 from multiprocessing.pool import ThreadPool
+from threading import Timer
 
 def initialization(old_dir_name):
     import time
@@ -53,6 +54,19 @@ def run_cmd(cmd):
     " This directly runs the command "
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     _, err = p.communicate()
+    return (_, err)
+
+def run_cmd_with_timer(cmd):
+    timeout = 7200 #2 hour for model checking
+    " This directly runs the command "
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    timer = Timer(timeout, lambda x: x.terminate(), [p])
+    timer.start()
+    _, err = p.communicate()
+    code = p.returncode
+    if code == -15: #return code of SIGTERM
+        print('{cmd} over {timeout}, timeout!'.format(timeout=timeout, cmd=cmd))
+    timer.cancel()
     return (_, err)
 
 def walkFile(dir):
@@ -154,8 +168,8 @@ def generate_smt2_error_handle(log_file=None):
     print("Begin to re-generate the inv.cnf for the cases that has mismatched inductive invariants!")
     #mkdir for the cases that has mismatched inductive invariants
     for case in cases_with_mismatched_inv:
-        if not os.path.exists(f"log/error_handle/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}"):
-            os.mkdir(f"log/error_handle/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}")
+        if not os.path.exists(f"dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}"):
+            os.mkdir(f"dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}")
     # call IC3 to re-generate the inv.cnf for the cases that has mismatched inductive invariants
     pool = ThreadPool(multiprocessing.cpu_count())
     results = []
@@ -163,7 +177,7 @@ def generate_smt2_error_handle(log_file=None):
         pool.apply_async(
             run_cmd,
             (
-                f"cd log/error_handle/re-generate_inv/{case.split('/')[-1].split('.aag')[0]} && /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -d < {case}",
+                f"cd dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]} && /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -d < {case}",
             ),
         )
         for case in cases_with_mismatched_inv
