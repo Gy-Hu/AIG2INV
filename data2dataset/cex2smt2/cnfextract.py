@@ -8,8 +8,9 @@ from tCube import tCube
 from natsort import natsorted
 
 class ExtractCnf(object):
-    def __init__(self, aagmodel, clause, name, generalize, aig_path):
+    def __init__(self, aagmodel, clause, name, generalize, aig_path, generate_smt2):
         self.aig_path = aig_path
+        self.generate_smt2 = generate_smt2 # default: generate smt2
 
         # generalize the predescessor?
         self.generalize = generalize
@@ -315,7 +316,7 @@ class ExtractCnf(object):
         '''
         cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=True, generalize=self.generalize)
         while cex is not None:
-            clause, clause_m = self._find_clause_to_block(cex,var_lst,generate_smt2=True) # find the clause to block the cex
+            clause, clause_m = self._find_clause_to_block(cex,var_lst,generate_smt2=self.generate_smt2) # find the clause to block the cex
             clause_list.append(clause) # add the clause (that has been added to solver for blocking) to the list
             # remove the duplicate clauses in the clause_list
             clause_list = list(set(clause_list))
@@ -330,7 +331,7 @@ class ExtractCnf(object):
 
         cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=False)
         while cex is not None:
-            clause, clause_m = self._find_clause_to_block(cex,var_lst,generate_smt2=True)
+            clause, clause_m = self._find_clause_to_block(cex,var_lst,generate_smt2=self.generate_smt2)
             clause_list.append(clause)
             cex_prime_expr = self._make_cex_prime(cex)
             cex_clause_pair_list_ind.append((cex_m, clause_m, cex_prime_expr)) # model generated with using inv.cnf

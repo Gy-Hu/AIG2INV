@@ -53,7 +53,6 @@ def initialization(old_dir_name, with_re_generate_inv=False):
                 os.system(f"trash {old_dir_name}")
         # old directory has been handled, then create new directory
         os.mkdir(old_dir_name)
-        shutil.move()
         # make file folder under old_dir_name
         mkdir_cmd(old_dir_name)
         print("Finish initialization!")
@@ -176,7 +175,7 @@ def generate_smt2():
         print(f"Mismatched inv.cnf information: {mismatched_inv_info}") 
         generate_smt2_error_handle(all_cases_name_lst,"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
 
-def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False):
+def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False, ic3ref_basic_generalization=""):
     # parse the log file, find the cases that has mismatched inductive invariants
     # read lines from log file
     with open(log_file, "r") as f:
@@ -211,7 +210,7 @@ def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False):
             pool.apply_async(
                 run_cmd_with_timer,
                 (
-                    f"cd dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]} && /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -d < {case}",
+                    f"cd dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]} && /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -d {ic3ref_basic_generalization} < {case}",
                 ),
             )
             for case in cases_with_mismatched_inv
@@ -330,18 +329,22 @@ if __name__ == '__main__':
     # this option only for that you have .log with mismatched cases list
     parser.add_argument('--only_re_generate_inv', action='store_true', help='only re-generate the inv.cnf for the cases that has mismatched inductive invariants')
     parser.add_argument('--initialization_with_inv_generated', action='store_true', help='initialization with inv generated')
-    args = parser.parse_args(['--initialization_with_inv_generated'])
+    parser.add_argument('--error_handle_with_ic3ref_basic_generalization', action='store_true', help='error handle with ic3ref basic generalization')
+    # args = parser.parse_args()
+    # for testing only
+    args = parser.parse_args(['--only_re_generate_inv','--error_handle_with_ic3ref_basic_generalization'])
     '''
     ---------------------------------------------------------
     only re-generate the inv.cnf for the cases that has mismatched inductive invariants?
     
-    (only has error log, want to generate the inv.cnf only)
+    (only has error log, and user want to generate the inv.cnf only)
     ---------------------------------------------------------
     '''
     if args.only_re_generate_inv:
-        assert not os.path.exists("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv"), "dataset/re-generate_inv/ folder already exists, please remove it first"
+        args.error_handle_with_ic3ref_basic_generalization = "-b" if args.error_handle_with_ic3ref_basic_generalization else ""
+        assert not os.path.exists("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset"), "dataset/re-generate_inv/ folder already exists, please remove it first"
         os.mkdir("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/"); os.mkdir("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv")
-        generate_smt2_error_handle("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log", only_re_generate_inv=True)
+        generate_smt2_error_handle("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log", only_re_generate_inv=True, ic3ref_basic_generalization=args.error_handle_with_ic3ref_basic_generalization)
         exit(0)
     
     '''

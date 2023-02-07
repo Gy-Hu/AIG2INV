@@ -37,12 +37,12 @@ def dump4check_map(cex_clause_pair_list_prop, cex_clause_pair_list_ind, aag_name
         print('program finished, only dump cti to file')
         return 'Finish all the work!'
 
-def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor):
+def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, generate_smt2):
     file_path = aag_name
     m = AAGmodel()
     m.from_file(aag_name)
     inv_cnf = Clauses(fname=cnf_name, num_sv = len(m.svars), num_input = len(m.inputs))
-    extractor = ExtractCnf(aagmodel = m, clause = inv_cnf, name = model_name, generalize = generalize_predecessor, aig_path=file_path)
+    extractor = ExtractCnf(aagmodel = m, clause = inv_cnf, name = model_name, generalize = generalize_predecessor, aig_path=file_path, generate_smt2 = generate_smt2)
     cex_clause_pair_list_prop, cex_clause_pair_list_ind, is_inductive, has_fewer_clauses = extractor.get_clause_cex_pair()
     if dump4check_map(cex_clause_pair_list_prop,cex_clause_pair_list_ind,aag_name,m, return_after_finished = True)!= None: return
 
@@ -54,9 +54,9 @@ def test():
 def str2bool(v):
     if isinstance(v, bool):
         return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1','True','T'):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0','False','F'):
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
@@ -70,11 +70,30 @@ if __name__ == "__main__":
     parser.add_argument('--aag', type=str, help='aag file')
     parser.add_argument('--generalize', type=str2bool, default=True, help='generalize the predesessor')
     parser.add_argument('--cnf', type=str, default=None, help='cnf file')
+    parser.add_argument('--generate_smt2', type=str2bool, default=True, help='generate smt2 file')
     # parse the arguments to test()
     args = parser.parse_args()
+    
+    '''
+    for testing only
+    
+    args = parser.parse_args(['--aag',
+        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_4/nusmv.brp.B.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_0/nusmv.syncarb5^2.B.aag',
+        '--generalize', 
+        'T',
+        '--cnf',
+        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv/nusmv.brp.B/inv.cnf',
+        #'/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/nusmv.syncarb5^2.B/inv.cnf',
+        '--generate_smt2', 
+        'F'
+        ])
+    '''
+    
+    
     case = args.aag.split('/')[-1].split('.aag')[0]
     if args.cnf is None: 
-        convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case, args.generalize)
+        convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2)
     else:
-        convert_one_aag(args.aag, args.cnf, case, args.generalize)
+        convert_one_aag(args.aag, args.cnf, case, args.generalize, args.generate_smt2)
 
