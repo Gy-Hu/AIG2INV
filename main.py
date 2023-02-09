@@ -28,6 +28,8 @@ import subprocess
 # add input arguments
 import argparse
 
+import shutil
+
 '''
 ---------------------------------------------------------
 Checker to check if the predicted clauses is satisfiable
@@ -258,13 +260,51 @@ class CNF_Filter(ExtractCnf):
 Global Used Functions  
 -----------------------
 '''
-def walkFile(self):
+def walkFile():
     files = []
     for root, _, files in os.walk(self):
         files = natsorted(files)
         files = [os.path.join(root,f) for f in files]
     assert len(files) > 0, f"No files found in {self}"
     return files
+
+def subset_preproces(file_path='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007'):
+    aig_file_list = []
+    #get all file names from all the subfolders
+    for root, dirs, files in os.walk(file_path):
+        for file in files:
+            if file.endswith(".aag"):
+                file_path = os.path.join(root, file)
+                aig_file_list.append(file_path)
+    #print(aig_file_list)
+    
+    # get all folder name in big dataset
+    aig_big_case_list = [ f.path for f in os.scandir('/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_20230129_173401_big/bad_cube_cex2graph/json_to_graph_pickle') if f.is_dir() ]
+
+    #create a folder for each file
+    for file_path in aig_file_list :
+        if list(filter(lambda x: file_path.split('/')[-1].split('.aag')[0] in x, aig_big_case_list)) !=[] :
+            os.mkdir(f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007_big_comp/{file_path.split("/")[-1].split(".aag")[0]}')
+            # copy the aig file to the folder
+            shutil.copy(file_path, f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007_big_comp/{file_path.split("/")[-1].split(".aag")[0]}')
+    print('Finish copying all the aig files to the corresponding folders')
+    
+def subset_preproces_all(file_path='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007'):
+    aig_file_list = []
+    #get all file names from all the subfolders
+    for root, dirs, files in os.walk(file_path):
+        for file in files:
+            if file.endswith(".aag"):
+                file_path = os.path.join(root, file)
+                aig_file_list.append(file_path)
+    #print(aig_file_list)
+
+    #create a folder for each file
+    for file_path in aig_file_list :
+        os.mkdir(f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007_all_comp/{file_path.split("/")[-1].split(".aag")[0]}')
+        # copy the aig file to the folder
+        shutil.copy(file_path, f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007_all_comp/{file_path.split("/")[-1].split(".aag")[0]}')
+    print('Finish copying all the aig files to the corresponding folders')
 
 def get_dataset(selected_dataset = 'toy'):
     if selected_dataset == 'complete':
@@ -273,10 +313,12 @@ def get_dataset(selected_dataset = 'toy'):
         return 'dataset_20230106_014957_toy'
     elif selected_dataset == 'small':
         return 'dataset_20230106_025223_small'
+    elif selected_dataset == 'big':
+        return 'dataset_20230129_173401_big'
 
 def compare_ic3ref(aig_original_location, selected_aig_case):
     # compare with ic3ref
-    
+
     '''
     modified ic3ref located in /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3
     '''
@@ -312,7 +354,7 @@ def compare_ic3ref(aig_original_location, selected_aig_case):
         output = subprocess.check_output(cmd,shell=True,stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e: # normally we will arrive here
         output = f"command '{e.cmd}' return with error (code {e.returncode}): {e.output}"
-    
+
     # read output, and split it into lines by "\\n"
     output = output.split('\\n')
     # Find the last Level x line, and extract the x
@@ -325,43 +367,35 @@ def compare_ic3ref(aig_original_location, selected_aig_case):
     last_level_ic3ref = last_level_ic3ref[1]
 
     # compare the last level
-    if last_level == last_level_ic3ref:
+    if last_level == last_level_ic3ref or not(last_level_ic3ref.isnumeric()): #true if last_level_ic3ref is a string
         print('NN-IC3ref has not improved the result')
     else:
         print('NN-IC3ref has improved the result by ',int(last_level_ic3ref) - int(last_level),' frames')
 
     print('compare with ic3ref done')
-
-
-if __name__ == "__main__":
-    # input arguments to adjust the test case, thershold, and model
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--threshold', type=float, default=0.8, help='threshold for the output of the NN model')
-    parser.add_argument('--aig-case-name', type=str, default='nusmv.syncarb5^2.B', help='case name')
-    parser.add_argument('--NN-model', type=str, default='neuropdr_2023-01-06_07:56:57_last.pth.tar', help='model name')
-    parser.add_argument('--gpu-id', type=str, default='1', help='gpu id')
-    args = parser.parse_args()
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
-
+    
+def test_single_case(threshold, aig_case_name, NN_model,aig_original_location_prefix):
     sigmoid = nn.Sigmoid()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # choose the dataset that you want to test
-    extracted_bad_cube_prefix = get_dataset(selected_dataset='toy')
+    extracted_bad_cube_prefix = get_dataset(selected_dataset='big')
     # choose the case that you want to test
-    selected_aig_case = args.aig_case_name
+    selected_aig_case = aig_case_name
     extracted_bad_cube_after_post_processing = GraphDataset(f'{extracted_bad_cube_prefix}/bad_cube_cex2graph/json_to_graph_pickle/',mode='predict',case_name=selected_aig_case,device=device)
+    if len(extracted_bad_cube_after_post_processing) == 0: # not a valid case, skip
+        return
 
     # load pytorch model
     net = NeuroInductiveGeneralization()
     # choose the NN model that you want to test
-    
+
     #NN_model_to_load = 'neuropdr_2023-01-05_15:53:59_lowest_training_loss.pth.tar' #TAG: adjust NN model name here
     #NN_model_to_load = 'neuropdr_2022-11-24_11:30:11_last.pth.tar'
     #NN_model_to_load = 'neuropdr_2023-01-06_07:56:57_last.pth.tar'
 
-    NN_model_to_load = args.NN_model
+    NN_model_to_load = NN_model
     model = torch.load(f'./neurograph_model/{NN_model_to_load}',map_location=device)
-    
+
     # for small case
     #model = torch.load(f'./neurograph_model/neuropdr_2022-11-24_11:30:11_last.pth.tar',map_location=device)
     # for large case
@@ -377,7 +411,7 @@ if __name__ == "__main__":
         outputs = net(data)
         torch_select = torch.Tensor(q_index).to(device).int()
         outputs = sigmoid(torch.index_select(outputs, 0, torch_select))
-        preds = torch.where(outputs > args.threshold, torch.ones(outputs.shape).to(device), torch.zeros(outputs.shape).to(device))
+        preds = torch.where(outputs > threshold, torch.ones(outputs.shape).to(device), torch.zeros(outputs.shape).to(device))
         # choose the state varible based on the preds, and select the 
         # element based on torch_select
         svar_lst = [(data[1][data[0]['n_nodes']:])[i] for i in torch_select.tolist()]
@@ -387,13 +421,13 @@ if __name__ == "__main__":
 
     # print final_predicted_clauses line by line
     # for clause in final_predicted_clauses: print(clause) #TAG: uncomment this line to print the predicted clauses
-    
+
     # parse file from aig original location
-    aig_original_location = f'case4test/hwmcc_simple/{selected_aig_case}' #TAG: adjust the aig original location
-    
+    aig_original_location = f'{aig_original_location_prefix}/{selected_aig_case}' #TAG: adjust the aig original location
+
     # number_of_subset = 1 #TAG: adjust the number of subset
     # aig_original_location = f'case4test/hwmcc2007/subset{number_of_subset}/{selected_aig_case}'
-    
+
     CTI_file = f'{extracted_bad_cube_prefix}/bad_cube_cex2graph/cti_for_inv_map_checking/{selected_aig_case}/{selected_aig_case}_inv_CTI.txt'
     Predict_Clauses_File = f'{aig_original_location}/{selected_aig_case}_inv_CTI_predicted.cnf'
     with open(CTI_file,'r') as f:
@@ -405,8 +439,10 @@ if __name__ == "__main__":
     # filter the original_CTI with final_predicted_clauses
     # first, convert final_predicted_clauses to a list that without 'v'
     final_predicted_clauses = [[literal.replace('v','') for literal in clause] for clause in final_predicted_clauses]
+    
     final_generate_res = [] # this will be side loaded to ic3ref
     for i in range(len(original_CTI)):
+        assert final_predicted_clauses, 'Final predicted clauses is empty!'
         # generalize the original_CTI[i] with final_predicted_clauses[i]
         # if the literal in original_CTI[i] is not in final_predicted_clauses[i], then remove it
         cls = [literal for literal in original_CTI[i] if literal in final_predicted_clauses[i] or str(int(literal)-1) in final_predicted_clauses[i]]
@@ -428,7 +464,7 @@ if __name__ == "__main__":
 
     # check the final_generate_res with ic3ref -> whether it is fulfill the property
     case = selected_aig_case
-    aag_name = f"./{aig_original_location}/{case}.aag" 
+    aag_name = f"./{aig_original_location}/{case}.aag"
     cnf_name = f"./{aig_original_location}/{case}_inv_CTI_predicted.cnf"
     model_name = case
     m = AAGmodel()
@@ -437,8 +473,46 @@ if __name__ == "__main__":
     predicted_clauses_filter = CNF_Filter(aagmodel = m, clause = predicted_clauses ,name = model_name, aig_location=aig_original_location)
     predicted_clauses_filter.check_and_reduce()
     #predicted_clauses_filter.check_and_generalize()#FIXME: Encounter error, the cnf file will become empty
-    
+
     compare_ic3ref(aig_original_location=aig_original_location,selected_aig_case=selected_aig_case)
+
+
+if __name__ == "__main__":
+    # input arguments to adjust the test case, thershold, and model
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--threshold', type=float, default=0.8, help='threshold for the output of the NN model')
+    parser.add_argument('--aig-case-folder-prefix', type=str, default=None, help='case folder, use for test all cases in the folder, for example: case4test/hwmcc2007')
+    parser.add_argument('--aig-case-name', type=str, default=None, help='case name, use for test single case, for example: cmu.dme1.B')
+    parser.add_argument('--NN-model', type=str, default='neuropdr_2023-01-06_07:56:57_last.pth.tar', help='model name')
+    parser.add_argument('--gpu-id', type=str, default='1', help='gpu id')
+    args = parser.parse_args()
+    # for test only
+    args =  parser.parse_args([
+        '--threshold', '0.5',
+        '--aig-case-folder-prefix', 'case4test/hwmcc2007_big_comp',
+        '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
+        '--gpu-id', '1'
+    ])
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
+
+    # initialize the dataset for validation?
+    # subset_preproces_all()
+
+    # test single case
+    if args.aig_case_name is not None:
+        test_single_case(threshold=args.threshold, aig_case_name=args.aig_case_name, NN_model=args.NN_model,aig_original_location_prefix=args.aig_case_folder_prefix)
+    else:
+        # only give aig case folder, not define the aig case name, then test all cases in the folder
+        # get all the folder name in the aig_case_folder
+        aig_case_list = [ f.path for f in os.scandir(args.aig_case_folder_prefix) if f.is_dir() ]
+        for aig_case in aig_case_list:
+            test_single_case(threshold=args.threshold, aig_case_name=aig_case.split('/')[-1], NN_model=args.NN_model,aig_original_location_prefix=args.aig_case_folder_prefix)
+        
+        
+    
+    # test 
+
+    
 #TODO: Check the final result, all use them????
 
     

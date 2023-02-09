@@ -58,7 +58,7 @@ def initialization(old_dir_name, with_re_generate_inv=False):
         print("Finish initialization!")
     else:
         # clean all the files in the folder bad_cube_cex2graph
-        os.system(f"trash {old_dir_name}/bad_cube_cex2graph")
+        if os.path.exists(f"{old_dir_name}/bad_cube_cex2graph"): os.system(f"trash {old_dir_name}/bad_cube_cex2graph")
         # make file folder under old_dir_name
         mkdir_cmd(old_dir_name)
         print("Finish cleaning the folder bad_cube_cex2graph!")
@@ -77,6 +77,7 @@ def run_cmd(cmd):
     return (_, err)
 
 def run_cmd_with_timer(cmd):
+    #TODO: This function does not work, need to fix it
     timeout = 7200 #2 hour for model checking
     " This directly runs the command "
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -208,7 +209,7 @@ def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False, ic3ref
         results = []
         results.extend(
             pool.apply_async(
-                run_cmd_with_timer,
+                run_cmd,
                 (
                     f"cd dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]} && /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -d {ic3ref_basic_generalization} < {case}",
                 ),
@@ -330,9 +331,9 @@ if __name__ == '__main__':
     parser.add_argument('--only_re_generate_inv', action='store_true', help='only re-generate the inv.cnf for the cases that has mismatched inductive invariants')
     parser.add_argument('--initialization_with_inv_generated', action='store_true', help='initialization with inv generated')
     parser.add_argument('--error_handle_with_ic3ref_basic_generalization', action='store_true', help='error handle with ic3ref basic generalization')
-    # args = parser.parse_args()
+    args = parser.parse_args()
     # for testing only
-    args = parser.parse_args(['--only_re_generate_inv','--error_handle_with_ic3ref_basic_generalization'])
+    # args = parser.parse_args(['--only_re_generate_inv','--error_handle_with_ic3ref_basic_generalization'])
     '''
     ---------------------------------------------------------
     only re-generate the inv.cnf for the cases that has mismatched inductive invariants?

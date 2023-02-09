@@ -8,7 +8,7 @@ from tCube import tCube
 from natsort import natsorted
 
 class ExtractCnf(object):
-    def __init__(self, aagmodel, clause, name, generalize, aig_path, generate_smt2):
+    def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False):
         self.aig_path = aig_path
         self.generate_smt2 = generate_smt2 # default: generate smt2
 
