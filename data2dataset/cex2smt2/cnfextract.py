@@ -97,7 +97,7 @@ class ExtractCnf(object):
             self._report2log(self.aig_path, "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
             assert False, "BUG: cannot find clause to block bad state"
         else:
-            return False, False
+            return None, None
 
     def _report2log(self, aig_path, log_file):
         # append the error message to the log file
@@ -340,16 +340,16 @@ class ExtractCnf(object):
         while cex is not None and num_cex > 0:
             clause, clause_m = self._find_clause_to_block(cex,var_lst,generate_smt2=self.generate_smt2) # find the clause to block the cex
             # if check fail, use the un-generalized version of cex to double check
-            if clause==False and clause_m==False: 
-                self._find_clause_to_block(cex_without_generalization,var_lst_without_generalization,generate_smt2=self.generate_smt2, cex_double_check_without_generalization=True)
+            if clause is None and clause_m is None: 
+                clause, clause_m = self._find_clause_to_block(cex_without_generalization,var_lst_without_generalization,generate_smt2=self.generate_smt2, cex_double_check_without_generalization=True)
+            assert clause is not None and clause_m is not None, "Unable to find a clause to block the cex"
             clause_list.append(clause) # add the clause (that has been added to solver for blocking) to the list
             # remove the duplicate clauses in the clause_list
             clause_list = list(set(clause_list))
             cex_prime_expr = self._make_cex_prime(cex) # find the cex expression in z3
             cex_clause_pair_list_prop.append((cex_m, clause_m, cex_prime_expr)) # model generated without using inv.cnf
-            num_cex -= 1
             cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=True, generalize=self.generalize)
-        
+            num_cex -= 1
         
         
         '''
@@ -357,21 +357,23 @@ class ExtractCnf(object):
         which is used to check c -> s (c & !s is unsat) 
         but this is not necessary!
         '''
+        # define the number of cex that want to generate
+        num_cex = 10
         cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=False, generalize=self.generalize)
-        
         # Backup the cex without generalization
         cex_without_generalization, cex_m_without_generalization, var_lst_without_generalization = \
             self._solve_relative(prop, clause_list, prop_only=False, generalize=False)
-        while cex is not None:
+        while cex is not None and num_cex > 0:
             clause, clause_m = self._find_clause_to_block(cex,var_lst,generate_smt2=self.generate_smt2)
             # if check fail, use the un-generalized version of cex to double check
-            if clause==False and clause_m==False: 
-                self._find_clause_to_block(cex_without_generalization,var_lst_without_generalization,generate_smt2=self.generate_smt2, cex_double_check_without_generalization=True)
+            if clause is None and clause_m is None: 
+                clause, clause_m = self._find_clause_to_block(cex_without_generalization,var_lst_without_generalization,generate_smt2=self.generate_smt2, cex_double_check_without_generalization=True)
+            assert clause is not None and clause_m is not None, "Unable to find a clause to block the cex"
             clause_list.append(clause)
             cex_prime_expr = self._make_cex_prime(cex)
             cex_clause_pair_list_ind.append((cex_m, clause_m, cex_prime_expr)) # model generated with using inv.cnf
             cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=False, generalize=self.generalize)
-        
+            num_cex -= 1
 
         is_inductive = self._check_inductive(clause_list)
         has_fewer_clauses = len(clause_list) < len(self.clauses)
