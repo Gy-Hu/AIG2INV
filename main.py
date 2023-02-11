@@ -501,19 +501,13 @@ if __name__ == "__main__":
     # test single case
     if args.aig_case_name is not None:
         test_single_case(threshold=args.threshold, aig_case_name=args.aig_case_name, NN_model=args.NN_model,aig_original_location_prefix=args.aig_case_folder_prefix)
-    else:
+    else: # test all cases in specified folder
         # only give aig case folder, not define the aig case name, then test all cases in the folder
         # get all the folder name in the aig_case_folder
         aig_case_list = [ f.path for f in os.scandir(args.aig_case_folder_prefix) if f.is_dir() ]
         for aig_case in aig_case_list:
             test_single_case(threshold=args.threshold, aig_case_name=aig_case.split('/')[-1], NN_model=args.NN_model,aig_original_location_prefix=args.aig_case_folder_prefix)
-        
-        
-    
-    # test 
 
-    
-#TODO: Check the final result, all use them????
 
     
 

@@ -79,13 +79,17 @@ class AIGBuffer(object):
         l = len(self.items)
         self.items.append(tuple())
         return l
+    
+    def check_validation(self, expr):
+        # if expr is not bool object
+        if isinstance(expr, z3.BoolRef):
+            return False
 
     # for one register expr, the parent nodes have smaller IDs
     # for multiple call to register_expr, the second tree may have bigger IDs
     def register_expr(self, expr): # --> modify expr_to_item, item_to_expr, item_use_list, items
         if expr in self.expr_to_item:
             return self.expr_to_item[expr]  # remember to incr reference in the item
-
         op = expr.decl().kind()
         children = expr.children()
         if len(children) == 0:

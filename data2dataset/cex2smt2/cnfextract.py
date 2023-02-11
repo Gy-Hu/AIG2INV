@@ -39,8 +39,13 @@ class ExtractCnf(object):
 
         # initialize the ternary simulator
         self.ternary_simulator = ternary_sim.AIGBuffer()
-        for _, updatefun in self.vprime2nxt:
-            self.ternary_simulator.register_expr(updatefun)
+        
+        # check validation of using the ternary simulator
+        self.ternary_simulator_valid = True
+        for _, updatefun in self.vprime2nxt: self.ternary_simulator_valid = self.ternary_simulator.check_validation(updatefun)
+        
+        if self.ternary_simulator_valid:
+            for _, updatefun in self.vprime2nxt: self.ternary_simulator.register_expr(updatefun)
         
     def _build_clauses(self, svars, clauses):
         ret_clauses = []
@@ -70,7 +75,7 @@ class ExtractCnf(object):
             ret_clauses.append(z3.Not(z3.And(cl_z3)))
         return ret_clauses, ret_clauses_var_lst
 
-    def _find_clause_to_block(self, model_to_block, model_var_lst, generate_smt2=False):
+    def _find_clause_to_block(self, model_to_block, model_var_lst, generate_smt2=False, cex_double_check_without_generalization=False):
         for idx in range(len(self.clauses)-1, -1, -1): # search backwards, performas like MIC
             cl = self.clauses[idx]
             cl_var_lst = self.clauses_var_lst[idx]
@@ -86,10 +91,13 @@ class ExtractCnf(object):
         print (model_to_block)
         for idx in range(len(self.clauses)-1, -1, -1): 
             print(idx,':', self.clauses[idx])
-        # record this case due to mismatched inv.cnf
-        print(f"{self.model_name} Mismatched inductive invariant!! Path:{self.aig_path}")
-        self._report2log(self.aig_path, "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
-        assert False, "BUG: cannot find clause to block bad state"
+        if cex_double_check_without_generalization:
+            # record this case due to mismatched inv.cnf
+            print(f"{self.model_name} Mismatched inductive invariant!! Path:{self.aig_path}")
+            self._report2log(self.aig_path, "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
+            assert False, "BUG: cannot find clause to block bad state"
+        else:
+            return False, False
 
     def _report2log(self, aig_path, log_file):
         # append the error message to the log file
@@ -159,7 +167,7 @@ class ExtractCnf(object):
     def _make_cex_prime(self, cex):
         return z3.substitute(z3.substitute(cex, self.v2prime), self.vprime2nxt)
 
-    def _solve_relative(self, prop, cnfs, prop_only, generalize): # -> a dict of only the curr_vars
+    def _solve_relative(self, prop, cnfs, prop_only, generalize=True): # -> a dict of only the curr_vars
         '''
         prop: the property to be checked
         cnfs: the clauses has been added for blocking
@@ -248,36 +256,45 @@ class ExtractCnf(object):
         size_after_unsat_core = len(tcube_cp.cubeLiterals)
         print("size of CTI after removing according to unsat core: ", size_after_unsat_core)
 
-        # this is the beginning of ternary simulation-based variable reduction
-        simulator = self.ternary_simulator.clone() # I just don't want to mess up between two ternary simulations for different outputs
-        simulator.register_expr(nextcube)
-        simulator.set_initial_var_assignment(dict([self._extract(c) for c in tcube_cp.cubeLiterals]))
+        if self.ternary_simulator_valid: # only if ternary simulator is valid, 
+            '''
+            if not valid, bug info like:
+            
+            "ternary_sim.py, line 89, in register_expr\n    op = expr.
+            decl().kind()\nAttributeError: \'bool\' object has no attribute \'decl\'\n'"
+            
+            Thus, we will skip of using ternary simulator
+            '''
+            # this is the beginning of ternary simulation-based variable reduction
+            simulator = self.ternary_simulator.clone() # I just don't want to mess up between two ternary simulations for different outputs
+            simulator.register_expr(nextcube)
+            simulator.set_initial_var_assignment(dict([self._extract(c) for c in tcube_cp.cubeLiterals]))
 
-        out = simulator.get_val(nextcube)
-        if out == ternary_sim._X:  # this is possible because we already remove once according to the unsat core
-            return tcube_cp
-        assert out == ternary_sim._TRUE
-        for i in range(len(tcube_cp.cubeLiterals)):
-            v, val = self._extract(tcube_cp.cubeLiterals[i])
-            simulator.set_Li(v, ternary_sim._X)
             out = simulator.get_val(nextcube)
-            if out == ternary_sim._X:
-                simulator.set_Li(v, ternary_sim.encode(val))  # set to its original value
-                if simulator.get_val(nextcube) != ternary_sim._TRUE:
-                    # This is just to help print debug info in case I made mistakes in coding
-                    simulator._check_consistency()
-                # after you recover the original input value, the output node should be true again
-                assert simulator.get_val(nextcube) == ternary_sim._TRUE
-            else: # the literal is removable
-                # we should never get _FALSE
-                if simulator.get_val(nextcube) != ternary_sim._TRUE:
-                    # This is just to help print debug info in case I made mistakes in coding
-                    simulator._check_consistency()
-                assert simulator.get_val(nextcube) == ternary_sim._TRUE
-                tcube_cp.cubeLiterals[i] = True
-        tcube_cp.remove_true()
-        size_after_ternary_sim = len(tcube_cp.cubeLiterals)
-        print("size of CTI after removing according to ternary simulation: ", size_after_ternary_sim)
+            if out == ternary_sim._X:  # this is possible because we already remove once according to the unsat core
+                return tcube_cp
+            assert out == ternary_sim._TRUE
+            for i in range(len(tcube_cp.cubeLiterals)):
+                v, val = self._extract(tcube_cp.cubeLiterals[i])
+                simulator.set_Li(v, ternary_sim._X)
+                out = simulator.get_val(nextcube)
+                if out == ternary_sim._X:
+                    simulator.set_Li(v, ternary_sim.encode(val))  # set to its original value
+                    if simulator.get_val(nextcube) != ternary_sim._TRUE:
+                        # This is just to help print debug info in case I made mistakes in coding
+                        simulator._check_consistency()
+                    # after you recover the original input value, the output node should be true again
+                    assert simulator.get_val(nextcube) == ternary_sim._TRUE
+                else: # the literal is removable
+                    # we should never get _FALSE
+                    if simulator.get_val(nextcube) != ternary_sim._TRUE:
+                        # This is just to help print debug info in case I made mistakes in coding
+                        simulator._check_consistency()
+                    assert simulator.get_val(nextcube) == ternary_sim._TRUE
+                    tcube_cp.cubeLiterals[i] = True
+            tcube_cp.remove_true()
+            size_after_ternary_sim = len(tcube_cp.cubeLiterals)
+            print("size of CTI after removing according to ternary simulation: ", size_after_ternary_sim)
         return tcube_cp
 
 
@@ -314,29 +331,47 @@ class ExtractCnf(object):
         '''
         Everytime only the property is considered to generate the counterexample
         '''
+        # define the number of cex that want to generate
+        num_cex = 10
         cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=True, generalize=self.generalize)
-        while cex is not None:
+        # Backup the cex without generalization
+        cex_without_generalization, cex_m_without_generalization, var_lst_without_generalization = \
+            self._solve_relative(prop, clause_list, prop_only=False, generalize=False)
+        while cex is not None and num_cex > 0:
             clause, clause_m = self._find_clause_to_block(cex,var_lst,generate_smt2=self.generate_smt2) # find the clause to block the cex
+            # if check fail, use the un-generalized version of cex to double check
+            if clause==False and clause_m==False: 
+                self._find_clause_to_block(cex_without_generalization,var_lst_without_generalization,generate_smt2=self.generate_smt2, cex_double_check_without_generalization=True)
             clause_list.append(clause) # add the clause (that has been added to solver for blocking) to the list
             # remove the duplicate clauses in the clause_list
             clause_list = list(set(clause_list))
             cex_prime_expr = self._make_cex_prime(cex) # find the cex expression in z3
             cex_clause_pair_list_prop.append((cex_m, clause_m, cex_prime_expr)) # model generated without using inv.cnf
+            num_cex -= 1
             cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=True, generalize=self.generalize)
-
+        
+        
+        
         '''
         Everytime the clauses in clause_list and safety property are considered to generate the counterexample
         which is used to check c -> s (c & !s is unsat) 
         but this is not necessary!
-
-        cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=False)
+        '''
+        cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=False, generalize=self.generalize)
+        
+        # Backup the cex without generalization
+        cex_without_generalization, cex_m_without_generalization, var_lst_without_generalization = \
+            self._solve_relative(prop, clause_list, prop_only=False, generalize=False)
         while cex is not None:
             clause, clause_m = self._find_clause_to_block(cex,var_lst,generate_smt2=self.generate_smt2)
+            # if check fail, use the un-generalized version of cex to double check
+            if clause==False and clause_m==False: 
+                self._find_clause_to_block(cex_without_generalization,var_lst_without_generalization,generate_smt2=self.generate_smt2, cex_double_check_without_generalization=True)
             clause_list.append(clause)
             cex_prime_expr = self._make_cex_prime(cex)
             cex_clause_pair_list_ind.append((cex_m, clause_m, cex_prime_expr)) # model generated with using inv.cnf
-            cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=False)
-        '''
+            cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=False, generalize=self.generalize)
+        
 
         is_inductive = self._check_inductive(clause_list)
         has_fewer_clauses = len(clause_list) < len(self.clauses)
