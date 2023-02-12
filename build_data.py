@@ -103,7 +103,7 @@ def walkFile(dir):
 def find_case_in_selected_dataset_with_inv():
     #generate smt2 file for prediction -> SAT model/conterexample
     subset_dir = '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_'
-    subset_dir_lst = [subset_dir+str(i) for i in range(5)] # 10 is the number for test subset
+    subset_dir_lst = [subset_dir+str(i) for i in range(23)] # 10 is the number for test subset
     
     # get all the generated inductive invariants cases' name
     # store all folder name in '/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip'
@@ -174,7 +174,7 @@ def generate_smt2():
         with open("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log", "r") as f:
             mismatched_inv_info = f.read()
         print(f"Mismatched inv.cnf information: {mismatched_inv_info}") 
-        generate_smt2_error_handle(all_cases_name_lst,"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
+        #generate_smt2_error_handle(all_cases_name_lst,"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
 
 def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False, ic3ref_basic_generalization=""):
     # parse the log file, find the cases that has mismatched inductive invariants

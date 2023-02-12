@@ -29,7 +29,7 @@ def json2graph_pickle(filename,ground_truth_path):
     '''
 
     # rank json_data by 'type' and 'id', node - input_var - variable -> sequence like this
-    json_data = sorted(json_data, key=lambda x: (x['data']['type'], x['data']['application']))
+    json_data = natsorted(json_data, key=lambda x: (x['data']['type'], x['data']['application']))
 
     #G = nx.DiGraph()
     G = nx.MultiDiGraph()

@@ -10,15 +10,17 @@ import argparse
 # neurograph: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_neurograph
 # neurocircuit: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_circuitsat
 
-def choose_train_parameter(dataset_type='toy'):
+def choose_train_parameter(dataset_type=None):
     # choose model
     # choose dataset
     # choose hyperparameter
+    
+    assert dataset_type is not None, "Please choose a dataset type!"
 
     #initialize the parameter
     model_name = '' ; dataset = '' ; dimension_of_embedding = 0 ; number_of_rounds = 0 ; 
     number_of_epochs = 0 ; train_file = '' ; val_file = '' ; train_mode = '' ; gpu_id = 0
-    task_name = 'neuropdr_'+datetime_str.replace(' ', '_')  ; batch_size = 0
+    task_name = 'neuropdr_'+datetime_str.replace(' ', '_')  ; batch_size = 0 ; possitive_weight_for_loss_fun = 0
 
     if dataset_type == 'hwmcc07_complete':
         model_name = 'neurograph'
@@ -26,10 +28,10 @@ def choose_train_parameter(dataset_type='toy'):
         dimension_of_embedding = 128
         number_of_rounds = 512
         number_of_epochs = 512
-        train_file = 'f{dataset}/bad_cube_cex2graph/json_to_graph_pickle/'
-        val_file = 'f{dataset}/bad_cube_cex2graph/json_to_graph_pickle/'
+        train_file = f'{dataset}/bad_cube_cex2graph/json_to_graph_pickle/'
+        val_file = f'{dataset}/bad_cube_cex2graph/json_to_graph_pickle/'
         train_mode = 'train'
-        gpu_id = 0
+        gpu_id = 1
         batch_size = 2
         possitive_weight_for_loss_fun = 4
         learning_rate = 0.00001
@@ -76,7 +78,7 @@ if __name__ == "__main__":
     # input argument
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset-type', type=str, default=None)
-    args = parser.parse_args()
+    args = parser.parse_args(['--dataset-type', 'hwmcc07_complete'])
     dataset_type = args.dataset_type
 
     datetime_str = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
