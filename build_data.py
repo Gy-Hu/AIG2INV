@@ -175,6 +175,8 @@ def generate_smt2():
             mismatched_inv_info = f.read()
         print(f"Mismatched inv.cnf information: {mismatched_inv_info}") 
         #generate_smt2_error_handle(all_cases_name_lst,"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
+        # rename the mismatched_inv.log to mismatched_inv.log.{time_stamp}
+        shutil.move("log/error_handle/mismatched_inv.log", f"log/error_handle/mismatched_inv.log.{time.time()}")
 
 def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False, ic3ref_basic_generalization=""):
     # parse the log file, find the cases that has mismatched inductive invariants

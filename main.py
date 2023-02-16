@@ -359,7 +359,7 @@ def compare_ic3ref(aig_original_location, selected_aig_case):
     # initialize a shell command
     predicted_clauses_cnf = (f'{aig_original_location}/'+ f'{selected_aig_case}_predicted_clauses_after_filtering.cnf')
     originial_aiger_file = (f'{aig_original_location}/'+ f'{selected_aig_case}.aag')
-    cmd = f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -v -f {predicted_clauses_cnf} < {originial_aiger_file}'
+    cmd = f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -v -b -f {predicted_clauses_cnf} < {originial_aiger_file}'
     # run the shell command, and store stream data in terminal output to a variable
     start_time = time.monotonic()
     try:
@@ -384,7 +384,7 @@ def compare_ic3ref(aig_original_location, selected_aig_case):
     original ic3ref located in /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3ref
     '''
     # initialize a shell command
-    cmd = f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -v < {originial_aiger_file}'
+    cmd = f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -b -v < {originial_aiger_file}'
     start_time = time.monotonic()
     # run the shell command, and store stream data in terminal output to a variable
     try:
@@ -406,7 +406,7 @@ def compare_ic3ref(aig_original_location, selected_aig_case):
     last_level_ic3ref = last_level_ic3ref[1]
 
     # compare the last level
-    print('NN-IC3ref finished solving ', originial_aiger_file.split('/')[-1])
+    print('NN-IC3ref finished solving ',originial_aiger_file.split('/')[-1])
     if last_level == last_level_ic3ref or not(last_level_ic3ref.isnumeric()): #true if last_level_ic3ref is a string
         print('NN-IC3ref has not improved the result')
     elif int(last_level_ic3ref) - int(last_level) > 0 and elapsed_time_for_ic3ref > elapsed_time_for_nn_ic3:
@@ -437,6 +437,20 @@ def compare_ic3ref(aig_original_location, selected_aig_case):
             ' frames',
         )
 
+    # open a file to store the result as table, column contains the following information:
+    # aig_case_name, last_level, last_level_ic3ref, elapsed_time_for_nn_ic3, elapsed_time_for_ic3ref
+    # if the file does not exist, create it
+    if not os.path.exists('log/compare_with_ic3ref.csv'):
+        with open('log/compare_with_ic3ref.csv', 'w') as f:
+            f.write('case name, NN-IC3 Frame, IC3ref Frame, NN-IC3 Time, IC3ref Time\n')
+            
+    
+    with open('log/compare_with_ic3ref.csv', 'a+') as f:
+        if (
+            last_level_ic3ref.isnumeric()
+        ):
+            f.write(f'{originial_aiger_file.split("/")[-1].split(".aag")[0]}, {last_level}, {last_level_ic3ref}, {elapsed_time_for_nn_ic3}, {elapsed_time_for_ic3ref}\n')
+
     print('compare with ic3ref done')
     
 def test_single_case(threshold, aig_case_name, NN_model,aig_original_location_prefix):
@@ -448,8 +462,17 @@ def test_single_case(threshold, aig_case_name, NN_model,aig_original_location_pr
     selected_aig_case = aig_case_name
     extracted_bad_cube_after_post_processing = GraphDataset(f'{extracted_bad_cube_prefix}/bad_cube_cex2graph/json_to_graph_pickle/',mode='predict',case_name=selected_aig_case,device=device)
     if len(extracted_bad_cube_after_post_processing) == 0: # not a valid case, skip
+        # print log 
+        with open("log/error_handle/graph_pickle_incomplete.log", "a+") as fout: fout.write(f"Error: {aig_case_name} has no graph generation from json to pickle \n")
+        fout.close()
         return
-
+    # Has error in json_to_graph_pickle
+    if len(extracted_bad_cube_after_post_processing)!= len(open(f'{extracted_bad_cube_prefix}/bad_cube_cex2graph/cti_for_inv_map_checking/{selected_aig_case}/{selected_aig_case}_inv_CTI.txt').readlines()):
+        # print log 
+        with open("log/error_handle/graph_pickle_incomplete.log", "a+") as fout: fout.write(f"Error: {aig_case_name} has incomplete graph generation from json to pickle \n")
+        fout.close()
+        return
+ 
     # load pytorch model
     net = NeuroInductiveGeneralization()
     # choose the NN model that you want to test
@@ -506,6 +529,7 @@ def test_single_case(threshold, aig_case_name, NN_model,aig_original_location_pr
     final_predicted_clauses = [[literal.replace('v','') for literal in clause] for clause in final_predicted_clauses]
     
     final_generate_res = [] # this will be side loaded to ic3ref
+    print(f'{selected_aig_case} is generating predicted clauses...')
     for i in range(len(original_CTI)):
         assert final_predicted_clauses, 'Final predicted clauses is empty!'
         # generalize the original_CTI[i] with final_predicted_clauses[i]
@@ -560,6 +584,7 @@ if __name__ == "__main__":
     # for test only
     args =  parser.parse_args([
         '--threshold', '0.5',
+        #'--aig-case-name', 'eijk.bs4863.S',
         '--aig-case-folder-prefix-for-prediction', 'case4test/hwmcc2007_big_comp_for_prediction',
         '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
         '--gpu-id', '1'
@@ -595,6 +620,17 @@ if __name__ == "__main__":
         aig_case_list = [ f.path for f in os.scandir(args.aig_case_folder_prefix_for_prediction) if f.is_dir() ]
         for aig_case in aig_case_list:
             test_single_case(threshold=args.threshold, aig_case_name=aig_case.split('/')[-1], NN_model=args.NN_model,aig_original_location_prefix=args.aig_case_folder_prefix_for_prediction)
+    
+    '''
+    ------------------ check the error log -----------------
+    '''
+    #print error information in log/error_handle/graph_pickle_incomplete.log if file exist
+    if os.path.exists("log/error_handle/graph_pickle_incomplete.log"):
+        with open("log/error_handle/graph_pickle_incomplete.log", "r") as f:
+            error_info = f.read()
+        print(f"Error information: {error_info}")
+        # rename the graph_pickle_incomplete.log to graph_pickle_incomplete.log.{time_stamp}
+        shutil.move("log/error_handle/graph_pickle_incomplete.log", f"log/error_handle/graph_pickle_incomplete.log.{time.time()}")
 
 
     
