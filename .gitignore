@@ -26,3 +26,4 @@ IC3ref/
 inv.cnf
 test_func/
 deprecated/
+*.yaml
