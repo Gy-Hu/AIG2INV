@@ -279,14 +279,14 @@ def subset_preproces(file_path='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/c
     #print(aig_file_list)
     
     # get all folder name in big dataset
-    aig_big_case_list = [ f.path for f in os.scandir('/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_20230129_173401_big/bad_cube_cex2graph/json_to_graph_pickle') if f.is_dir() ]
+    aig_big_case_list = [ f.path for f in os.scandir('/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc07_almost_complete/bad_cube_cex2graph/json_to_graph_pickle') if f.is_dir() ]
 
     #create a folder for each file
     for file_path in aig_file_list :
         if list(filter(lambda x: file_path.split('/')[-1].split('.aag')[0] in x, aig_big_case_list)) !=[] :
-            os.mkdir(f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007_big_comp/{file_path.split("/")[-1].split(".aag")[0]}')
+            os.mkdir(f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007_big_comp_for_prediction/{file_path.split("/")[-1].split(".aag")[0]}')
             # copy the aig file to the folder
-            shutil.copy(file_path, f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007_big_comp/{file_path.split("/")[-1].split(".aag")[0]}')
+            shutil.copy(file_path, f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007_big_comp_for_prediction/{file_path.split("/")[-1].split(".aag")[0]}')
     print('Finish copying all the aig files to the corresponding folders')
     
 def subset_preproces_all(file_path='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007'):
@@ -314,7 +314,7 @@ def get_dataset(selected_dataset = 'toy'):
     elif selected_dataset == 'small':
         return 'dataset_20230106_025223_small'
     elif selected_dataset == 'big':
-        return 'dataset_20230129_173401_big'
+        return 'dataset_hwmcc07_complete'
 
 def compare_ic3ref(aig_original_location, selected_aig_case):
     # compare with ic3ref
@@ -476,37 +476,59 @@ def test_single_case(threshold, aig_case_name, NN_model,aig_original_location_pr
 
     compare_ic3ref(aig_original_location=aig_original_location,selected_aig_case=selected_aig_case)
 
+def compare_inv_and_draw_table(threshold, NN_model, aig_with_predicted_location_prefix, aig_without_predicted_location_prefix):
+    pass
+
+
 
 if __name__ == "__main__":
     # input arguments to adjust the test case, thershold, and model
     parser = argparse.ArgumentParser()
     parser.add_argument('--threshold', type=float, default=0.8, help='threshold for the output of the NN model')
-    parser.add_argument('--aig-case-folder-prefix', type=str, default=None, help='case folder, use for test all cases in the folder, for example: case4test/hwmcc2007')
+    parser.add_argument('--compare_inv', action='store_true', help='compare the inv with ic3ref')
+    parser.add_argument('--aig-case-folder-prefix-for-prediction', type=str, default=None, help='case folder, use for test all cases in the folder, for example: case4test/hwmcc2007')
+    parser.add_argument('--aig-case-folder-prefix-for-ic3ref', type=str, default=None, help='case folder, contains all ic3ref produced inv.cnf, for example: case4test/hwmcc2007')
     parser.add_argument('--aig-case-name', type=str, default=None, help='case name, use for test single case, for example: cmu.dme1.B')
     parser.add_argument('--NN-model', type=str, default='neuropdr_2023-01-06_07:56:57_last.pth.tar', help='model name')
     parser.add_argument('--gpu-id', type=str, default='1', help='gpu id')
     args = parser.parse_args()
     # for test only
     args =  parser.parse_args([
-        '--threshold', '0.5',
-        '--aig-case-folder-prefix', 'case4test/hwmcc2007_big_comp',
+        '--threshold', '0.4',
+        '--aig-case-folder-prefix-for-prediction', 'case4test/hwmcc2007_big_comp',
         '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
         '--gpu-id', '1'
     ])
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
+    '''
+    ----------------- initialize the dataset -----------------
+    '''
     # initialize the dataset for validation?
     # subset_preproces_all()
+    
+    '''
+    ----------------- draw conclusion test -----------------
+    '''
+    
+    # compare the inv with ic3ref - draw conclusion table
+    if args.compare_inv:
+        compare_inv_and_draw_table(threshold=args.threshold, NN_model=args.NN_model, aig_with_predicted_location_prefix=args.aig_case_folder_prefix_for_prediction, aig_without_predicted_location_prefix=args.aig_case_folder_prefix_for_ic3ref)
+        exit(0)
+        
+    '''
+    ------------------ test single/all case -----------------
+    '''
 
     # test single case
     if args.aig_case_name is not None:
-        test_single_case(threshold=args.threshold, aig_case_name=args.aig_case_name, NN_model=args.NN_model,aig_original_location_prefix=args.aig_case_folder_prefix)
+        test_single_case(threshold=args.threshold, aig_case_name=args.aig_case_name, NN_model=args.NN_model,aig_original_location_prefix=args.aig_case_folder_prefix_for_prediction)
     else: # test all cases in specified folder
         # only give aig case folder, not define the aig case name, then test all cases in the folder
         # get all the folder name in the aig_case_folder
-        aig_case_list = [ f.path for f in os.scandir(args.aig_case_folder_prefix) if f.is_dir() ]
+        aig_case_list = [ f.path for f in os.scandir(args.aig_case_folder_prefix_for_prediction) if f.is_dir() ]
         for aig_case in aig_case_list:
-            test_single_case(threshold=args.threshold, aig_case_name=aig_case.split('/')[-1], NN_model=args.NN_model,aig_original_location_prefix=args.aig_case_folder_prefix)
+            test_single_case(threshold=args.threshold, aig_case_name=aig_case.split('/')[-1], NN_model=args.NN_model,aig_original_location_prefix=args.aig_case_folder_prefix_for_prediction)
 
 
     

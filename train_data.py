@@ -26,13 +26,13 @@ def choose_train_parameter(dataset_type=None):
         model_name = 'neurograph'
         dataset = 'dataset'
         dimension_of_embedding = 128
-        number_of_rounds = 512
+        number_of_rounds = 128
         number_of_epochs = 512
         train_file = f'{dataset}/bad_cube_cex2graph/json_to_graph_pickle/'
         val_file = f'{dataset}/bad_cube_cex2graph/json_to_graph_pickle/'
         train_mode = 'train'
         gpu_id = 1
-        batch_size = 2
+        batch_size = 1
         possitive_weight_for_loss_fun = 4
         learning_rate = 0.00001
     elif dataset_type == 'small':

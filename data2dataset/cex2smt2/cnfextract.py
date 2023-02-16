@@ -314,6 +314,12 @@ class ExtractCnf(object):
             if not os.path.exists(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/ground_truth_table/{self.model_name}"): os.makedirs(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/ground_truth_table/{self.model_name}")
             df.to_csv(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/ground_truth_table/{self.model_name}/{self.model_name}.csv")
 
+    def _check_correctness_of_inv(self,inv):
+        '''
+        Check the correctness of the invariant
+        '''
+        
+    
     def get_clause_cex_pair(self):
         '''
         Important function that returns a pair of a clause and a counterexample
