@@ -29,7 +29,7 @@ def clean_trivial_log():
                 
 def calculate_pickle_number():
     #json_path = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc07_0_1_2_3_4/bad_cube_cex2graph/json_to_graph_pickle/"
-    json_path = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/json_to_graph_pickle/"
+    json_path = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc07_almost_complete/bad_cube_cex2graph/json_to_graph_pickle/"
     # get all files in the json_path
     for root, _, files in os.walk(json_path):
         files = [os.path.join(root, f) for f in files]

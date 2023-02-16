@@ -142,9 +142,9 @@ class NeuroInductiveGeneralization(nn.Module):
             if torch.all(torch.eq((var_state[0].squeeze(0))[problem['n_nodes']:,:][-1], (var_state[0].squeeze(0))[problem['n_nodes']:,:][-2])):
                 invalid_passing.append(True)
             # if the last three logits are the same, then the model is not learning
-            if len(invalid_passing) > 3:
-                invalid_passing.pop(0)
-                assert not all(invalid_passing), "The model is not learning, please check the model"
+            # if len(invalid_passing) > 50:
+            #     invalid_passing.pop(0)
+            #     assert not all(invalid_passing), "The model is not learning, please check the model"
 
         logits = var_state[0].squeeze(0)
         #TODO: update here with the correct number

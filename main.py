@@ -24,11 +24,12 @@ import torch.nn as nn
 from natsort import natsorted
 import z3
 import subprocess
+import time
 
 # add input arguments
 import argparse
-
 import shutil
+import re
 
 '''
 ---------------------------------------------------------
@@ -268,53 +269,85 @@ def walkFile():
     assert len(files) > 0, f"No files found in {self}"
     return files
 
-def subset_preproces(file_path='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007'):
+def subset_preproces(all_aig_folder='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007',\
+    folder_for_prediction_result_store='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007_big_comp_for_prediction',\
+    aig_with_preprocess_data = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc07_almost_complete/bad_cube_cex2graph/json_to_graph_pickle/"):
+    
+    if not os.path.exists(folder_for_prediction_result_store):
+        os.makedirs(folder_for_prediction_result_store)
+    else:
+        assert False, "Delete the folder first! Re-run the code!"
+        
     aig_file_list = []
     #get all file names from all the subfolders
-    for root, dirs, files in os.walk(file_path):
+    for root, dirs, files in os.walk(all_aig_folder):
         for file in files:
             if file.endswith(".aag"):
-                file_path = os.path.join(root, file)
-                aig_file_list.append(file_path)
+                all_aig_folder = os.path.join(root, file)
+                aig_file_list.append(all_aig_folder)
     #print(aig_file_list)
     
     # get all folder name in big dataset
-    aig_big_case_list = [ f.path for f in os.scandir('/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc07_almost_complete/bad_cube_cex2graph/json_to_graph_pickle') if f.is_dir() ]
+    json_path = aig_with_preprocess_data
+    # get all files in the json_path
+    for root, _, files in os.walk(json_path):
+        files = [os.path.join(root, f) for f in files]
+    # remove the _{number}.pkl and use set to remove duplicate in files list
+    # Create the regular expression 
+    regex = re.compile(r'(.*)_[0-9]+\.pkl$')
+    # Apply the regular expression to the array elements
+    output_array = [regex.match(element)[1] for element in files]
+    # Remove duplicate elements from the output array
+    output_array = list(set(output_array))
+    aig_big_case_list = [ _.split('/')[-1] for _ in output_array]
+    
 
     #create a folder for each file
-    for file_path in aig_file_list :
-        if list(filter(lambda x: file_path.split('/')[-1].split('.aag')[0] in x, aig_big_case_list)) !=[] :
-            os.mkdir(f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007_big_comp_for_prediction/{file_path.split("/")[-1].split(".aag")[0]}')
+    for all_aig_folder in aig_file_list :
+        if list(filter(lambda x: all_aig_folder.split('/')[-1].split('.aag')[0] in x, aig_big_case_list)) !=[] :
+            os.mkdir(f'{folder_for_prediction_result_store}/{all_aig_folder.split("/")[-1].split(".aag")[0]}')
             # copy the aig file to the folder
-            shutil.copy(file_path, f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007_big_comp_for_prediction/{file_path.split("/")[-1].split(".aag")[0]}')
+            shutil.copy(all_aig_folder, f'{folder_for_prediction_result_store}/{all_aig_folder.split("/")[-1].split(".aag")[0]}')
     print('Finish copying all the aig files to the corresponding folders')
     
-def subset_preproces_all(file_path='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007'):
+def subset_preproces_all(all_aig_folder='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007',\
+    folder_for_prediction_result_store='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007_all_comp_for_prediction'):
     aig_file_list = []
     #get all file names from all the subfolders
-    for root, dirs, files in os.walk(file_path):
+    for root, dirs, files in os.walk(all_aig_folder):
         for file in files:
             if file.endswith(".aag"):
-                file_path = os.path.join(root, file)
-                aig_file_list.append(file_path)
+                all_aig_folder = os.path.join(root, file)
+                aig_file_list.append(all_aig_folder)
     #print(aig_file_list)
 
     #create a folder for each file
-    for file_path in aig_file_list :
-        os.mkdir(f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007_all_comp/{file_path.split("/")[-1].split(".aag")[0]}')
+    for all_aig_folder in aig_file_list :
+        os.mkdir(f'{folder_for_prediction_result_store}/{all_aig_folder.split("/")[-1].split(".aag")[0]}')
         # copy the aig file to the folder
-        shutil.copy(file_path, f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007_all_comp/{file_path.split("/")[-1].split(".aag")[0]}')
+        shutil.copy(all_aig_folder, f'{folder_for_prediction_result_store}/{all_aig_folder.split("/")[-1].split(".aag")[0]}')
     print('Finish copying all the aig files to the corresponding folders')
 
 def get_dataset(selected_dataset = 'toy'):
     if selected_dataset == 'complete':
+        #assert the path exists
+        assert os.path.exists('./dataset/'), "The dataset path does not exist!"
         return 'dataset'
     elif selected_dataset == 'toy':
+        assert os.path.exists(
+            './dataset_20230106_014957_toy/'
+        ), "The dataset path does not exist!"
         return 'dataset_20230106_014957_toy'
     elif selected_dataset == 'small':
+        assert os.path.exists(
+            './dataset_20230106_025223_small/'
+        ), "The dataset path does not exist!"
         return 'dataset_20230106_025223_small'
     elif selected_dataset == 'big':
-        return 'dataset_hwmcc07_complete'
+        assert os.path.exists(
+            './dataset_hwmcc07_almost_complete/'
+        ), "The dataset path does not exist!"
+        return 'dataset_hwmcc07_almost_complete'
 
 def compare_ic3ref(aig_original_location, selected_aig_case):
     # compare with ic3ref
@@ -328,10 +361,13 @@ def compare_ic3ref(aig_original_location, selected_aig_case):
     originial_aiger_file = (f'{aig_original_location}/'+ f'{selected_aig_case}.aag')
     cmd = f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -v -f {predicted_clauses_cnf} < {originial_aiger_file}'
     # run the shell command, and store stream data in terminal output to a variable
+    start_time = time.monotonic()
     try:
         output = subprocess.check_output(cmd,shell=True,stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e: # normally we will arrive here
         output = f"command '{e.cmd}' return with error (code {e.returncode}): {e.output}"
+    end_time = time.monotonic()
+    elapsed_time_for_nn_ic3 = end_time - start_time
 
     # read output, and split it into lines by "\\n"
     output = output.split('\\n')
@@ -349,11 +385,14 @@ def compare_ic3ref(aig_original_location, selected_aig_case):
     '''
     # initialize a shell command
     cmd = f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -v < {originial_aiger_file}'
+    start_time = time.monotonic()
     # run the shell command, and store stream data in terminal output to a variable
     try:
         output = subprocess.check_output(cmd,shell=True,stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e: # normally we will arrive here
         output = f"command '{e.cmd}' return with error (code {e.returncode}): {e.output}"
+    end_time = time.monotonic()
+    elapsed_time_for_ic3ref = end_time - start_time
 
     # read output, and split it into lines by "\\n"
     output = output.split('\\n')
@@ -367,10 +406,36 @@ def compare_ic3ref(aig_original_location, selected_aig_case):
     last_level_ic3ref = last_level_ic3ref[1]
 
     # compare the last level
+    print('NN-IC3ref finished solving ', originial_aiger_file.split('/')[-1])
     if last_level == last_level_ic3ref or not(last_level_ic3ref.isnumeric()): #true if last_level_ic3ref is a string
         print('NN-IC3ref has not improved the result')
+    elif int(last_level_ic3ref) - int(last_level) > 0 and elapsed_time_for_ic3ref > elapsed_time_for_nn_ic3:
+        print(
+            'NN-IC3ref has been improved with  ',
+            int(last_level_ic3ref) - int(last_level),
+            ' frames, and has converged ',
+            elapsed_time_for_ic3ref - elapsed_time_for_nn_ic3,
+            ' seconds earlier',
+        )
+    elif int(last_level_ic3ref) - int(last_level) < 0 and elapsed_time_for_ic3ref > elapsed_time_for_nn_ic3:
+        print(
+            'NN-IC3ref has not reduced frames, but has converged ',
+            elapsed_time_for_ic3ref - elapsed_time_for_nn_ic3,
+            ' seconds earlier',
+        )
+    elif int(last_level_ic3ref) - int(last_level) > 0 and elapsed_time_for_ic3ref < elapsed_time_for_nn_ic3:
+        print(
+            'NN-IC3ref has been improved with  ',
+            int(last_level_ic3ref) - int(last_level),
+            ' frames',
+        )
     else:
-        print('NN-IC3ref has improved the result by ',int(last_level_ic3ref) - int(last_level),' frames')
+        assert int(last_level_ic3ref) - int(last_level) < 0 and elapsed_time_for_ic3ref < elapsed_time_for_nn_ic3, "something wrong"
+        print(
+            'NN-IC3ref is worse than ic3ref. Increased ',
+            int(last_level) - int(last_level_ic3ref),
+            ' frames',
+        )
 
     print('compare with ic3ref done')
     
@@ -408,7 +473,7 @@ def test_single_case(threshold, aig_case_name, NN_model,aig_original_location_pr
     for i in tqdm(range(len(extracted_bad_cube_after_post_processing))):
         data = extracted_bad_cube_after_post_processing[i]
         q_index = data[0]['refined_output']
-        outputs = net(data)
+        with torch.no_grad(): outputs = net(data)
         torch_select = torch.Tensor(q_index).to(device).int()
         outputs = sigmoid(torch.index_select(outputs, 0, torch_select))
         preds = torch.where(outputs > threshold, torch.ones(outputs.shape).to(device), torch.zeros(outputs.shape).to(device))
@@ -494,8 +559,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # for test only
     args =  parser.parse_args([
-        '--threshold', '0.4',
-        '--aig-case-folder-prefix-for-prediction', 'case4test/hwmcc2007_big_comp',
+        '--threshold', '0.5',
+        '--aig-case-folder-prefix-for-prediction', 'case4test/hwmcc2007_big_comp_for_prediction',
         '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
         '--gpu-id', '1'
     ])
@@ -505,7 +570,8 @@ if __name__ == "__main__":
     ----------------- initialize the dataset -----------------
     '''
     # initialize the dataset for validation?
-    # subset_preproces_all()
+    # subset_preproces()
+    # exit(0)
     
     '''
     ----------------- draw conclusion test -----------------
