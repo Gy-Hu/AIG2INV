@@ -100,20 +100,29 @@ def walkFile(dir):
     files = [file for file in files if file.endswith(".aag")]
     return files
 
-def find_case_in_selected_dataset_with_inv():
+def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
     #generate smt2 file for prediction -> SAT model/conterexample
     subset_dir = '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_'
     subset_dir_lst = [subset_dir+str(i) for i in range(23)] # 10 is the number for test subset
     
     # get all the generated inductive invariants cases' name
     # store all folder name in '/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip'
-    cases_with_inductive_invariants = os.listdir('/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip')
-    # check whether it contains inv.cnf in subfolder
-    cases_with_inductive_invariants = [
+    if model_checker=='abc': 
+        cases_with_inductive_invariants = os.listdir('/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip')
+        # check whether it contains inv.cnf in subfolder
+        cases_with_inductive_invariants = [
         case
         for case in cases_with_inductive_invariants
         if os.path.exists(f'/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/{case}/inv.cnf')
-    ]
+        ]
+    elif model_checker=='ic3ref': 
+        cases_with_inductive_invariants = os.listdir('/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip')
+        # check whether it contains inv.cnf in subfolder
+        cases_with_inductive_invariants = [
+        case
+        for case in cases_with_inductive_invariants
+        if os.path.exists(f'/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf')
+        ]
 
     all_cases_name_lst = [] # put into multi-threading pool
     for subset in subset_dir_lst:
@@ -130,7 +139,7 @@ def find_case_in_selected_dataset_with_inv():
     return all_cases_name_lst
     
 
-def generate_smt2(run_mode='normal'):
+def generate_smt2(run_mode='normal', model_checker='ic3ref'):
     '''
     If the `run_mode` set to 'debug', collect.py will exit after checking the inv.cnf without smt2 generation.
     Then, this `main.py` will also exit after printing the bad_inv.log
@@ -141,7 +150,7 @@ def generate_smt2(run_mode='normal'):
     First, go to the select dataset, check whether the case has inductive invariants generated in advance,
     if yes, then generate smt2 file for the case, otherwise, skip it.
     '''
-    all_cases_name_lst = find_case_in_selected_dataset_with_inv()
+    all_cases_name_lst = find_case_in_selected_dataset_with_inv(model_checker)
 
     results = []
     print(f"Start to generate smt2 for {len(all_cases_name_lst)} aiger in all the subset!")
@@ -334,6 +343,7 @@ if __name__ == '__main__':
     parser.add_argument('--initialization_with_inv_generated', action='store_true', help='initialization with inv generated')
     parser.add_argument('--error_handle_with_ic3ref_basic_generalization', action='store_true', help='error handle with ic3ref basic generalization')
     parser.add_argument('--run-mode', type=str, default="normal", help='run mode, normal or debug. Debug is for testing invariants correctness only')
+    parser.add_argument('--model-checker', type=str, default="ic3ref", help='model checker, ic3ref or abc')
     args = parser.parse_args()
     # for testing only
     # args = parser.parse_args(['--only_re_generate_inv','--error_handle_with_ic3ref_basic_generalization'])
@@ -369,7 +379,7 @@ if __name__ == '__main__':
     else:
         initialization(old_dir_name, with_re_generate_inv=False)
         # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py
-        generate_smt2(args.run_mode) # if mode is debug, the program will exit after inv checking
+        generate_smt2(args.run_mode,args.model_checker) # if mode is debug, the program will exit after inv checking
     
     '''
     ---------------------------------------------------------
