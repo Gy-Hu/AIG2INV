@@ -10,8 +10,10 @@ def log_analyzer():
     # read csv table from log/compare_with_ic3ref.csv
     # convert to pandas dataframe
     df = pd.read_csv('log/compare_with_ic3ref.csv')
-    # remove the duplicated rows with same case name
-    df.drop_duplicates(subset=['case name'], keep='last', inplace=True)
+    # sort the dataframe by case name and the "NN-IC3 Frame" column
+    df = df.sort_values(by=["case name", " NN-IC3 Time"])
+    # remove the duplicated rows
+    df.drop_duplicates(subset="case name", keep="first", inplace=True)
     print(df)
     
     

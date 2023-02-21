@@ -63,7 +63,7 @@ def choose_train_parameter(dataset_type=None):
         learning_rate = 0.00001
     
     return (
-        f'python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_{model_name}/train.py ' \
+        f'python train_{model_name}/train.py ' \
         f'--task-name {task_name} --dim {dimension_of_embedding} --n_rounds {number_of_rounds} ' \
         f'--epochs {number_of_epochs} --train-file {train_file} --val-file {val_file} ' \
         f'--mode {train_mode} --gpu-id {gpu_id} ' \

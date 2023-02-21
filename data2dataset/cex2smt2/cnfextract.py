@@ -8,7 +8,7 @@ from tCube import tCube
 from natsort import natsorted
 
 class ExtractCnf(object):
-    def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False):
+    def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True):
         self.aig_path = aig_path
         self.generate_smt2 = generate_smt2 # default: generate smt2
 
@@ -46,6 +46,52 @@ class ExtractCnf(object):
         
         if self.ternary_simulator_valid:
             for _, updatefun in self.vprime2nxt: self.ternary_simulator.register_expr(updatefun)
+            
+        if inv_correctness_check:
+            self._check_inv_correctness()
+    
+    def _check_inv_correctness(self):
+        '''
+        check the correctness of the inductive invariant
+        - init -> inv
+        - inv -> P
+        - inv & T -> inv’
+        '''
+        inv = z3.And(self.clauses)
+        prop = z3.Not(self.aagmodel.output)
+        
+        # init -> inv
+        slv = z3.Solver()
+        slv.add(self.init)
+        slv.add(z3.Not(inv))
+        if slv.check() == z3.sat: 
+            self._report2log_inv_check(self.aig_path,\
+                "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log",\
+                "init -> inv is not satisfied")
+            assert False, "init -> inv is not satisfied"
+        
+        # inv -> P
+        slv = z3.Solver()
+        slv.add(inv)
+        slv.add(z3.Not(prop))
+        if slv.check() == z3.sat:
+            self._report2log_inv_check(self.aig_path,\
+                "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log",\
+                "inv -> P is not satisfied")
+            assert False, "inv -> P is not satisfied"
+        
+        # inv & T -> inv’
+        slv = z3.Solver()
+        slv.add(inv)
+        slv.add(z3.Not(z3.substitute(z3.substitute(inv, self.v2prime), self.vprime2nxt)))
+        if slv.check() == z3.sat:
+            self._report2log_inv_check(self.aig_path,\
+                "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log", \
+                "inv & T -> inv’ is not satisfied")
+            assert False, "inv & T -> inv’ is not satisfied"
+            
+        print("Finish checking the correctness of the inductive invariant! All good!")
+        
         
     def _build_clauses(self, svars, clauses):
         ret_clauses = []
@@ -103,6 +149,12 @@ class ExtractCnf(object):
         # append the error message to the log file
         with open(log_file, "a+") as fout:
             fout.write(f"Error: {aig_path} has mismatched inductive invariants. \n")
+        fout.close()
+        
+    def _report2log_inv_check(self, aig_path, log_file, error_msg):
+        # append the error message to the log file
+        with open(log_file, "a+") as fout:
+            fout.write(f"Error: {aig_path} has bad inv. {error_msg}.\n")
         fout.close()
 
     def _generate_smt2_and_ground_truth(self, model_to_block, model_var_lst, cl_info):    #smt2_gen_IG is a switch to trun on/off .smt file generation 

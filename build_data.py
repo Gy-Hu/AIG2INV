@@ -107,12 +107,12 @@ def find_case_in_selected_dataset_with_inv():
     
     # get all the generated inductive invariants cases' name
     # store all folder name in '/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip'
-    cases_with_inductive_invariants = os.listdir('/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip')
+    cases_with_inductive_invariants = os.listdir('/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip')
     # check whether it contains inv.cnf in subfolder
     cases_with_inductive_invariants = [
         case
         for case in cases_with_inductive_invariants
-        if os.path.exists(f'/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf')
+        if os.path.exists(f'/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/{case}/inv.cnf')
     ]
 
     all_cases_name_lst = [] # put into multi-threading pool
@@ -130,7 +130,11 @@ def find_case_in_selected_dataset_with_inv():
     return all_cases_name_lst
     
 
-def generate_smt2():
+def generate_smt2(run_mode='normal'):
+    '''
+    If the `run_mode` set to 'debug', collect.py will exit after checking the inv.cnf without smt2 generation.
+    Then, this `main.py` will also exit after printing the bad_inv.log
+    '''
     #pool = ThreadPool(multiprocessing.cpu_count())
     pool = multiprocessing.Pool(64)
     '''
@@ -146,7 +150,7 @@ def generate_smt2():
         results.append(pool.apply_async(
             call_proc,
             (
-                f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2}",
+                f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2} --run-mode {run_mode}",
             ),
         ))
     pool.close()
@@ -160,23 +164,19 @@ def generate_smt2():
             print("Congruatulations, no error in subprocess!")
     print("Finish all the subprocess, all the subset has generated smt2.")
 
-    #print error information in log/error_handle/abnormal_header.log if file exist
-    if os.path.exists("log/error_handle/abnormal_header.log"):
-        with open("log/error_handle/abnormal_header.log", "r") as f:
-            error_info = f.read()
-        print(f"Error information: {error_info}")
-        # rename the abnormal_header.log to abnormal_header.log.{time_stamp}
-        shutil.move("log/error_handle/abnormal_header.log", f"log/error_handle/abnormal_header.log.{time.time()}")
-
-    #print mismatched inv.cnf in log/error_handle/mismatched_inv.log
-    if os.path.exists("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log"):
-        print("There are some mismatched inv.cnf, please check them!")
-        with open("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log", "r") as f:
-            mismatched_inv_info = f.read()
-        print(f"Mismatched inv.cnf information: {mismatched_inv_info}") 
-        #generate_smt2_error_handle(all_cases_name_lst,"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
-        # rename the mismatched_inv.log to mismatched_inv.log.{time_stamp}
-        shutil.move("log/error_handle/mismatched_inv.log", f"log/error_handle/mismatched_inv.log.{time.time()}")
+    logs = ["abnormal_header.log", "mismatched_inv.log", "bad_inv.log"]
+    for log_name in logs:
+        log_path = f"log/error_handle/{log_name}"
+        if os.path.exists(log_path):
+            with open(log_path, "r") as f:
+                content = f.read()
+            print(f"{log_name.capitalize().replace('_', ' ')} information: \n{content}")
+            shutil.move(log_path, f"{log_path}.{time.time()}")
+    
+    if run_mode == 'debug': 
+        "Exiting the program after checking the inv.cnf without smt2 generation!"
+        exit(0)
+    
 
 def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False, ic3ref_basic_generalization=""):
     # parse the log file, find the cases that has mismatched inductive invariants
@@ -333,6 +333,7 @@ if __name__ == '__main__':
     parser.add_argument('--only_re_generate_inv', action='store_true', help='only re-generate the inv.cnf for the cases that has mismatched inductive invariants')
     parser.add_argument('--initialization_with_inv_generated', action='store_true', help='initialization with inv generated')
     parser.add_argument('--error_handle_with_ic3ref_basic_generalization', action='store_true', help='error handle with ic3ref basic generalization')
+    parser.add_argument('--run-mode', type=str, default="normal", help='run mode, normal or debug. Debug is for testing invariants correctness only')
     args = parser.parse_args()
     # for testing only
     # args = parser.parse_args(['--only_re_generate_inv','--error_handle_with_ic3ref_basic_generalization'])
@@ -368,7 +369,7 @@ if __name__ == '__main__':
     else:
         initialization(old_dir_name, with_re_generate_inv=False)
         # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py
-        generate_smt2()
+        generate_smt2(args.run_mode) # if mode is debug, the program will exit after inv checking
     
     '''
     ---------------------------------------------------------
