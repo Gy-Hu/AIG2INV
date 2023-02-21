@@ -57,8 +57,10 @@ class ExtractCnf(object):
         - inv -> P
         - inv & T -> inv’
         '''
-        inv = z3.And(self.clauses)
+        
         prop = z3.Not(self.aagmodel.output)
+        #inv = z3.And(self.clauses)
+        inv = z3.And(z3.And(self.clauses),prop)
         
         # init -> inv
         slv = z3.Solver()
@@ -90,6 +92,9 @@ class ExtractCnf(object):
                 "inv & T -> inv’ is not satisfied")
             assert False, "inv & T -> inv’ is not satisfied"
             
+        # with open("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log", "a+") as fout: 
+        #     fout.write(f"Finish checking the correctness of the inductive invariant! All good!\n")
+        # fout.close()
         print("Finish checking the correctness of the inductive invariant! All good!")
         
         
