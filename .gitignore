@@ -27,3 +27,4 @@ inv.cnf
 test_func/
 deprecated/
 *.yaml
+*.cnf

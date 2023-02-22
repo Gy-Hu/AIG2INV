@@ -1,4 +1,5 @@
 import torch
+import sys
 
 def check_header(fname:str):
     with open(fname) as fin:
@@ -24,7 +25,9 @@ class Clauses(object):
             with open(fname) as fin:
                 header = fin.readline()
                 header = header.split()
-                if len(header) < 2 or header[1] == "0" : self.report2log(fname, header, "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/abnormal_header.log")
+                if len(header) < 2 or header[1] == "0" : 
+                    self.report2log(fname, header, "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/abnormal_header.log")
+                    sys.exit()
                 assert len(header) >= 2
                 assert header[0] == 'unsat'
                 assert header[1] != "0"

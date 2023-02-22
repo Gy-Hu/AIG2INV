@@ -4,6 +4,7 @@ import z3
 import pandas as pd
 import os
 import ternary_sim
+import sys
 from tCube import tCube
 from natsort import natsorted
 from deps.pydimacs_changed.formula import CNFFormula
@@ -106,34 +107,37 @@ class ExtractCnf(object):
         slv = z3.Solver()
         slv.add(self.init)
         slv.add(z3.Not(inv))
-        #if self._check_satisfiability_by_differentsolver(slv) == True:
-        if slv.check() == z3.sat: 
+        if self._check_satisfiability_by_differentsolver(slv) == True:
+        #if slv.check() == z3.sat: 
             self._report2log_inv_check(self.aig_path,\
                 "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log",\
                 "init -> inv is not satisfied")
-            assert False, "init -> inv is not satisfied"
+            #assert False, "init -> inv is not satisfied"
+            sys.exit()
         
         # inv -> P
         slv = z3.Solver()
         slv.add(inv)
         slv.add(z3.Not(prop))
-        #if self._check_satisfiability_by_differentsolver(slv) == True:
-        if slv.check() == z3.sat:
+        if self._check_satisfiability_by_differentsolver(slv) == True:
+        #if slv.check() == z3.sat:
             self._report2log_inv_check(self.aig_path,\
                 "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log",\
                 "inv -> P is not satisfied")
-            assert False, "inv -> P is not satisfied"
+            #assert False, "inv -> P is not satisfied"
+            sys.exit()
         
         # inv & T -> inv’
         slv = z3.Solver()
         slv.add(inv)
         slv.add(z3.Not(z3.substitute(z3.substitute(inv, self.v2prime), self.vprime2nxt)))
-        #if self._check_satisfiability_by_differentsolver(slv) == True:
-        if slv.check() == z3.sat:
+        if self._check_satisfiability_by_differentsolver(slv) == True:
+        #if slv.check() == z3.sat:
             self._report2log_inv_check(self.aig_path,\
                 "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log", \
                 "inv & T -> inv’ is not satisfied")
-            assert False, "inv & T -> inv’ is not satisfied"
+            #assert False, "inv & T -> inv’ is not satisfied"
+            sys.exit()
             
         # with open("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log", "a+") as fout: 
         #     fout.write(f"Finish checking the correctness of the inductive invariant! All good!\n")

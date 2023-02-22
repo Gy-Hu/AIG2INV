@@ -124,6 +124,11 @@ def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
         if os.path.exists(f'/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf')
         ]
 
+    # initialize the list to store all the abnormal cases
+    AigCaseBlackList = [
+        'eijk.bs3271.S',\
+    ]
+
     all_cases_name_lst = [] # put into multi-threading pool
     for subset in subset_dir_lst:
         # get file name in each subset
@@ -132,7 +137,7 @@ def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
         if _ := [ # if case_name_lst is not empty
             case
             for case in _
-            if case.split('.aag')[0] in cases_with_inductive_invariants
+            if (case.split('.aag')[0] in cases_with_inductive_invariants and case.split('.aag')[0] not in AigCaseBlackList)
         ]: 
             all_cases_name_lst.extend(f'{subset}/{case}' for case in _)
 
