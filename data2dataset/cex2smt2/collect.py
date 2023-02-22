@@ -89,7 +89,7 @@ if __name__ == "__main__":
     
     '''
     for testing only
-    
+    '''
     args = parser.parse_args(['--aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_4/nusmv.brp.B.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_0/nusmv.syncarb5^2.B.aag',
@@ -114,7 +114,7 @@ if __name__ == "__main__":
         '--model-checker',
         'abc'
         ])
-    '''
+    
     
     case = args.aag.split('/')[-1].split('.aag')[0]
     

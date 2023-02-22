@@ -9,6 +9,8 @@ from tCube import tCube
 from natsort import natsorted
 from deps.pydimacs_changed.formula import CNFFormula
 import deps.PyMiniSolvers.minisolvers as minisolvers
+from pysat.formula import CNF
+from pysat.solvers import Solver
 
 class ExtractCnf(object):
     def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True):
@@ -82,6 +84,20 @@ class ExtractCnf(object):
             return n_vars, iclauses
             
     def _check_satisfiability_by_differentsolver(self, s):
+        
+        '''
+        # use pysat
+        '''
+        
+        f = CNFFormula.from_z3(s.assertions())
+        cnf_string_lst = f.to_dimacs_string()
+        f = CNF(from_string=cnf_string_lst[0])
+        s = Solver(name='cd')
+        s.append_formula(f.clauses)
+        return s.solve()
+    
+        '''
+        # use minisat
         f = CNFFormula.from_z3(s.assertions())
         cnf_string_lst = f.to_dimacs_string()
         n, iclauses = self._parse_dimacs(cnf_string_lst)
@@ -89,7 +105,9 @@ class ExtractCnf(object):
         for i in range(n): minisolver.new_var(dvar=True)
         for iclause in iclauses: minisolver.add_clause(iclause)
         is_sat = minisolver.solve()
+        
         return is_sat
+        '''
     
     def _check_inv_correctness(self):
         '''
