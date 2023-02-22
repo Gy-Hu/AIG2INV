@@ -25,7 +25,10 @@ class AAGmodel():
             latch_update_no = []
             outputidx = None
             var_table=dict()
-            var_table[0]=False
+            # in case z3.is_expr() fails when do substitution in the future
+            # 'z3 no pair' error: "Z3 invalid substitution, expression pairs expected." 
+            # if z3.is_expr() fails in substitution (latch value is boolean type not z3 type)
+            var_table[0]=z3.BoolVal(False) 
 
             if M == 0 or L == 0 or O != 1:
                 return False # parse failed
@@ -49,6 +52,8 @@ class AAGmodel():
                 #print (line)
                 assert len(line) == 2, 'cannot have init value for latches'
                 latchno = int(line[0])
+                if int(line[0]==1) or int(line[1]==1): self.report2log("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/abnormal_transition.log",fname,'latch that equal to 1')
+                #assert int(line[1]) != 1, 'Latch has prime variable that is 1, next state equal to true is not supported'
                 assert latchno == I*2+(idx+1)*2
                 latch_update_no.append((latchno, int(line[1]))) # we don't know the expression yet
                 #print (latchno, int(line[1]))
@@ -77,6 +82,7 @@ class AAGmodel():
                 left = int(line[1])
                 lexpr = get_literal(var_table, left)
                 right = int(line[2])
+                if aid==1 or left==1 or right==1: self.report2log("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/abnormal_transition.log",fname, 'AND gate that equal to 1')
                 rexpr = get_literal(var_table, right)
                 var_table[aid/2] = z3.And(lexpr, rexpr)
 
@@ -93,6 +99,13 @@ class AAGmodel():
             
             return True
         return False
+    
+    def report2log(self, log_file, fname, message):
+        # if latch or AND gate consists of true variable, record the aiger to log in '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle'
+        # append the error message to the log file
+        with open(log_file, "a+") as fout:
+            fout.write(f"Error: {fname} has abormal {message}\n")
+        fout.close()
 
 
 if __name__ == '__main__':

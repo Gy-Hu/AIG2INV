@@ -89,7 +89,7 @@ if __name__ == "__main__":
     
     '''
     for testing only
-    
+    '''
     args = parser.parse_args(['--aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_4/nusmv.brp.B.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_0/nusmv.syncarb5^2.B.aag',
@@ -99,7 +99,10 @@ if __name__ == "__main__":
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_7/eijk.S953.S.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_3/vis.arbiter.E.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_20/texas.PI_main^01.E.aag',
-        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_21/texas.PI_main^05.E.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_21/texas.PI_main^05.E.aag',
+        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_15/eijk.S5378.S.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_15/eijk.bs3330.S.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_15/eijk.bs3271.S.aag',
         '--generalize', 'T',
         #'--cnf',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv/nusmv.brp.B/inv.cnf',
@@ -109,9 +112,9 @@ if __name__ == "__main__":
         '--run-mode',
         'debug',
         '--model-checker',
-        'ic3ref'
+        'abc'
         ])
-    '''
+    
     
     case = args.aag.split('/')[-1].split('.aag')[0]
     

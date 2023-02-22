@@ -6,6 +6,8 @@ import os
 import ternary_sim
 from tCube import tCube
 from natsort import natsorted
+from deps.pydimacs_changed.formula import CNFFormula
+import deps.PyMiniSolvers.minisolvers as minisolvers
 
 class ExtractCnf(object):
     def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True):
@@ -49,6 +51,44 @@ class ExtractCnf(object):
             
         if inv_correctness_check:
             self._check_inv_correctness()
+            
+    def _parse_dimacs(self,filename):
+        # Check this variable is string type or not
+        if(isinstance(filename, list)):
+            assert len(filename) == 1
+            lines = [line for line in filename[0].strip().split("\n")]
+            for line in lines:
+                if "c" == line.strip().split(" ")[0]:
+                    index_c = lines.index(line)
+                    break
+            header = lines[0].strip().split(" ")
+            assert(header[0] == "p")
+            n_vars = int(header[2])
+            iclauses = [[int(s) for s in line.strip().split(" ")[:-1]] for line in lines[1:index_c]]
+            return n_vars, iclauses
+        elif(isinstance(filename, str)):
+            with open(filename, 'r') as f:
+                lines = f.readlines()
+            # Find the first index of line that contains string "c"
+            for line in lines:
+                if "c" == line.strip().split(" ")[0]:
+                    index_c = lines.index(line)
+                    break
+            header = lines[0].strip().split(" ")
+            assert(header[0] == "p")
+            n_vars = int(header[2])
+            iclauses = [[int(s) for s in line.strip().split(" ")[:-1]] for line in lines[1:index_c]]
+            return n_vars, iclauses
+            
+    def _check_satisfiability_by_differentsolver(self, s):
+        f = CNFFormula.from_z3(s.assertions())
+        cnf_string_lst = f.to_dimacs_string()
+        n, iclauses = self._parse_dimacs(cnf_string_lst)
+        minisolver = minisolvers.MinisatSolver()
+        for i in range(n): minisolver.new_var(dvar=True)
+        for iclause in iclauses: minisolver.add_clause(iclause)
+        is_sat = minisolver.solve()
+        return is_sat
     
     def _check_inv_correctness(self):
         '''
@@ -59,14 +99,15 @@ class ExtractCnf(object):
         '''
         
         prop = z3.Not(self.aagmodel.output)
-        #inv = z3.And(self.clauses)
-        inv = z3.And(z3.And(self.clauses),prop)
+        inv = z3.And(self.clauses)
+        #inv = z3.And(z3.And(self.clauses),prop)
         
         # init -> inv
         slv = z3.Solver()
         slv.add(self.init)
         slv.add(z3.Not(inv))
-        if slv.check() == z3.sat: 
+        if self._check_satisfiability_by_differentsolver(slv) == True:
+        #if slv.check() == z3.sat: 
             self._report2log_inv_check(self.aig_path,\
                 "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log",\
                 "init -> inv is not satisfied")
@@ -76,7 +117,8 @@ class ExtractCnf(object):
         slv = z3.Solver()
         slv.add(inv)
         slv.add(z3.Not(prop))
-        if slv.check() == z3.sat:
+        if self._check_satisfiability_by_differentsolver(slv) == True:
+        #if slv.check() == z3.sat:
             self._report2log_inv_check(self.aig_path,\
                 "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log",\
                 "inv -> P is not satisfied")
@@ -86,7 +128,8 @@ class ExtractCnf(object):
         slv = z3.Solver()
         slv.add(inv)
         slv.add(z3.Not(z3.substitute(z3.substitute(inv, self.v2prime), self.vprime2nxt)))
-        if slv.check() == z3.sat:
+        if self._check_satisfiability_by_differentsolver(slv) == True:
+        #if slv.check() == z3.sat:
             self._report2log_inv_check(self.aig_path,\
                 "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log", \
                 "inv & T -> inv’ is not satisfied")
@@ -371,11 +414,6 @@ class ExtractCnf(object):
             if not os.path.exists(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/ground_truth_table/{self.model_name}"): os.makedirs(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/ground_truth_table/{self.model_name}")
             df.to_csv(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/ground_truth_table/{self.model_name}/{self.model_name}.csv")
 
-    def _check_correctness_of_inv(self,inv):
-        '''
-        Check the correctness of the invariant
-        '''
-        
     
     def get_clause_cex_pair(self):
         '''
