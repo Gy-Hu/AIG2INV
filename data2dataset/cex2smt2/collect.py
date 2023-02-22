@@ -81,7 +81,8 @@ if __name__ == "__main__":
     parser.add_argument('--cnf', type=str, default=None, help='cnf file')
     parser.add_argument('--generate_smt2', type=str2bool, default=True, help='generate smt2 file')
     parser.add_argument('--inv-correctness-check', type=str2bool, default=True, help='check the correctness of the invariant')
-    parser.add_argument('--run-mode', type=str, default='debug', help='normal or debug')
+    parser.add_argument('--run-mode', type=str, default='debug', help='normal or debug. Debug model will exit after inv correctness check')
+    parser.add_argument('--model-checker', type=str, default='ic3ref', help='ic3ref or abc')
     
     # parse the arguments to test()
     args = parser.parse_args()
@@ -91,26 +92,36 @@ if __name__ == "__main__":
     
     args = parser.parse_args(['--aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_4/nusmv.brp.B.aag',
-        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_0/nusmv.syncarb5^2.B.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_0/nusmv.syncarb5^2.B.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_0/eijk.S208c.S.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_2/eijk.S386.S.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_17/vis.prodcell^03.E.aag',
-        '--generalize', 
-        'T',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_7/eijk.S953.S.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_3/vis.arbiter.E.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_20/texas.PI_main^01.E.aag',
+        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_21/texas.PI_main^05.E.aag',
+        '--generalize', 'T',
         #'--cnf',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv/nusmv.brp.B/inv.cnf',
         #'/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/nusmv.syncarb5^2.B/inv.cnf',
         '--generate_smt2', 
         'F',
         '--run-mode',
-        'debug'
+        'debug',
+        '--model-checker',
+        'ic3ref'
         ])
     '''
     
     case = args.aag.split('/')[-1].split('.aag')[0]
     
     if args.cnf is None: 
-        convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
+        # check which model checker is used, and use the corresponding output folder
+        if args.model_checker == 'ic3ref':
+            convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
+            #convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output-wrong-result/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
+        elif args.model_checker == 'abc':
+            convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
     else:
         convert_one_aag(args.aag, args.cnf, case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
 
