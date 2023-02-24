@@ -93,7 +93,7 @@ class ExtractCnf(object):
         cnf_string_lst = f.to_dimacs_string()
         f = CNF(from_string=cnf_string_lst[0])
         s = Solver(name='cd')
-        s.append_formula(f.clauses)
+        s.append_formula(f.clauses, no_return=False)
         return s.solve()
     
         '''
