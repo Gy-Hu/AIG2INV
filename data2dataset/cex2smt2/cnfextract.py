@@ -7,15 +7,21 @@ import ternary_sim
 import sys
 from tCube import tCube
 from natsort import natsorted
-from deps.pydimacs_changed.formula import CNFFormula
-import deps.PyMiniSolvers.minisolvers as minisolvers
-from pysat.formula import CNF
-from pysat.solvers import Solver
+#from deps.pydimacs_changed.formula import CNFFormula
+#import deps.PyMiniSolvers.minisolvers as minisolvers
+import deps.pydimacs_changed.formula
+#from pysat.formula import CNF
+#from pysat.solvers import Solver
+import pysat.formula
+import pysat.solvers
+import itertools
+
 
 class ExtractCnf(object):
-    def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True):
+    def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True, model_checker = 'abc'):
         self.aig_path = aig_path
         self.generate_smt2 = generate_smt2 # default: generate smt2
+        self.model_checker = model_checker
 
         # generalize the predescessor?
         self.generalize = generalize
@@ -51,9 +57,25 @@ class ExtractCnf(object):
         
         if self.ternary_simulator_valid:
             for _, updatefun in self.vprime2nxt: self.ternary_simulator.register_expr(updatefun)
+        
+        # check the duplicated update functions
+        #self._check_eq_of_tr()
             
         if inv_correctness_check:
             self._check_inv_correctness()
+        
+    def _check_eq_of_tr(self):
+        prime_variable = [_[1] for _ in self.vprime2nxt]
+        # for each variable, check the equality of them
+        for a, b in itertools.combinations(prime_variable, 2):
+            s = z3.Solver()
+            proposition = a == b # assertion is whether b1 and b2 are equal
+            s.add(z3.Not(proposition))
+            # proposition proved if negation of proposition is unsat
+            if s.check() == z3.unsat: # a == b
+                print("Oops!! There are duplicated update functions for the same variable!")
+
+        
             
     def _parse_dimacs(self,filename):
         # Check this variable is string type or not
@@ -83,22 +105,20 @@ class ExtractCnf(object):
             iclauses = [[int(s) for s in line.strip().split(" ")[:-1]] for line in lines[1:index_c]]
             return n_vars, iclauses
             
-    def _check_satisfiability_by_differentsolver(self, s):
+    def _check_satisfiability_by_differentsolver(self, z3_slv, z3_expr=None):
         
         '''
         # use pysat
         '''
-        
-        f = CNFFormula.from_z3(s.assertions())
-        cnf_string_lst = f.to_dimacs_string()
-        f = CNF(from_string=cnf_string_lst[0])
-        s = Solver(name='cd')
-        s.append_formula(f.clauses, no_return=False)
-        return s.solve()
+        pysat_solver = pysat.solvers.Solver(name='cd')
+        f =  pysat.formula.CNF(from_string=z3_slv.dimacs())
+        pysat_solver.append_formula(f.clauses, no_return=False)
+        res = pysat_solver.solve()
+        return res
     
         '''
         # use minisat
-        f = CNFFormula.from_z3(s.assertions())
+        f = CNFFormula.from_z3(z3_expr)
         cnf_string_lst = f.to_dimacs_string()
         n, iclauses = self._parse_dimacs(cnf_string_lst)
         minisolver = minisolvers.MinisatSolver()
@@ -118,18 +138,20 @@ class ExtractCnf(object):
         '''
         
         prop = z3.Not(self.aagmodel.output)
-        inv = z3.And(self.clauses)
+        inv = z3.And(self.clauses) if self.model_checker == 'abc' else z3.And(z3.And(self.clauses),prop) if self.model_checker == 'ic3ref' else None
+        assert inv != None, "Not defined model checker!"
         #inv = z3.And(z3.And(self.clauses),prop)
         
         # init -> inv
         slv = z3.Solver()
         slv.add(self.init)
         slv.add(z3.Not(inv))
-        if self._check_satisfiability_by_differentsolver(slv) == True:
-        #if slv.check() == z3.sat: 
+        #if self._check_satisfiability_by_differentsolver(slv) == True:
+        if slv.check() == z3.sat: 
             self._report2log_inv_check(self.aig_path,\
                 "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log",\
                 "init -> inv is not satisfied")
+            print("Invariant is not correct! init -> inv is not satisfied")
             #assert False, "init -> inv is not satisfied"
             sys.exit()
         
@@ -137,11 +159,12 @@ class ExtractCnf(object):
         slv = z3.Solver()
         slv.add(inv)
         slv.add(z3.Not(prop))
-        if self._check_satisfiability_by_differentsolver(slv) == True:
-        #if slv.check() == z3.sat:
+        #if self._check_satisfiability_by_differentsolver(slv) == True:
+        if slv.check() == z3.sat:
             self._report2log_inv_check(self.aig_path,\
                 "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log",\
                 "inv -> P is not satisfied")
+            print("Invariant is not correct! inv -> P is not satisfied")
             #assert False, "inv -> P is not satisfied"
             sys.exit()
         
@@ -149,11 +172,12 @@ class ExtractCnf(object):
         slv = z3.Solver()
         slv.add(inv)
         slv.add(z3.Not(z3.substitute(z3.substitute(inv, self.v2prime), self.vprime2nxt)))
-        if self._check_satisfiability_by_differentsolver(slv) == True:
-        #if slv.check() == z3.sat:
+        #if self._check_satisfiability_by_differentsolver(slv) == True:
+        if slv.check() == z3.sat:
             self._report2log_inv_check(self.aig_path,\
                 "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log", \
                 "inv & T -> inv’ is not satisfied")
+            print("Invariant is not correct! inv & T -> inv’ is not satisfied")
             #assert False, "inv & T -> inv’ is not satisfied"
             sys.exit()
             
@@ -246,6 +270,22 @@ class ExtractCnf(object):
                 z3.Not(model_to_block), 
                 cex_prime
                 )
+        '''
+        Export BoolRef in z3 to the sympy and do the optimization
+        - convert z3 expression to AST by using simplify(), then we can leverage __str__ or __repr__ function to get the string
+        - directly use str(BoolRef) to get the string (maybe not the best way, the string may be cut off)
+        - convert z3 expression to s-expression, like sexpr() -> but how to parse by sympy?
+        - solver has __repr__ function, but it is not the best way to get the string(contains '[]')
+        - use z3.Tactic, like: simpl = z3.Tactic("simplify"). Also can use z3.TryFor(simpl, 300000) to configure in detail \
+        This (simpl) has function as_expr() that can convert the z3 expression to string
+        - using the method that mentioned in https://github.com/Z3Prover/z3/issues/4822,\
+            https://stackoverflow.com/questions/65022373/z3-boolean-expression-simplification
+        - use interp https://www.philipzucker.com/programming-and-interactive-proving-with-z3py/
+        - converter for sympy string to z3
+        https://stackoverflow.com/questions/75461163/python-how-to-parse-boolean-sympy-tree-expressions-to-boolean-z3py-expressions
+        - using prove(f == g) to check if f and g are equivalent:\
+            https://stackoverflow.com/questions/60792685/how-to-simplify-ornoty-andy-notx-to-ornoty-notx-with-z3
+        '''
         for literals in model_var_lst: s_smt.add(literals)
         s_smt.add(Cube)
         # new a folder to store the smt2 files

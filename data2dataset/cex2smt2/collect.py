@@ -38,7 +38,7 @@ def dump4check_map(cex_clause_pair_list_prop, cex_clause_pair_list_ind, aag_name
         print('program finished, only dump cti to file')
         return 'Finish all the work!'
 
-def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, generate_smt2, inv_correctness_check, run_mode):
+def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, generate_smt2, inv_correctness_check, run_mode, model_checker):
     file_path = aag_name
     m = AAGmodel()
     m.from_file(aag_name)
@@ -50,7 +50,8 @@ def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, gene
         generalize = generalize_predecessor,\
         aig_path=file_path,\
         generate_smt2 = generate_smt2,\
-        inv_correctness_check = inv_correctness_check)
+        inv_correctness_check = inv_correctness_check,\
+        model_checker = model_checker)
     if run_mode == 'debug': sys.exit()
     cex_clause_pair_list_prop, cex_clause_pair_list_ind, is_inductive, has_fewer_clauses = extractor.get_clause_cex_pair()
     if dump4check_map(cex_clause_pair_list_prop,cex_clause_pair_list_ind,aag_name,m, return_after_finished = True)!= None: return
@@ -102,15 +103,18 @@ if __name__ == "__main__":
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_21/texas.PI_main^05.E.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_15/eijk.S5378.S.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_15/eijk.bs3330.S.aag',
-        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_15/eijk.bs3271.S.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_15/eijk.bs3271.S.aag', # Solve sat solving when verify the invariants correctness
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_6/eijk.S838.S.aag', # Solving time of PDR is very long
+        "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_17/vis.prodcell^03.E.aag", # cannot pass inv correctness check by any methods
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_9/nusmv.reactor^5.C.aag', # z3 convert to dimacs has problem
         '--generalize', 'T',
         #'--cnf',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv/nusmv.brp.B/inv.cnf',
         #'/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/nusmv.syncarb5^2.B/inv.cnf',
         '--generate_smt2', 
-        'F',
+        'T',
         '--run-mode',
-        'debug',
+        'normal',
         '--model-checker',
         'abc'
         ])
@@ -121,10 +125,10 @@ if __name__ == "__main__":
     if args.cnf is None: 
         # check which model checker is used, and use the corresponding output folder
         if args.model_checker == 'ic3ref':
-            convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
+            convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker)
             #convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output-wrong-result/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
         elif args.model_checker == 'abc':
-            convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
+            convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker)
     else:
         convert_one_aag(args.aag, args.cnf, case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
 

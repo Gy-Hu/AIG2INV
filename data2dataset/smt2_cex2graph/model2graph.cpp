@@ -8,6 +8,7 @@
 #include <map>
 #include <vector>
 #include <bits/stdc++.h>
+//#include "prop_formula.h"
 
 #include <dirent.h>
 #include <stdio.h>
@@ -21,6 +22,18 @@ using json = nlohmann::json;
 // #include <filesystem>
 // namespace recursive_directory_iterator = std::filesystem::recursive_directory_iterator;
 
+/*
+Some idea relate to minimize the graph of (!cex & cex') graph
+* - design pattern to match rules like !(!a && !b) => a || b in transition relation in aigmodel.py
+* - use z3 to simplify the expression, simplify()
+* - unsat core until fixed point
+* - ternary simulation multiple times
+* - mus to extract the minimal sat model (z3 can set minimal sat model)
+* - use aig simplification in Z3 C++/python API (I only found C++ API)
+* - use sympy to minimize the graph transition relation (bottleneck is translate z3 to sympy), then use z3 simplify()
+* - use aig_simple_parser.cpp to minimize the graph transition relation, and implement simplify() in here
+* - use PySMT or boolector (bottleneck is translation of z3 to pySMT/boolector)
+*/
 
 void walk(int tab, expr e, vector<expr> & bfs_queue)
 {
@@ -104,10 +117,35 @@ void GetFileNames(string path,vector<string>& filenames)
     closedir(pDir);
 }
 
+void TestSimplify()
+{
+    z3::context c;
+    
+    expr v18 = c.bool_const("v18");
+    expr v16 = c.bool_const("v16");
+
+    
+
+    expr and_expr = !( !v18 && !v16);
+    std::cout << "original expr: " << and_expr << std::endl;
+
+
+    z3::tactic t = tactic(c, "ctx-solver-simplify");
+    goal g(c);
+    g.add(and_expr);
+    apply_result res = t(g);
+    expr or_expr = res[0].as_expr();
+    std::cout << "simplified expr: " << or_expr << std::endl;
+
+    //expr or_expr = and_expr.simplify();
+    //std::cout << "simplified expr: " << or_expr << std::endl;
+}
+
 int main(int argc, char ** argv) {
+    TestSimplify();
     // get the file name from argv
-    string file_name = argv[1];
-    cout<<"file name:"<<file_name<<endl;
+    //string file_name = argv[1];
+    //cout<<"file name:"<<file_name<<endl;
 
     z3::context ctx;
     auto&& opt = z3::optimize(ctx);
@@ -120,7 +158,8 @@ int main(int argc, char ** argv) {
     //const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C";
     //const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
     
-    string filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/" + file_name;
+    const char* filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_20230106_014957_toy/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
+    //string filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/" + file_name;
     
     vector<string> filenames;
     GetFileNames(filePath,filenames);
@@ -128,7 +167,13 @@ int main(int argc, char ** argv) {
     //traversal the file name vector and get the graph
     for(int i=0;i<filenames.size();i++){
         cout<<"file name:"<<filenames[i]<<endl;
+        //if file end with .smt2, then parse it
+        if(filenames[i].find(".smt2") == string::npos){
+            //skip this loop
+            continue;}
+            
         Z3_ast_vector b = Z3_parse_smtlib2_file(ctx, filenames[i].c_str(), 0, 0, 0, 0, 0, 0);
+        
 
 
         // Get all the constriants
@@ -151,7 +196,33 @@ int main(int argc, char ** argv) {
         ctx.check_error();
         //walk(0,ctx);
         //z3.toExpr(result);
-        expr k(ctx, result); 
+        expr k(ctx, result);
+        std::cout << "expr num. args (before simplify): " << k.num_args() << "\n";
+        //print all the args
+        // for(int i=0;i<k.num_args();i++){
+        //     cout<<"k.arg("<<i<<"):\n "<<k.arg(i)<<endl;
+        // }
+        cout<<"k: \n"<<k<<endl;
+        //visit(k);
+        
+        // Simplify the k expression
+        //Z3_ast simplified = Z3_simplify(ctx, k);
+
+        // Convert the simplified expression to an expr object
+        //expr simplified_expr(ctx, simplified);
+
+        expr simplified_expr = k.simplify();
+        cout<<"simplified_expr: \n"<<simplified_expr.arg(1).simplify()<<endl;
+        
+        std::cout << "expr num. args (after simplify): " << simplified_expr.num_args() << "\n";
+        cout<<"simplified_expr: \n"<<simplified_expr<<endl;
+        // for(int i=0;i<simplified_expr.num_args();i++){
+        //     cout<<"simplified_expr.arg("<<i<<"):\n "<<simplified_expr.arg(i)<<endl;
+        // }
+        //visit(simplified_expr);
+        
+        
+
         opt.add(k);
 
         auto&& res = opt.check();
