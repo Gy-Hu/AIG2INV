@@ -17,8 +17,9 @@ class AAGmodel():
         self.output = None # O
         self.latch2next = dict()
         self.init = None
-
-    def from_file(self, fname):
+        
+    #XXX: Double check before running the script -> Use sympy to simplify the expression?
+    def from_file(self, fname, deep_simplify=True):
         with open(fname) as fin:
             header=fin.readline()
             header=header.split()
@@ -83,9 +84,12 @@ class AAGmodel():
                 left = int(line[1])
                 lexpr = get_literal(var_table, left)
                 right = int(line[2])
+                #XXX: Double check before running the script -> do we really care about this?
                 if aid==1 or left==1 or right==1: self.report2log("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/abnormal_transition.log",fname, 'AND gate that equal to 1')
                 rexpr = get_literal(var_table, right)
                 var_table[aid/2] = z3.And(lexpr, rexpr)
+                #XXX: Double check before running the script -> use sympy to simplify the expression
+                #if deep_simplify: var_table[aid/2] = sp_converter.to_z3(sp_converter.to_sympy(var_table[aid/2]))
 
             # now fill in latch & output
             assert outputidx is not None

@@ -20,13 +20,16 @@ import copy
 
 
 class ExtractCnf(object):
-    def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True, model_checker = 'abc', deep_simplification = True):
+    def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True, model_checker = 'abc', deep_simplification = False):
         self.aig_path = aig_path
         self.generate_smt2 = generate_smt2 # default: generate smt2
         self.model_checker = model_checker
 
         # generalize the predescessor?
         self.generalize = generalize
+        
+        # use sympy to simplify the expression?
+        self.deep_simplification = deep_simplification
         
         # build clauses
         self.aagmodel = aagmodel
@@ -45,9 +48,10 @@ class ExtractCnf(object):
         
         #XXX: Double Check before running the script
         # Use symbolic simplification to simplify the transition relation 
-        self.vprime2nxt_without_simplification = copy.deepcopy(self.vprime2nxt)# backup the original transition relation
-        self.vprime2nxt = [(vprime, sp_converter.to_z3(sp_converter.to_sympy(nxt))) for vprime, nxt in self.vprime2nxt]
-        #self._check_tr_correctness_after_simplification(self.vprime2nxt_without_simplification, self.vprime2nxt)
+        if self.deep_simplification:
+            self.vprime2nxt_without_simplification = copy.deepcopy(self.vprime2nxt)# backup the original transition relation
+            self.vprime2nxt = [(vprime, sp_converter.to_z3(sp_converter.to_sympy(nxt))) for vprime, nxt in self.vprime2nxt]
+            #self._check_tr_correctness_after_simplification(self.vprime2nxt_without_simplification, self.vprime2nxt)
 
         self.init = aagmodel.init
         self.lMap = {str(v):v for v in aagmodel.svars}
@@ -66,7 +70,7 @@ class ExtractCnf(object):
                 self.ternary_simulator_valid = False
                 break
         
-        if self.ternary_simulator_valid==True and deep_simplification==False:
+        if self.ternary_simulator_valid==True and self.deep_simplification==False:
             for _, updatefun in self.vprime2nxt: self.ternary_simulator.register_expr(updatefun)
         
         #XXX: Double Check before running the script
@@ -465,7 +469,7 @@ class ExtractCnf(object):
             shrink_model_times += 1
         print("size of CTI after removing according to unsat core: ", size_after_unsat_core)
 
-        if self.ternary_simulator_valid: # only if ternary simulator is valid, 
+        if self.ternary_simulator_valid==True and self.deep_simplification==False: # only if ternary simulator is valid, 
             '''
             if not valid, bug info like:
             

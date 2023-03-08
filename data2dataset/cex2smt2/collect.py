@@ -41,7 +41,7 @@ def dump4check_map(cex_clause_pair_list_prop, cex_clause_pair_list_ind, aag_name
 def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, generate_smt2, inv_correctness_check, run_mode, model_checker, deep_simplification):
     file_path = aag_name
     m = AAGmodel()
-    m.from_file(aag_name)
+    m.from_file(fname=aag_name, deep_simplify=deep_simplification)
     inv_cnf = Clauses(fname=cnf_name, num_sv = len(m.svars), num_input = len(m.inputs))
     extractor = ExtractCnf(\
         aagmodel = m,\
@@ -120,7 +120,7 @@ if __name__ == "__main__":
         '--model-checker', 
         'abc', #XXX: Double check before running scripts
         '--deep-simplification',
-        'F' #XXX: Double check before running scripts -> want to use sympy rather than ternary simulation?
+        'T' #XXX: Double check before running scripts -> want to use sympy rather than ternary simulation?
         ])
     
     
