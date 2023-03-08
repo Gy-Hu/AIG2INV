@@ -112,7 +112,7 @@ if __name__ == "__main__":
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv/nusmv.brp.B/inv.cnf',
         #'/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/nusmv.syncarb5^2.B/inv.cnf',
         '--generate_smt2', 
-        'F', #XXX: Double check before running scripts
+        'T', #XXX: Double check before running scripts
         '--run-mode',
         'normal',
         '--model-checker', 

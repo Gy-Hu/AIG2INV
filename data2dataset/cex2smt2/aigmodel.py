@@ -1,4 +1,5 @@
 import z3
+import sp_converter
 # load aig so that we have the transition relations
 
 def get_literal(vartable, lid):

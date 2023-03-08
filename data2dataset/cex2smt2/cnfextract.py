@@ -15,6 +15,8 @@ import deps.pydimacs_changed.formula
 import pysat.formula
 import pysat.solvers
 import itertools
+import sp_converter
+import copy
 
 
 class ExtractCnf(object):
@@ -40,6 +42,14 @@ class ExtractCnf(object):
         # to list
         self.v2prime = list(self.v2prime.items())
         self.vprime2nxt = list(self.vprime2nxt.items())
+        
+        
+        
+        #XXX: Double Check before running the script
+        # Use symbolic simplification to simplify the transition relation 
+        self.vprime2nxt_without_simplification = copy.deepcopy(self.vprime2nxt)# backup the original transition relation
+        self.vprime2nxt = [(vprime, sp_converter.to_z3(sp_converter.to_sympy(nxt))) for vprime, nxt in self.vprime2nxt]
+        self._check_tr_correctness_after_simplification(self.vprime2nxt_without_simplification, self.vprime2nxt)
 
         self.init = aagmodel.init
         self.lMap = {str(v):v for v in aagmodel.svars}
@@ -61,9 +71,20 @@ class ExtractCnf(object):
         #XXX: Double Check before running the script
         # check the duplicated update functions
         # self._check_eq_of_tr()
-            
+        
+        #XXX: Double Check before running the script
         if inv_correctness_check:
             self._check_inv_correctness()
+    
+    def _check_tr_correctness_after_simplification(self, t1, t2):
+        for a,b in zip(t1, t2):
+            s = z3.Solver()
+            proposition = a[1] == b[1] # assertion is whether b1 and b2 are equal
+            s.add(z3.Not(proposition))
+            # proposition proved if negation of proposition is unsat
+            if s.check() == z3.sat:
+                # it should be unsat if the transition relation is simplified correctly -> which is unsat
+                print("The transition relation is not simplified correctly!")
         
     def _check_eq_of_tr(self):
         prime_variable = [_[1] for _ in self.vprime2nxt]
@@ -251,6 +272,9 @@ class ExtractCnf(object):
         with open(log_file, "a+") as fout:
             fout.write(f"Error: {aig_path} has bad inv. {error_msg}.\n")
         fout.close()
+        
+    def _cex_deep_simplification(self,expr):
+        pass
 
     def _generate_smt2_and_ground_truth(self, model_to_block, model_var_lst, cl_info):    #smt2_gen_IG is a switch to trun on/off .smt file generation 
         '''
@@ -288,6 +312,17 @@ class ExtractCnf(object):
             https://stackoverflow.com/questions/60792685/how-to-simplify-ornoty-andy-notx-to-ornoty-notx-with-z3
         '''
         
+        '''
+        -------------Try to use symbolic simplification before dump smt2----------------
+        '''
+        #XXX: Double check before running the script
+        # maybe make it too simple...
+        # sp_converter.to_sympy(Cube)
+        
+        
+        '''
+        -----------------------------Dump smt2---------------------------------
+        '''
         for literals in model_var_lst: s_smt.add(literals)
         s_smt.add(Cube)
         # new a folder to store the smt2 files
