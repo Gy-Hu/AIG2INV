@@ -88,7 +88,7 @@ class AAGmodel():
                 left = int(line[1])
                 right = int(line[2])
 
-# bug here has been fixed in new aag2graph
+# BUG: here has been fixed in new aag2graph
                 if left % 2 == 1:
                     left_not_nid = self.newnode()
                     self.node_type[left_not_nid]=NOT

@@ -93,7 +93,7 @@ if __name__ == "__main__":
     '''
     args = parser.parse_args(['--aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_4/nusmv.brp.B.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_0/nusmv.syncarb5^2.B.aag',
+        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_0/nusmv.syncarb5^2.B.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_0/eijk.S208c.S.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_2/eijk.S386.S.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_17/vis.prodcell^03.E.aag',
@@ -105,18 +105,18 @@ if __name__ == "__main__":
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_15/eijk.bs3330.S.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_15/eijk.bs3271.S.aag', # Solve sat solving when verify the invariants correctness
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_6/eijk.S838.S.aag', # Solving time of PDR is very long
-        "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_17/vis.prodcell^03.E.aag", # cannot pass inv correctness check by any methods
+        #"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_17/vis.prodcell^03.E.aag", # cannot pass inv correctness check by any methods
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_9/nusmv.reactor^5.C.aag', # z3 convert to dimacs has problem
         '--generalize', 'T',
         #'--cnf',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv/nusmv.brp.B/inv.cnf',
         #'/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/nusmv.syncarb5^2.B/inv.cnf',
         '--generate_smt2', 
-        'T',
+        'F', #XXX: Double check before running scripts
         '--run-mode',
         'normal',
-        '--model-checker',
-        'abc'
+        '--model-checker', 
+        'ic3ref' #XXX: Double check before running scripts
         ])
     
     

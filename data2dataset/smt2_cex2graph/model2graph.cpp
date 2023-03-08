@@ -33,6 +33,7 @@ Some idea relate to minimize the graph of (!cex & cex') graph
 * - use sympy to minimize the graph transition relation (bottleneck is translate z3 to sympy), then use z3 simplify()
 * - use aig_simple_parser.cpp to minimize the graph transition relation, and implement simplify() in here
 * - use PySMT or boolector (bottleneck is translation of z3 to pySMT/boolector)
+* - use  Tactic "aig" and repeat function in z3 (https://stackoverflow.com/questions/33599423/optimize-solver-tactics-for-circuit-sat)
 */
 
 void walk(int tab, expr e, vector<expr> & bfs_queue)
@@ -41,38 +42,19 @@ void walk(int tab, expr e, vector<expr> & bfs_queue)
 
     if(e.is_const())
     {
-        //cout << blanks << "ARGUMENT"<<"(id:"<<e.id()<<")"<<": "<< e << endl;
+        //XXX: Double check before running the script
+        cout << blanks << "ARGUMENT"<<"(id:"<<e.id()<<")"<<": "<< e << endl;
         bfs_queue.push_back(e);
     }
     else
     {
-        //cout << blanks << "APP: " <<"(id:"<<e.id()<<")"<<": "<< e.decl().name() << endl;
+        //XXX: Double check before running the script
+        cout << blanks << "APP: " <<"(id:"<<e.id()<<")"<<": "<< e.decl().name() << endl;
         bfs_queue.push_back(e);
         for(int i = 0; i < e.num_args(); i++)
         {
             walk(tab + 5, e.arg(i),bfs_queue);
         }
-    }
-}
-
-void visit(expr const & e) {
-    if (e.is_app()) {
-        unsigned num = e.num_args();
-        for (unsigned i = 0; i < num; i++) {
-            visit(e.arg(i));
-        }
-        // do something
-        // Example: print the visited expression
-        func_decl f = e.decl();
-        std::cout << "application of " << f.name() << ": " << e << "\n";
-    }
-    else if (e.is_quantifier()) {
-        visit(e.body());
-        // do something
-    }
-    else { 
-        assert(e.is_var());
-        // do something
     }
 }
 
@@ -142,13 +124,15 @@ void TestSimplify()
 }
 
 int main(int argc, char ** argv) {
-    TestSimplify();
+    //XXX: Double check before running the script
+    //TestSimplify();
     // get the file name from argv
     //string file_name = argv[1];
     //cout<<"file name:"<<file_name<<endl;
 
     z3::context ctx;
-    auto&& opt = z3::optimize(ctx);
+    //auto&& opt = z3::optimize(ctx);
+    
     //Z3_ast_vector b = Z3_parse_smtlib2_file(ctx, "dataset/IG2graph/generalize_IG_no_enumerate/nusmv.reactor^4.C_0.smt2", 0, 0, 0, 0, 0, 0);
     //Z3_ast_vector b = Z3_parse_smtlib2_file(ctx, "nusmv.reactor^4.C_0.smt2", 0, 0, 0, 0, 0, 0);
     //Z3_ast_vector b = Z3_parse_smtlib2_file(ctx, "nusmv.syncarb5^2.B_10.smt2", 0, 0, 0, 0, 0, 0);
@@ -158,6 +142,7 @@ int main(int argc, char ** argv) {
     //const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C";
     //const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
     
+    //XXX: Double check before running the script
     const char* filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_20230106_014957_toy/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
     //string filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/" + file_name;
     
@@ -173,81 +158,50 @@ int main(int argc, char ** argv) {
             continue;}
             
         Z3_ast_vector b = Z3_parse_smtlib2_file(ctx, filenames[i].c_str(), 0, 0, 0, 0, 0, 0);
-        
-
-
-        // Get all the constriants
-        // Z3_ast* args = new Z3_ast[Z3_ast_vector_size(ctx, b)];
-        // for (unsigned i = 0; i < Z3_ast_vector_size(ctx, b); ++i) { //execute from 0 to size of b
-        //     args[i] = Z3_ast_vector_get(ctx, b, i);
-        // }
-        // z3::ast result(ctx, Z3_mk_and(ctx, Z3_ast_vector_size(ctx, b), args));
-
-        // Get only the last constriant
-        // Z3_ast* args = new Z3_ast[1];
-        // unsigned i = Z3_ast_vector_size(ctx, b)-1;
-        // cout<<"i: "<<int(i)<<endl;
-        // args[0] = Z3_ast_vector_get(ctx, b, i);
-        // z3::ast result(ctx, Z3_mk_and(ctx, 1, args));
 
         // fetch the last constriant - one line method
         Z3_ast result = Z3_ast_vector_get(ctx, b, Z3_ast_vector_size(ctx, b)-1);
 
         ctx.check_error();
-        //walk(0,ctx);
-        //z3.toExpr(result);
+        
         expr k(ctx, result);
         std::cout << "expr num. args (before simplify): " << k.num_args() << "\n";
-        //print all the args
-        // for(int i=0;i<k.num_args();i++){
-        //     cout<<"k.arg("<<i<<"):\n "<<k.arg(i)<<endl;
-        // }
-        cout<<"k: \n"<<k<<endl;
-        //visit(k);
-        
-        // Simplify the k expression
-        //Z3_ast simplified = Z3_simplify(ctx, k);
+        //XXX: Double check before running the script
+        //print all the args of k
+        for(int i = 0; i < k.num_args(); i++)
+        {
+            std::cout << "arg " << i << ": " << k.arg(i) << "\n";
+        }
 
-        // Convert the simplified expression to an expr object
-        //expr simplified_expr(ctx, simplified);
+        //XXX: Double check before running the script
+        //HACK: This will ignore a "and" operation of k, but why?
+        cout<<"k: \n"<<k<<endl;
 
         expr simplified_expr = k.simplify();
-        cout<<"simplified_expr: \n"<<simplified_expr.arg(1).simplify()<<endl;
         
+        //XXX: Double check before running the script
         std::cout << "expr num. args (after simplify): " << simplified_expr.num_args() << "\n";
-        cout<<"simplified_expr: \n"<<simplified_expr<<endl;
-        // for(int i=0;i<simplified_expr.num_args();i++){
-        //     cout<<"simplified_expr.arg("<<i<<"):\n "<<simplified_expr.arg(i)<<endl;
-        // }
-        //visit(simplified_expr);
+        std::cout<<"simplified_expr: \n"<<simplified_expr<<endl;
         
-        
-
-        opt.add(k);
-
-        auto&& res = opt.check();
-        switch (res) {
-            case z3::sat: std::cout << "Sat" << std::endl;break;
-            case z3::unsat: std::cout << "Unsat" << std::endl;break;
-            case z3::unknown: std::cout << "Unknown" << std::endl;break;
-        }
         vector<expr> bfs_queue;
+        //XXX: Double check before running the script
         walk(0,k, bfs_queue);
-        //visit(k);
+        //walk(0,simplified_expr, bfs_queue);
+        
         cout<<"bfs_queue size: "<<bfs_queue.size()<<endl;
         map<expr,int,cmpByZ3ExprID> map_expr;
         //map_expr.insert(make_pair(bfs_queue[0],0));
         set<pair<int, int>> set_expr_edge;
         for(int i = 0; i < bfs_queue.size(); i++)
         {
-        int node_id = get_nid(bfs_queue[i], map_expr);
-        //cout<<bfs_queue[i].decl().name()<<endl;
-        for(int j = 0; j < bfs_queue[i].num_args(); j++)
-        {
-            int children_nid = get_nid(bfs_queue[i].arg(j),map_expr);
-            //self.edges.add((node_id, children_nid))
-            set_expr_edge.insert(make_pair(node_id, children_nid));
-        }
+            int node_id = get_nid(bfs_queue[i], map_expr);
+            //cout<<bfs_queue[i].decl().name()<<endl;
+            for(int j = 0; j < bfs_queue[i].num_args(); j++)
+            {
+                int children_nid = get_nid(bfs_queue[i].arg(j),map_expr);
+                //self.edges.add((node_id, children_nid))
+                set_expr_edge.insert(make_pair(node_id, children_nid));
+            }
         }
         cout<<"map_expr size: "<<map_expr.size()<<endl;
         cout<<"set_expr_edge size: "<<set_expr_edge.size()<<endl;

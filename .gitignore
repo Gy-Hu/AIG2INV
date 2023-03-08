@@ -29,3 +29,5 @@ deprecated/
 *.yaml
 *.cnf
 abc/
+*.jpg
+*.svg

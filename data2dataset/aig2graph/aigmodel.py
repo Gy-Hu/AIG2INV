@@ -1,7 +1,7 @@
 import z3
 
 
-def get_literal(vartable, lid):
+def get_literal(vartable, lid): #BUG: There is a bug here -> when latch has true, the table is incorrect
     expr = vartable[int(lid/2)]
     if lid%2==1:
         expr=z3.Not(expr)

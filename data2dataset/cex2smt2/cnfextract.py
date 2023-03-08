@@ -58,8 +58,9 @@ class ExtractCnf(object):
         if self.ternary_simulator_valid:
             for _, updatefun in self.vprime2nxt: self.ternary_simulator.register_expr(updatefun)
         
+        #XXX: Double Check before running the script
         # check the duplicated update functions
-        #self._check_eq_of_tr()
+        # self._check_eq_of_tr()
             
         if inv_correctness_check:
             self._check_inv_correctness()
@@ -74,8 +75,6 @@ class ExtractCnf(object):
             # proposition proved if negation of proposition is unsat
             if s.check() == z3.unsat: # a == b
                 print("Oops!! There are duplicated update functions for the same variable!")
-
-        
             
     def _parse_dimacs(self,filename):
         # Check this variable is string type or not
@@ -146,7 +145,8 @@ class ExtractCnf(object):
         slv = z3.Solver()
         slv.add(self.init)
         slv.add(z3.Not(inv))
-        #if self._check_satisfiability_by_differentsolver(slv) == True:
+        #XXX: Double check before running scripts
+        #if self._check_satisfiability_by_differentsolver(slv) == True: 
         if slv.check() == z3.sat: 
             self._report2log_inv_check(self.aig_path,\
                 "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log",\
@@ -172,7 +172,8 @@ class ExtractCnf(object):
         slv = z3.Solver()
         slv.add(inv)
         slv.add(z3.Not(z3.substitute(z3.substitute(inv, self.v2prime), self.vprime2nxt)))
-        #if self._check_satisfiability_by_differentsolver(slv) == True:
+        #XXX: Double check before running scripts
+        #if self._check_satisfiability_by_differentsolver(slv) == True: 
         if slv.check() == z3.sat:
             self._report2log_inv_check(self.aig_path,\
                 "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_inv.log", \
@@ -286,6 +287,7 @@ class ExtractCnf(object):
         - using prove(f == g) to check if f and g are equivalent:\
             https://stackoverflow.com/questions/60792685/how-to-simplify-ornoty-andy-notx-to-ornoty-notx-with-z3
         '''
+        
         for literals in model_var_lst: s_smt.add(literals)
         s_smt.add(Cube)
         # new a folder to store the smt2 files

@@ -441,7 +441,7 @@ AigParser::generate_state_formula(const std::unordered_map<size_t, z3::expr> &fo
         z3::expr out_formula = prev_out[i] == formulas.at(o_lit);
         z3::expr named_out_formula =
                 out_formula.substitute(orig_in, vec_to_expr_vec(_ctx, prev_in))
-                           .substitute(orig_ps, vec_to_expr_vec(_ctx, prev_latch)); // BUG?
+                           .substitute(orig_ps, vec_to_expr_vec(_ctx, prev_latch)); // BUG: May be has bug?
         state_formula_parts.push_back(named_out_formula);
     }
     _state_formula = std::make_unique<z3::expr>(std::move(mk_and(state_formula_parts)));
