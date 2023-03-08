@@ -124,7 +124,7 @@ def json2mermaid(json_path=None):
     base64_bytes = base64.b64encode(graphbytes)
     base64_string = base64_bytes.decode("ascii")
     img_data = requests.get(f'https://mermaid.ink/img/{base64_string}').content
-    with open('mermaid.jpg', 'wb') as f:
+    with open('mermaid_deep_simplify.jpg', 'wb') as f:
         f.write(img_data)
 
 
@@ -132,4 +132,5 @@ if __name__ == "__main__":
     # clean_trivial_log()
     # walkFile()
     # calculate_pickle_number()
-    json2mermaid("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_20230106_014957_toy/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B_7.json")
+    #json2mermaid("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_20230106_014957_toy/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B_7.json")
+    json2mermaid("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B_7.json")

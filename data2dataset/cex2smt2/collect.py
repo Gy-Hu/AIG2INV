@@ -38,7 +38,7 @@ def dump4check_map(cex_clause_pair_list_prop, cex_clause_pair_list_ind, aag_name
         print('program finished, only dump cti to file')
         return 'Finish all the work!'
 
-def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, generate_smt2, inv_correctness_check, run_mode, model_checker):
+def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, generate_smt2, inv_correctness_check, run_mode, model_checker, deep_simplification):
     file_path = aag_name
     m = AAGmodel()
     m.from_file(aag_name)
@@ -51,7 +51,8 @@ def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, gene
         aig_path=file_path,\
         generate_smt2 = generate_smt2,\
         inv_correctness_check = inv_correctness_check,\
-        model_checker = model_checker)
+        model_checker = model_checker,\
+        deep_simplification=deep_simplification)
     if run_mode == 'debug': sys.exit()
     cex_clause_pair_list_prop, cex_clause_pair_list_ind, is_inductive, has_fewer_clauses = extractor.get_clause_cex_pair()
     if dump4check_map(cex_clause_pair_list_prop,cex_clause_pair_list_ind,aag_name,m, return_after_finished = True)!= None: return
@@ -84,6 +85,7 @@ if __name__ == "__main__":
     parser.add_argument('--inv-correctness-check', type=str2bool, default=True, help='check the correctness of the invariant')
     parser.add_argument('--run-mode', type=str, default='debug', help='normal or debug. Debug model will exit after inv correctness check')
     parser.add_argument('--model-checker', type=str, default='ic3ref', help='ic3ref or abc')
+    parser.add_argument('--deep-simplification', type=str2bool, default=True, help='use sympy in tr simplification (this will disable ternary simulation)')
     
     # parse the arguments to test()
     args = parser.parse_args()
@@ -116,7 +118,9 @@ if __name__ == "__main__":
         '--run-mode',
         'normal',
         '--model-checker', 
-        'ic3ref' #XXX: Double check before running scripts
+        'abc', #XXX: Double check before running scripts
+        '--deep-simplification',
+        'F' #XXX: Double check before running scripts -> want to use sympy rather than ternary simulation?
         ])
     
     
@@ -125,10 +129,10 @@ if __name__ == "__main__":
     if args.cnf is None: 
         # check which model checker is used, and use the corresponding output folder
         if args.model_checker == 'ic3ref':
-            convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker)
+            convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker, args.deep_simplification)
             #convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output-wrong-result/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
         elif args.model_checker == 'abc':
-            convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker)
+            convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker, args.deep_simplification)
     else:
         convert_one_aag(args.aag, args.cnf, case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
 

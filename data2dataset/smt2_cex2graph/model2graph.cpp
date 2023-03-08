@@ -143,9 +143,10 @@ int main(int argc, char ** argv) {
     //const char* filePath = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
     
     //XXX: Double check before running the script
-    const char* filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_20230106_014957_toy/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
+    //const char* filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_20230106_014957_toy/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
     //string filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/" + file_name;
-    
+    const char* filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
+
     vector<string> filenames;
     GetFileNames(filePath,filenames);
 

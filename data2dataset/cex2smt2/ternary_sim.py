@@ -82,7 +82,9 @@ class AIGBuffer(object):
     
     def check_validation(self, expr):
         # if expr is not bool object
-        if isinstance(expr, z3.BoolRef):
+        if isinstance(expr, z3.BoolRef)==False:
+            # which means expr is not a bool object -> 
+            # Transition relation will encounter problem when in substition
             return False
 
     # for one register expr, the parent nodes have smaller IDs

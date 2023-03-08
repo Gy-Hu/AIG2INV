@@ -20,7 +20,7 @@ import copy
 
 
 class ExtractCnf(object):
-    def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True, model_checker = 'abc'):
+    def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True, model_checker = 'abc', deep_simplification = True):
         self.aig_path = aig_path
         self.generate_smt2 = generate_smt2 # default: generate smt2
         self.model_checker = model_checker
@@ -43,13 +43,11 @@ class ExtractCnf(object):
         self.v2prime = list(self.v2prime.items())
         self.vprime2nxt = list(self.vprime2nxt.items())
         
-        
-        
         #XXX: Double Check before running the script
         # Use symbolic simplification to simplify the transition relation 
         self.vprime2nxt_without_simplification = copy.deepcopy(self.vprime2nxt)# backup the original transition relation
         self.vprime2nxt = [(vprime, sp_converter.to_z3(sp_converter.to_sympy(nxt))) for vprime, nxt in self.vprime2nxt]
-        self._check_tr_correctness_after_simplification(self.vprime2nxt_without_simplification, self.vprime2nxt)
+        #self._check_tr_correctness_after_simplification(self.vprime2nxt_without_simplification, self.vprime2nxt)
 
         self.init = aagmodel.init
         self.lMap = {str(v):v for v in aagmodel.svars}
@@ -63,9 +61,12 @@ class ExtractCnf(object):
         
         # check validation of using the ternary simulator
         self.ternary_simulator_valid = True
-        for _, updatefun in self.vprime2nxt: self.ternary_simulator_valid = self.ternary_simulator.check_validation(updatefun)
+        for _, updatefun in self.vprime2nxt: 
+            if self.ternary_simulator.check_validation(updatefun) == False:
+                self.ternary_simulator_valid = False
+                break
         
-        if self.ternary_simulator_valid:
+        if self.ternary_simulator_valid==True and deep_simplification==False:
             for _, updatefun in self.vprime2nxt: self.ternary_simulator.register_expr(updatefun)
         
         #XXX: Double Check before running the script
@@ -73,8 +74,7 @@ class ExtractCnf(object):
         # self._check_eq_of_tr()
         
         #XXX: Double Check before running the script
-        if inv_correctness_check:
-            self._check_inv_correctness()
+        #if inv_correctness_check: self._check_inv_correctness()
     
     def _check_tr_correctness_after_simplification(self, t1, t2):
         for a,b in zip(t1, t2):
@@ -250,9 +250,11 @@ class ExtractCnf(object):
                 if generate_smt2: self._generate_smt2_and_ground_truth(model_to_block, model_var_lst, (cl, self.clause_unexpanded[idx],cl_var_lst))
                 return cl, self.clause_unexpanded[idx]
             assert res == z3.sat
-        print (model_to_block)
-        for idx in range(len(self.clauses)-1, -1, -1): 
-            print(idx,':', self.clauses[idx])
+        #XXX: Double check before running scripts
+        #print (model_to_block)
+        
+        #XXX: Double check before running scripts
+        #for idx in range(len(self.clauses)-1, -1, -1): print(idx,':', self.clauses[idx])
         if cex_double_check_without_generalization:
             # record this case due to mismatched inv.cnf
             print(f"{self.model_name} Mismatched inductive invariant!! Path:{self.aig_path}")
@@ -436,23 +438,31 @@ class ExtractCnf(object):
 
         #replace the state as the next state (by trans) -> !P (s')
         nextcube = z3.substitute(z3.substitute(next_cube_expr,  self.v2prime),self.vprime2nxt)
+        
+        # since s -> s', so s & !s' is unsat, we can use unsat core to remove the literals (until fixed point)
+        size_before_unsat_core = len(tcube_cp.cubeLiterals)
+        shrink_model_times = 0
+        while True:
+            s = z3.Solver()
+            for index, literals in enumerate(tcube_cp.cubeLiterals):
+                s.assert_and_track(literals, f'p{str(index)}')
+            # prof.Zhang's suggestion
+            #s.add(prevF)
+            s.add(z3.Not(nextcube))
+            assert(s.check() == z3.unsat)
+            core = s.unsat_core()
+            core = [str(core[i]) for i in range(len(core))]
 
-        s = z3.Solver()
-        for index, literals in enumerate(tcube_cp.cubeLiterals):
-            s.assert_and_track(literals, f'p{str(index)}')
-        # prof.Zhang's suggestion
-        #s.add(prevF)
-        s.add(z3.Not(nextcube))
-        assert(s.check() == z3.unsat)
-        core = s.unsat_core()
-        core = [str(core[i]) for i in range(len(core))]
+            for idx in range(len(tcube_cp.cubeLiterals)):
+                if f'p{str(idx)}' not in core:
+                    tcube_cp.cubeLiterals[idx] = True
 
-        for idx in range(len(tcube_cp.cubeLiterals)):
-            if f'p{str(idx)}' not in core:
-                tcube_cp.cubeLiterals[idx] = True
-
-        tcube_cp.remove_true()
-        size_after_unsat_core = len(tcube_cp.cubeLiterals)
+            tcube_cp.remove_true()
+            size_after_unsat_core = len(tcube_cp.cubeLiterals)
+            if size_after_unsat_core == size_before_unsat_core:
+                break
+            size_before_unsat_core = size_after_unsat_core
+            shrink_model_times += 1
         print("size of CTI after removing according to unsat core: ", size_after_unsat_core)
 
         if self.ternary_simulator_valid: # only if ternary simulator is valid, 
