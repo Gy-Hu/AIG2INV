@@ -53,9 +53,7 @@ def calculate_pickle_number():
     output_array = list(set(output_array))
     print("The number of pickle files is: ", len(output_array))
 
-# draw mermaid
-
-
+# draw mermaid -> from the graph json file
 def json2mermaid(json_path=None):
     with open(json_path) as f:
         json_obj = json.loads(f.read())
