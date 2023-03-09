@@ -7,6 +7,22 @@
 2. The dataset in /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/ (e.g. /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007)
 3. It should be divided into multiple subsets according to the graph size of counterexample (e.g. .../hwmcc2007/subset_0, .../hwmcc2007/subset_1)
 
+
+----------------- Generate different graph for training and testing -----------------
+1. Small dataset for abc
+    1.1. Simplify the transition relation of the model
+    1.2. Without deep simplification
+2. Complete dataset for abc 
+    2.1. Simplify the transition relation of the model
+    1.2. Without deep simplification
+3. Small dataset for ic3ref -> (skip the graph that could not find the inductive clauses)
+    3.1. Simplify the transition relation of the model
+    3.2. Without deep simplification
+4. Complete dataset for ic3ref -> (skip the graph that could not find the inductive clauses)
+    4.1. Simplify the transition relation of the model
+    4.2  Without deep simplification
+
+
 Note: this is a multi-threading tool, you can change the number of threads in the main function
 '''
 
