@@ -604,7 +604,7 @@ if __name__ == "__main__":
         #'--aig-case-name', 'eijk.bs4863.S',
         #'--aig-case-name', 'eijk.S1423.S', #should has huge improvement
         #'--aig-case-name', 'eijk.bs4863.S',
-        #'--aig-case-name', 'nusmv.guidance^6.C',
+        '--aig-case-name', 'nusmv.guidance^6.C',
         '--aig-case-folder-prefix-for-prediction', 'case4test/hwmcc2007_big_comp_for_prediction',
         '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
         '--gpu-id', '1'
