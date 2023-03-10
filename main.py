@@ -458,9 +458,6 @@ def compare_ic3ref(aig_original_location, selected_aig_case, ic3ref_basic_genera
     print('compare with ic3ref done')
     
 def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_location_prefix):
-    # if f'{self.aig_location}/{self.model_name}_predicted_clauses_after_filtering.cnf' exists, skip
-    # if os.path.exists(f'{aig_original_location_prefix}/{aig_case_name}/{aig_case_name}_predicted_clauses_after_filtering.cnf'):
-    #     return f'{aig_original_location_prefix}/{aig_case_name}', aig_case_name
     sigmoid = nn.Sigmoid()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # choose the dataset that you want to test
@@ -478,7 +475,9 @@ def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_locat
         # print log 
         with open("log/error_handle/graph_pickle_incomplete.log", "a+") as fout: fout.write(f"Error: {aig_case_name} has incomplete graph generation from json to pickle \n")
         fout.close()
-        return
+        #XXX: Double check before running the script
+        sys.exit(0)
+        #return
  
     # load pytorch model
     net = NeuroInductiveGeneralization()
@@ -599,16 +598,19 @@ if __name__ == "__main__":
     
     # for test only
     '''
+    
     args =  parser.parse_args([
         '--threshold', '0.5',
         #'--aig-case-name', 'eijk.bs4863.S',
         #'--aig-case-name', 'eijk.S1423.S', #should has huge improvement
-        '--aig-case-name', 'eijk.bs4863.S',
+        #'--aig-case-name', 'eijk.bs4863.S',
+        #'--aig-case-name', 'nusmv.guidance^6.C',
         '--aig-case-folder-prefix-for-prediction', 'case4test/hwmcc2007_big_comp_for_prediction',
         '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
         '--gpu-id', '1'
     ])
     '''
+    
 
     
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
@@ -635,22 +637,25 @@ if __name__ == "__main__":
 
     # test single case
     if args.aig_case_name is not None:
-        aig_original_location, selected_aig_case = generate_predicted_inv(threshold=args.threshold, \
+        if not(os.path.exists(f'{args.aig_case_folder_prefix_for_prediction}/{args.aig_case_name}/{args.aig_case_name}_predicted_clauses_after_filtering.cnf')):
+            generate_predicted_inv(threshold=args.threshold, \
             aig_case_name=args.aig_case_name,\
             NN_model=args.NN_model,\
             aig_original_location_prefix=args.aig_case_folder_prefix_for_prediction)
-        compare_ic3ref(aig_original_location, selected_aig_case,args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization)
+        compare_ic3ref(f'{args.aig_case_folder_prefix_for_prediction}/{args.aig_case_name}', f'{args.aig_case_name}',args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization)
     else: # test all cases in specified folder
         # only give aig case folder, not define the aig case name, then test all cases in the folder
         # get all the folder name in the aig_case_folder
         aig_case_list = [ f.path for f in os.scandir(args.aig_case_folder_prefix_for_prediction) if f.is_dir() ]
         for aig_case in aig_case_list:
             print("Begin to test case: ", aig_case.split('/')[-1], "...")
-            aig_original_location, selected_aig_case = generate_predicted_inv(threshold=args.threshold, \
+            #if not(os.path.exists(f'{args.aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}/{args.aig_case_name}_predicted_clauses_after_filtering.cnf')):
+            if not(os.path.exists(f"{args.aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}/{aig_case.split('/')[-1]}_predicted_clauses_after_filtering.cnf")):
+                generate_predicted_inv(threshold=args.threshold, \
                 aig_case_name=aig_case.split('/')[-1], \
                 NN_model=args.NN_model,\
                 aig_original_location_prefix=args.aig_case_folder_prefix_for_prediction)
-            compare_ic3ref(aig_original_location, selected_aig_case,args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization)
+            compare_ic3ref(f"{args.aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization)
     
     '''
     ------------------ check the error log -----------------
