@@ -91,6 +91,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     '''
+    #XXX: Double check before running the script
     for testing only
     '''
     args = parser.parse_args(['--aag',

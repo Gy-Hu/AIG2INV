@@ -349,7 +349,7 @@ def get_dataset(selected_dataset = 'toy'):
         ), "The dataset path does not exist!"
         return 'dataset_hwmcc07_almost_complete'
 
-def compare_ic3ref(aig_original_location, selected_aig_case):
+def compare_ic3ref(aig_original_location, selected_aig_case, ic3ref_basic_generalization="", nnic3_basic_generalization=""):
     # compare with ic3ref
 
     '''
@@ -359,7 +359,7 @@ def compare_ic3ref(aig_original_location, selected_aig_case):
     # initialize a shell command
     predicted_clauses_cnf = (f'{aig_original_location}/'+ f'{selected_aig_case}_predicted_clauses_after_filtering.cnf')
     originial_aiger_file = (f'{aig_original_location}/'+ f'{selected_aig_case}.aag')
-    cmd = f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -v -b -f {predicted_clauses_cnf} < {originial_aiger_file}'
+    cmd = f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -v {nnic3_basic_generalization} -f {predicted_clauses_cnf} < {originial_aiger_file}'
     # run the shell command, and store stream data in terminal output to a variable
     start_time = time.monotonic()
     try:
@@ -384,7 +384,7 @@ def compare_ic3ref(aig_original_location, selected_aig_case):
     original ic3ref located in /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3ref
     '''
     # initialize a shell command
-    cmd = f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -b -v < {originial_aiger_file}'
+    cmd = f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 {ic3ref_basic_generalization} -v < {originial_aiger_file}'
     start_time = time.monotonic()
     # run the shell command, and store stream data in terminal output to a variable
     try:
@@ -442,18 +442,23 @@ def compare_ic3ref(aig_original_location, selected_aig_case):
     # if the file does not exist, create it
     if not os.path.exists('log/compare_with_ic3ref.csv'):
         with open('log/compare_with_ic3ref.csv', 'w') as f:
-            f.write('case name, NN-IC3 Frame, IC3ref Frame, NN-IC3 Time, IC3ref Time\n')
+            f.write('case name, NN-IC3 Frame, IC3ref Frame, NN-IC3 Time, IC3ref Time, NN-IC3-bg, IC3ref-bg\n')
             
     
     with open('log/compare_with_ic3ref.csv', 'a+') as f:
+        # convert ic3ref_basic_generalization to 0 or 1
+        ic3ref_basic_generalization = 0 if ic3ref_basic_generalization=="" else 1
+        nnic3_basic_generalization = 0 if nnic3_basic_generalization=="" else 1
+            
         if (
             last_level_ic3ref.isnumeric()
         ):
-            f.write(f'{originial_aiger_file.split("/")[-1].split(".aag")[0]}, {last_level}, {last_level_ic3ref}, {elapsed_time_for_nn_ic3}, {elapsed_time_for_ic3ref}\n')
+            f.write(f'{originial_aiger_file.split("/")[-1].split(".aag")[0]}, {last_level}, {last_level_ic3ref}, {elapsed_time_for_nn_ic3}, {elapsed_time_for_ic3ref}, {nnic3_basic_generalization},{ic3ref_basic_generalization} \n')
 
     print('compare with ic3ref done')
     
-def test_single_case(threshold, aig_case_name, NN_model,aig_original_location_prefix):
+def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_location_prefix):
+    
     sigmoid = nn.Sigmoid()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # choose the dataset that you want to test
@@ -562,8 +567,10 @@ def test_single_case(threshold, aig_case_name, NN_model,aig_original_location_pr
     predicted_clauses_filter = CNF_Filter(aagmodel = m, clause = predicted_clauses ,name = model_name, aig_location=aig_original_location)
     predicted_clauses_filter.check_and_reduce()
     #predicted_clauses_filter.check_and_generalize()#FIXME: Encounter error, the cnf file will become empty
+    
+    #return aig_original_location, selected_aig_case
 
-    compare_ic3ref(aig_original_location=aig_original_location,selected_aig_case=selected_aig_case)
+    #compare_ic3ref(aig_original_location=aig_original_location,selected_aig_case=selected_aig_case)
 
 def compare_inv_and_draw_table(threshold, NN_model, aig_with_predicted_location_prefix, aig_without_predicted_location_prefix):
     pass
@@ -577,19 +584,31 @@ if __name__ == "__main__":
     parser.add_argument('--compare_inv', action='store_true', help='compare the inv with ic3ref')
     parser.add_argument('--aig-case-folder-prefix-for-prediction', type=str, default=None, help='case folder, use for test all cases in the folder, for example: case4test/hwmcc2007')
     parser.add_argument('--aig-case-folder-prefix-for-ic3ref', type=str, default=None, help='case folder, contains all ic3ref produced inv.cnf, for example: case4test/hwmcc2007')
+    parser.add_argument('--compare_with_ic3ref_basic_generalization', action='store_true', help='compare with ic3ref basic generalization')
+    parser.add_argument('--compare_with_nnic3_basic_generalization', action='store_true', help='compare with nnic3 basic generalization')
     parser.add_argument('--aig-case-name', type=str, default=None, help='case name, use for test single case, for example: cmu.dme1.B')
-    parser.add_argument('--NN-model', type=str, default='neuropdr_2023-01-06_07:56:57_last.pth.tar', help='model name')
+    #XXX: DOuble check before running the script
+    parser.add_argument('--NN-model', type=str, default='neuropdr_2023-01-06_07:56:57_last.pth.tar', help='model name') 
     parser.add_argument('--gpu-id', type=str, default='1', help='gpu id')
     args = parser.parse_args()
+    
+    args.compare_with_ic3ref_basic_generalization = "-b" if args.compare_with_ic3ref_basic_generalization else ""
+    args.compare_with_nnic3_basic_generalization = "-b" if args.compare_with_nnic3_basic_generalization else ""
+    
     # for test only
+    '''
+    '''
     args =  parser.parse_args([
         '--threshold', '0.5',
         #'--aig-case-name', 'eijk.bs4863.S',
-        '--aig-case-name', 'eijk.S1423.S', #should has huge improvement
+        #'--aig-case-name', 'eijk.S1423.S', #should has huge improvement
+        '--aig-case-name', 'eijk.bs4863.S',
         '--aig-case-folder-prefix-for-prediction', 'case4test/hwmcc2007_big_comp_for_prediction',
         '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
         '--gpu-id', '1'
     ])
+    
+    
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
     '''
@@ -614,13 +633,22 @@ if __name__ == "__main__":
 
     # test single case
     if args.aig_case_name is not None:
-        test_single_case(threshold=args.threshold, aig_case_name=args.aig_case_name, NN_model=args.NN_model,aig_original_location_prefix=args.aig_case_folder_prefix_for_prediction)
+        aig_original_location, selected_aig_case = generate_predicted_inv(threshold=args.threshold, \
+            aig_case_name=args.aig_case_name,\
+            NN_model=args.NN_model,\
+            aig_original_location_prefix=args.aig_case_folder_prefix_for_prediction)
+        compare_ic3ref(aig_original_location, selected_aig_case,args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization)
     else: # test all cases in specified folder
         # only give aig case folder, not define the aig case name, then test all cases in the folder
         # get all the folder name in the aig_case_folder
         aig_case_list = [ f.path for f in os.scandir(args.aig_case_folder_prefix_for_prediction) if f.is_dir() ]
         for aig_case in aig_case_list:
-            test_single_case(threshold=args.threshold, aig_case_name=aig_case.split('/')[-1], NN_model=args.NN_model,aig_original_location_prefix=args.aig_case_folder_prefix_for_prediction)
+            print("Begin to test case: ", aig_case.split('/')[-1], "...")
+            aig_original_location, selected_aig_case = generate_predicted_inv(threshold=args.threshold, \
+                aig_case_name=aig_case.split('/')[-1], \
+                NN_model=args.NN_model,\
+                aig_original_location_prefix=args.aig_case_folder_prefix_for_prediction)
+            compare_ic3ref(aig_original_location, selected_aig_case,args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization)
     
     '''
     ------------------ check the error log -----------------
