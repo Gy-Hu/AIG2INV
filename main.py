@@ -458,7 +458,9 @@ def compare_ic3ref(aig_original_location, selected_aig_case, ic3ref_basic_genera
     print('compare with ic3ref done')
     
 def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_location_prefix):
-    
+    # if f'{self.aig_location}/{self.model_name}_predicted_clauses_after_filtering.cnf' exists, skip
+    # if os.path.exists(f'{aig_original_location_prefix}/{aig_case_name}/{aig_case_name}_predicted_clauses_after_filtering.cnf'):
+    #     return f'{aig_original_location_prefix}/{aig_case_name}', aig_case_name
     sigmoid = nn.Sigmoid()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # choose the dataset that you want to test
@@ -567,7 +569,7 @@ def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_locat
     predicted_clauses_filter = CNF_Filter(aagmodel = m, clause = predicted_clauses ,name = model_name, aig_location=aig_original_location)
     predicted_clauses_filter.check_and_reduce()
     #predicted_clauses_filter.check_and_generalize()#FIXME: Encounter error, the cnf file will become empty
-    
+
     #return aig_original_location, selected_aig_case
 
     #compare_ic3ref(aig_original_location=aig_original_location,selected_aig_case=selected_aig_case)
@@ -597,7 +599,6 @@ if __name__ == "__main__":
     
     # for test only
     '''
-    '''
     args =  parser.parse_args([
         '--threshold', '0.5',
         #'--aig-case-name', 'eijk.bs4863.S',
@@ -607,7 +608,8 @@ if __name__ == "__main__":
         '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
         '--gpu-id', '1'
     ])
-    
+    '''
+
     
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
