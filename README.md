@@ -1,3 +1,7 @@
+#AIG2INV
+
+Accelerating IC3 by inducive clauses prediction
+
 ### For important dir
 aag2graph (directly convert from aag):
 `/data/hongcezh/clause-learning/data-collect/data2dataset`
@@ -29,4 +33,4 @@ https://github.com/zhanghongce/IC3ref - modified Makefile (may not be necessary)
 
 ### For converted aiger
 * `case4test/hwmcc2007_big_comp_for_prediction`: hwmcc07 tip safety cases (only UNSAT cases) all aiger1.0 format 
-* `case4test/hwmcc2020_all`: hwmcc20 safety cases all aiger1.0 format 
+* `case4test/hwmcc2020_all`: hwmcc20 safety cases all aiger1.0 format (may contain some SAT cases)
