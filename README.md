@@ -32,5 +32,6 @@ https://github.com/zhanghongce/IC3ref - modified Makefile (may not be necessary)
 * `dataset_hwmcc07_0_1_2_3_4`: contains 25 simplest aigers from hwmcc07
 
 ### For converted aiger
-* `case4test/hwmcc2007_big_comp_for_prediction`: hwmcc07 tip safety cases (only UNSAT cases) all aiger1.0 format 
-* `case4test/hwmcc2020_all`: hwmcc20 safety cases all aiger1.0 format (may contain some SAT cases)
+* `case4test/hwmcc2007_big_comp_for_prediction`: hwmcc07 tip safety cases (only UNSAT cases) all aiger1.0 format, only use to dump predicted clauses
+* `case4test/hwmcc2007`: hwmcc07 tip safety cases all aiger1.0 format
+* `case4test/hwmcc2020_all`: hwmcc20 safety cases all aiger1.0 format
