@@ -469,15 +469,15 @@ def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_locat
         # print log 
         with open("log/error_handle/graph_pickle_incomplete.log", "a+") as fout: fout.write(f"Error: {aig_case_name} has no graph generation from json to pickle \n")
         fout.close()
-        return
+        return False
     # Has error in json_to_graph_pickle
     if len(extracted_bad_cube_after_post_processing)!= len(open(f'{extracted_bad_cube_prefix}/bad_cube_cex2graph/cti_for_inv_map_checking/{selected_aig_case}/{selected_aig_case}_inv_CTI.txt').readlines()):
         # print log 
         with open("log/error_handle/graph_pickle_incomplete.log", "a+") as fout: fout.write(f"Error: {aig_case_name} has incomplete graph generation from json to pickle \n")
         fout.close()
         #XXX: Double check before running the script
-        sys.exit(0)
-        #return
+        #sys.exit(0)
+        return False
  
     # load pytorch model
     net = NeuroInductiveGeneralization()
@@ -568,7 +568,7 @@ def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_locat
     predicted_clauses_filter = CNF_Filter(aagmodel = m, clause = predicted_clauses ,name = model_name, aig_location=aig_original_location)
     predicted_clauses_filter.check_and_reduce()
     #predicted_clauses_filter.check_and_generalize()#FIXME: Encounter error, the cnf file will become empty
-
+    return True
     #return aig_original_location, selected_aig_case
 
     #compare_ic3ref(aig_original_location=aig_original_location,selected_aig_case=selected_aig_case)
@@ -598,11 +598,11 @@ if __name__ == "__main__":
     
     # for test only
     '''
-    
+    #XXX: Double check before running the script
     args =  parser.parse_args([
         '--threshold', '0.5',
         #'--aig-case-name', 'eijk.bs4863.S',
-        #'--aig-case-name', 'eijk.S1423.S', #should has huge improvement
+        '--aig-case-name', 'eijk.S1423.S', #should has huge improvement
         #'--aig-case-name', 'eijk.bs4863.S',
         '--aig-case-name', 'nusmv.guidance^6.C',
         '--aig-case-folder-prefix-for-prediction', 'case4test/hwmcc2007_big_comp_for_prediction',
@@ -610,6 +610,7 @@ if __name__ == "__main__":
         '--gpu-id', '1'
     ])
     '''
+    
     
 
     
@@ -637,12 +638,15 @@ if __name__ == "__main__":
 
     # test single case
     if args.aig_case_name is not None:
+        generate_predicted_inv_success = True # assume the inv is already generated
         if not(os.path.exists(f'{args.aig_case_folder_prefix_for_prediction}/{args.aig_case_name}/{args.aig_case_name}_predicted_clauses_after_filtering.cnf')):
-            generate_predicted_inv(threshold=args.threshold, \
+            # if the inv is not generated, then generate it
+            generate_predicted_inv_success = generate_predicted_inv(threshold=args.threshold, \
             aig_case_name=args.aig_case_name,\
             NN_model=args.NN_model,\
             aig_original_location_prefix=args.aig_case_folder_prefix_for_prediction)
-        compare_ic3ref(f'{args.aig_case_folder_prefix_for_prediction}/{args.aig_case_name}', f'{args.aig_case_name}',args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization)
+        # if the inv is generated, then compare it with ic3ref, if fail, we skip it
+        if generate_predicted_inv_success: compare_ic3ref(f'{args.aig_case_folder_prefix_for_prediction}/{args.aig_case_name}', f'{args.aig_case_name}',args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization)
     else: # test all cases in specified folder
         # only give aig case folder, not define the aig case name, then test all cases in the folder
         # get all the folder name in the aig_case_folder
@@ -650,12 +654,13 @@ if __name__ == "__main__":
         for aig_case in aig_case_list:
             print("Begin to test case: ", aig_case.split('/')[-1], "...")
             #if not(os.path.exists(f'{args.aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}/{args.aig_case_name}_predicted_clauses_after_filtering.cnf')):
+            generate_predicted_inv_success = True
             if not(os.path.exists(f"{args.aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}/{aig_case.split('/')[-1]}_predicted_clauses_after_filtering.cnf")):
-                generate_predicted_inv(threshold=args.threshold, \
+                generate_predicted_inv_success = generate_predicted_inv(threshold=args.threshold, \
                 aig_case_name=aig_case.split('/')[-1], \
                 NN_model=args.NN_model,\
                 aig_original_location_prefix=args.aig_case_folder_prefix_for_prediction)
-            compare_ic3ref(f"{args.aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization)
+            if generate_predicted_inv_success: compare_ic3ref(f"{args.aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization)
     
     '''
     ------------------ check the error log -----------------

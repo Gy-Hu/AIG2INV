@@ -12,15 +12,19 @@
 1. Small dataset for abc
     1.1. Simplify the transition relation of the model -> use symbolic simplification + z3's simplify function
     1.2. Without deep simplification -> use z3's simplify function
+    1.3  Simplify the last cube + z3 simplify function (Maybe not recommended)
 2. Complete dataset for abc 
     2.1. Simplify the transition relation of the model
-    1.2. Without deep simplification 
+    2.2. Without deep simplification 
+    2.3  Simplify the last cube + z3 simplify function
 3. Small dataset for ic3ref -> (skip the graph that could not find the inductive clauses)
     3.1. Simplify the transition relation of the model
     3.2. Without deep simplification
+    3.3  Simplify the last cube + z3 simplify function 
 4. Complete dataset for ic3ref -> (skip the graph that could not find the inductive clauses)
     4.1. Simplify the transition relation of the model
     4.2  Without deep simplification
+    4.3  Simplify the last cube + z3 simplify function 
 
 
 Note: this is a multi-threading tool, you can change the number of threads in the main function
