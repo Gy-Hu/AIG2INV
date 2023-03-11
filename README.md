@@ -1,4 +1,4 @@
-#AIG2INV
+# AIG2INV
 
 Accelerating IC3 by inducive clauses prediction
 
