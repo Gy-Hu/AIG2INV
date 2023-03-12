@@ -15,6 +15,22 @@ max_workers = mp.cpu_count()
 
 # z3 <-> sympy
 
+'''
+From https://stackoverflow.com/questions/75461163/python-how-to-parse-boolean-sympy-tree-expressions-to-boolean-z3py-expressions
+
+compile_to_z3: Simple map from sympy to z3
+compile_to_z3_parallel: Parallel map from sympy to z3 -> contains bug when pickling z3 objects
+cvt_parallel: Function that used in compile_to_z3_parallel
+
+From https://github.com/psy054duck/c2c/blob/5135209606bf054d370908a4c8c198991f07d3fb/utils.py
+to_z3: Converter from sympy to z3
+to_sympy: Converter from z3 to sympy
+to_z3_parallel: Parallel converter from sympy to z3 -> contains bug when pickling z3 objects
+to_sympy_parallel: Parallel converter from z3 to sympy -> Bug fixed.
+
+'''
+
+
 def check_conditions_consistency(conditions):
     s = z3.Solver()
     for i, cond1 in enumerate(conditions):
@@ -352,8 +368,24 @@ def collapse_piecewise(expr):
         
 # sympy to z3 -> new version from: 
 # https://stackoverflow.com/questions/75461163/python-how-to-parse-boolean-sympy-tree-expressions-to-boolean-z3py-expressions
+# define cvt outside of compile_to_z3
+
+def cvt_parallel(expr, pvs, constants, table):
+    if expr in pvs:
+        return str(pvs[expr])  # convert Z3 object to string
+
+    texpr = type(expr)
+    if texpr in constants:
+        return str(constants[texpr])  # convert Z3 object to string
+
+    if texpr in table:
+        return (table[texpr])(*[cvt(arg, pvs, constants, table) for arg in expr.args])
+
+    raise NameError("Unimplemented: " + str(expr))
+
+
 @lru_cache(maxsize=None)
-def compile_to_z3(exp):
+def compile_to_z3_parallel(exp):
     """Compile sympy expression to z3"""
     
     # Sympy vs Z3. Add more correspondences as necessary!
@@ -373,6 +405,47 @@ def compile_to_z3(exp):
         pexp = sp.parsing.sympy_parser.parse_expr(exp)
     else:
         pexp = exp
+        
+    # create Z3 boolean variables using z3.BoolVar
+    pvs  = {v: z3.Bool(str(v)) for v in pexp.atoms() if type(v) not in constants}
+
+    # use multiprocessing to run cvt in parallel
+    pool = mp.Pool(processes=mp.cpu_count())
+    results = [pool.apply_async(cvt, (expr, pvs, constants, table)) for expr in pexp.args] if len(pexp.args) > 1 else [pool.apply_async(cvt, (pexp, pvs, constants, table))]
+    output = [res.get() for res in results]
+
+    #return cvt(pexp) # non-parallel
+    return table[type(pexp)](*output) # parallel
+
+
+#@lru_cache(maxsize=None)
+def compile_to_z3(exp, memo={}):
+    # Sympy vs Z3. Add more correspondences as necessary!
+    table = { sp.logic.boolalg.And    : z3.And
+            , sp.logic.boolalg.Or     : z3.Or
+            , sp.logic.boolalg.Not    : z3.Not
+            , sp.logic.boolalg.Implies: z3.Implies
+            }
+
+    # Sympy vs Z3 Constants
+    constants = { sp.logic.boolalg.BooleanTrue : z3.BoolVal(True)
+                , sp.logic.boolalg.BooleanFalse: z3.BoolVal(False)
+                }
+    
+    """Compile sympy expression to z3"""
+    # if exp is str, parse it
+    if(isinstance(exp, str)):
+        pexp = sp.parsing.sympy_parser.parse_expr(exp)
+    else:
+        pexp = exp
+        
+    # simplify expression by using the simplify function from sympy
+    pexp = sp.simplify(pexp)
+    
+    # use memoization to cache the results of the function
+    # Check if expression has already been computed
+    if pexp in memo: return memo[pexp]
+    
     pvs  = {v: z3.Bool(str(v)) for v in pexp.atoms() if type(v) not in constants}
 
     def cvt(expr):
@@ -384,12 +457,18 @@ def compile_to_z3(exp):
             return constants[texpr]
 
         if texpr in table:
-            return table[texpr](*map(cvt, expr.args))
+            #return table[texpr](*map(cvt, expr.args)) # if not using memoization
+            result = table[texpr](*map(cvt, expr.args))
+            memo[expr] = result  # Store computed result
+            return result
 
         raise NameError("Unimplemented: " + str(expr))
 
-    return cvt(pexp)
-
+    result = cvt(pexp)
+    memo[pexp] = result  # Store computed result
+    
+    #return cvt(pexp) # if not using memoization
+    return result
 
 if __name__ == '__main__':
     a = z3.Bool('a')

@@ -51,8 +51,9 @@ class ExtractCnf(object):
         # Use symbolic simplification to simplify the transition relation 
         if self.deep_simplification:
             self.vprime2nxt_without_simplification = copy.deepcopy(self.vprime2nxt)# backup the original transition relation
-            self.vprime2nxt = [(vprime, z3.simplify(sp_converter.compile_to_z3(sp.simplify(sp_converter.to_sympy_parallel(nxt))))) for vprime, nxt in self.vprime2nxt]
+            self.vprime2nxt = [(vprime, z3.simplify(sp_converter.compile_to_z3(sp_converter.to_sympy_parallel(nxt)))) for vprime, nxt in self.vprime2nxt]
             #self.vprime2nxt = [(vprime, z3.simplify(sp_converter.to_z3(sp.simplify(sp_converter.to_sympy(nxt))))) for vprime, nxt in self.vprime2nxt]
+            #XXX: Double Check before running the script
             #self._check_tr_correctness_after_simplification(self.vprime2nxt_without_simplification, self.vprime2nxt)
 
         self.init = aagmodel.init
