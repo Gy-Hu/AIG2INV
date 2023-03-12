@@ -9,6 +9,9 @@ import z3
 from functools import reduce
 import pycparser.c_ast as ast
 from functools import lru_cache
+import multiprocessing as mp
+import concurrent.futures
+max_workers = mp.cpu_count()
 
 # z3 <-> sympy
 
@@ -74,12 +77,11 @@ def z3_deep_simplify(expr):
         return cond_list[0]
     else:
         return z3.And(*[z3_deep_simplify(cond) for cond in cond_list])
-
+    
 @lru_cache(maxsize=None)
 def to_z3(sp_expr):
-    self = sp.simplify(sp_expr)
-    
-    #self = sp.factor(sp_expr)
+    #self = sp.simplify(sp_expr)
+    self = sp.factor(sp_expr)
     if isinstance(self, sp.Symbol):
         res = z3.Bool(str(self))
     elif self is true:
@@ -115,6 +117,63 @@ def to_sympy(expr):
     elif z3.is_app_of(expr, z3.Z3_OP_AND) or z3.is_app_of(expr, z3.Z3_OP_OR):
         op = expr.decl().name()
         children = [to_sympy(child) for child in expr.children()]
+        if op == 'and':
+            res = sp.And(*children)
+        elif op == 'or':
+            res = sp.Or(*children)
+        else:
+            raise Exception('Conversion for "%s" has not been implemented yet: %s' % (op, expr))
+    else:
+        raise Exception('conversion for type "%s" is not implemented: %s' % (type(expr), expr))
+    #return sp.simplify(res)
+    return res
+
+@lru_cache(maxsize=None)
+def to_z3_parallel(sp_expr):
+    #self = sp.factor(sp_expr)
+    self = sp.simplify(sp_expr)
+
+    if isinstance(self, sp.Symbol):
+        res = z3.Bool(str(self))
+    elif self is true:
+        res = z3.BoolVal(True)
+    elif self is false:
+        res = z3.BoolVal(False)
+    elif isinstance(self, sp.Not):
+        res = z3.Not(to_z3_parallel(self.args[0]))
+    elif isinstance(self, (sp.And, sp.Or)):
+        args = self.args
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future_args = [executor.submit(to_z3_parallel, arg) for arg in args]
+            args = [f.result() for f in concurrent.futures.as_completed(future_args)]
+        if isinstance(self, sp.And):
+            res = z3.And(*args)
+        else:
+            res = z3.Or(*args)
+    else:
+        raise Exception('Conversion for "%s" has not been implemented yet: %s' % (type(self), self))
+    return res
+
+
+#@lru_cache(maxsize=None)
+def to_sympy_parallel(expr):
+    # check whether the expression is a sympy expression
+    if isinstance(expr, sp.Expr):
+        return expr
+    
+    if z3.is_const(expr):
+        if z3.is_bool(expr):
+            res = sp.Symbol(str(expr))
+        else:
+            res = sp.Symbol(str(expr), integer=True)
+    elif z3.is_app_of(expr, z3.Z3_OP_NOT):
+        res = sp.Not(to_sympy_parallel(expr.arg(0)))
+    elif z3.is_app_of(expr, z3.Z3_OP_AND) or z3.is_app_of(expr, z3.Z3_OP_OR):
+        op = expr.decl().name()
+        children = expr.children()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future_args = [executor.submit(to_sympy_parallel, arg) for arg in children]
+            children = [f.result() for f in concurrent.futures.as_completed(future_args)]
         if op == 'and':
             res = sp.And(*children)
         elif op == 'or':
@@ -290,13 +349,53 @@ def collapse_piecewise(expr):
     return res
         # self.closed_forms = new_closed_forms
         # self.conditions = new_conditions
+        
+# sympy to z3 -> new version from: 
+# https://stackoverflow.com/questions/75461163/python-how-to-parse-boolean-sympy-tree-expressions-to-boolean-z3py-expressions
+@lru_cache(maxsize=None)
+def compile_to_z3(exp):
+    """Compile sympy expression to z3"""
+    
+    # Sympy vs Z3. Add more correspondences as necessary!
+    table = { sp.logic.boolalg.And    : z3.And
+            , sp.logic.boolalg.Or     : z3.Or
+            , sp.logic.boolalg.Not    : z3.Not
+            , sp.logic.boolalg.Implies: z3.Implies
+            }
+
+    # Sympy vs Z3 Constants
+    constants = { sp.logic.boolalg.BooleanTrue : z3.BoolVal(True)
+                , sp.logic.boolalg.BooleanFalse: z3.BoolVal(False)
+                }
+    
+    # if exp is str, parse it
+    if(isinstance(exp, str)):
+        pexp = sp.parsing.sympy_parser.parse_expr(exp)
+    else:
+        pexp = exp
+    pvs  = {v: z3.Bool(str(v)) for v in pexp.atoms() if type(v) not in constants}
+
+    def cvt(expr):
+        if expr in pvs:
+            return pvs[expr]
+
+        texpr = type(expr)
+        if texpr in constants:
+            return constants[texpr]
+
+        if texpr in table:
+            return table[texpr](*map(cvt, expr.args))
+
+        raise NameError("Unimplemented: " + str(expr))
+
+    return cvt(pexp)
 
 
 if __name__ == '__main__':
     a = z3.Bool('a')
     b = z3.Bool('b')
     c = z3.Not(z3.And(z3.Not(a), z3.Not(b)))
-    print(z3.simplify(to_z3(to_sympy(c))))
+    print(z3.simplify(to_z3_parallel(sp.simplify(to_sympy_parallel(c)))))
     
     # a = sp.Function('a')
     # bb = sp.Function('bb')
