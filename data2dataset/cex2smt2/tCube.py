@@ -48,7 +48,7 @@ class tCube:
     def __eq__(self, other) : 
         return collections.Counter(self.cubeLiterals) == collections.Counter(other.cubeLiterals)
 
-    def addModel(self, lMap, model, remove_input): # not remove input' when add model
+    def addModel(self, lMap, model, remove_input, aig_path=None): # not remove input' when add model
         no_var_primes = [l for l in model if str(l)[0] == 'i' or not str(l).endswith('_prime')]# no_var_prime -> i2, i4, i6, i8, i2', i4', i6' or v2, v4, v6
         if remove_input:
             no_input = [l for l in no_var_primes if str(l)[0] != 'i'] # no_input -> v2, v4, v6
@@ -56,7 +56,21 @@ class tCube:
             no_input = no_var_primes # no_input -> i2, i4, i6, i8, i2', i4', i6' or v2, v4, v6
         # self.add(simplify(And([lMap[str(l)] == model[l] for l in no_input]))) # HZ:
         for l in no_input:
-            self.add(lMap[str(l)] == model[l]) #TODO: Get model overhead is too high, using C API
+            # Avoid some cases that has "False==False or True==True" in model
+            if (str(l)!= 'True' and str(l) != 'False'): 
+                self.add(lMap[str(l)] == model[l]) #TODO: Get model overhead is too high, using C API
+            elif aig_path is not None:
+                # l -> True or l -> False, and aig_path is not None
+                self._report2log_add_model(aig_path,\
+                "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_model.log", \
+                f"{aig_path} has bad model {str(l)}")
+                print("Strange model, please check the log file.")
+                
+    def _report2log_add_model(self, aig_path, log_file, error_msg):
+        # append the error message to the log file
+        with open(log_file, "a+") as fout:
+            fout.write(f"Error: {aig_path} has bad model. {error_msg}.\n")
+        fout.close()
 
     def remove_input(self):
         index_to_remove = set()

@@ -87,7 +87,12 @@ class AAGmodel():
                 #XXX: Double check before running the script -> do we really care about this?
                 if aid==1 or left==1 or right==1: self.report2log("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/abnormal_transition.log",fname, 'AND gate that equal to 1')
                 rexpr = get_literal(var_table, right)
-                var_table[aid/2] = z3.And(lexpr, rexpr)
+                #XXX: Double check before running the script -> this simplification will reduce graph size?
+                # if left && right is odd, then use z3.Not(z3.Or()) to replace z3.And()
+                if left%2==1 and right%2==1:
+                    var_table[aid/2] = z3.simplify(z3.Not(z3.Or(z3.Not(lexpr), z3.Not(rexpr))))
+                else:
+                    var_table[aid/2] = z3.And(lexpr, rexpr)
                 #XXX: Double check before running the script -> use sympy to simplify the expression
                 #if deep_simplify: var_table[aid/2] = sp_converter.to_z3(sp_converter.to_sympy(var_table[aid/2]))
 

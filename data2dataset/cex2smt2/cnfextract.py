@@ -281,6 +281,8 @@ class ExtractCnf(object):
         with open(log_file, "a+") as fout:
             fout.write(f"Error: {aig_path} has bad inv. {error_msg}.\n")
         fout.close()
+    
+    
         
     def _cex_deep_simplification(self,expr):
         pass
@@ -438,7 +440,7 @@ class ExtractCnf(object):
         :return:
         '''
         tcube_cp = tCube(0)
-        tcube_cp.addModel(self.Inp_SVars_Map, prev_cube, remove_input=False)
+        tcube_cp.addModel(self.Inp_SVars_Map, prev_cube, remove_input=False, aig_path=self.aig_path)
 
         print("original size of CTI (including input variable): ", len(tcube_cp.cubeLiterals))
         print("Begin to generalize predessor")
