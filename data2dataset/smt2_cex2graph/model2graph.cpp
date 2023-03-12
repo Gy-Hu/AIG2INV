@@ -35,25 +35,52 @@ Some idea relate to minimize the graph of (!cex & cex') graph
 * - use PySMT or boolector (bottleneck is translation of z3 to pySMT/boolector)
 * - use  Tactic "aig" and repeat function in z3 (https://stackoverflow.com/questions/33599423/optimize-solver-tactics-for-circuit-sat)
 */
-
-void walk(int tab, expr e, vector<expr> & bfs_queue)
+//XXX: Double check before running the script
+//void walk(int tab, expr e, vector<expr> & bfs_queue)
+void walk(expr e, vector<expr> & bfs_queue, unordered_set<unsigned> & visited)
 {
-    string blanks(tab, ' ');
+    if (visited.count(e.id()) > 0) {
+        return; // already visited this node
+    }
+    visited.insert(e.id());
+
+    //XXX: Double check before running the script
+    //string blanks(tab, ' ');
+
+    //if size of bfs_queue is 1000x, then print its size
+    if(bfs_queue.size() % 1000 == 0)
+    {
+        cout<<"walking...bfs_queue size:"<<bfs_queue.size()<<endl;
+    }
 
     if(e.is_const())
     {
         //XXX: Double check before running the script
-        cout << blanks << "ARGUMENT"<<"(id:"<<e.id()<<")"<<": "<< e << endl;
+        //cout << blanks << "ARGUMENT"<<"(id:"<<e.id()<<")"<<": "<< e << endl;
+        /*
+        if(bfs_queue.size() > 100000){
+        // print the arguement - for debug only
+        cout << "Printing children: "<< "ARGUMENT"<<"(id:"<<e.id()<<")"<<": "<< e << endl;
+        }
+        */
         bfs_queue.push_back(e);
     }
     else
     {
         //XXX: Double check before running the script
-        cout << blanks << "APP: " <<"(id:"<<e.id()<<")"<<": "<< e.decl().name() << endl;
+        //cout << blanks << "APP: " <<"(id:"<<e.id()<<")"<<": "<< e.decl().name() << endl;
         bfs_queue.push_back(e);
         for(int i = 0; i < e.num_args(); i++)
         {
-            walk(tab + 5, e.arg(i),bfs_queue);
+            //XXX: Double check before running the script
+            //walk(tab + 5, e.arg(i),bfs_queue);
+            /*
+            if(bfs_queue.size() > 1000000){
+            // print the arguement - for debug only
+            cout << "Printing parents: "<< "ARGUMENT"<<"(id:"<<e.id()<<")"<<": "<< e << endl;
+            }
+            */
+            walk(e.arg(i),bfs_queue,visited);
         }
     }
 }
@@ -145,7 +172,8 @@ int main(int argc, char ** argv) {
     //XXX: Double check before running the script
     //const char* filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_20230106_014957_toy/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
     //string filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/" + file_name;
-    const char* filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
+    //const char* filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
+    const char* filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc07_almost_complete/bad_cube_cex2graph/expr_to_build_graph/eijk.bs4863.S";
 
     vector<string> filenames;
     GetFileNames(filePath,filenames);
@@ -169,25 +197,26 @@ int main(int argc, char ** argv) {
         std::cout << "expr num. args (before simplify): " << k.num_args() << "\n";
         //XXX: Double check before running the script
         //print all the args of k
-        for(int i = 0; i < k.num_args(); i++)
-        {
-            std::cout << "arg " << i << ": " << k.arg(i) << "\n";
-        }
+        // for(int i = 0; i < k.num_args(); i++)
+        // {
+        //     std::cout << "arg " << i << ": " << k.arg(i) << "\n";
+        // }
 
         //XXX: Double check before running the script
         //HACK: This will ignore a "and" operation of k, but why?
-        cout<<"k: \n"<<k<<endl;
+        //cout<<"k: \n"<<k<<endl;
 
         expr simplified_expr = k.simplify();
         
         //XXX: Double check before running the script
-        std::cout << "expr num. args (after simplify): " << simplified_expr.num_args() << "\n";
-        std::cout<<"simplified_expr: \n"<<simplified_expr<<endl;
+        //std::cout << "expr num. args (after simplify): " << simplified_expr.num_args() << "\n";
+        //std::cout<<"simplified_expr: \n"<<simplified_expr<<endl;
         
-        vector<expr> bfs_queue;
+        vector<expr> bfs_queue; // record all the node in bfs order
+        unordered_set<unsigned> visited; //record all the visited node to avoid re-visit
         //XXX: Double check before running the script
-        walk(0,k, bfs_queue);
-        //walk(0,simplified_expr, bfs_queue);
+        //walk(0,k, bfs_queue);
+        walk(simplified_expr, bfs_queue, visited);
         
         cout<<"bfs_queue size: "<<bfs_queue.size()<<endl;
         map<expr,int,cmpByZ3ExprID> map_expr;

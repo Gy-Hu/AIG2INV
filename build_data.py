@@ -304,7 +304,7 @@ def generate_pre_graph():
     results.extend(
         pool.apply_async(
             call_proc,
-            (
+            (#XXX: Double check before running the script -> did you recompile it and update it to the latest version?
                 f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/model2graph {case_name}",
             ),
         )
