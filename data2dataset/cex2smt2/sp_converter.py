@@ -14,6 +14,7 @@ import concurrent.futures
 max_workers = mp.cpu_count()
 from pysmt.shortcuts import Plus, Pow, Real, Symbol, Times, serialize, And, Or, Not
 from pysmt.typing import REAL
+from copy import deepcopy
 
 # z3 <-> sympy
 
@@ -22,36 +23,35 @@ Currently the best way is to use parallel z3_to_sympy function, and choose one n
 sympy to z3 is really hard to calculate in parallel, due to the context of z3 should not be mismatched.
 Thus, the better way to improve performace is using other method than using parallel computing.
 
+--------------------------------------------------sympy to z3--------------------------------------------------
 From https://stackoverflow.com/questions/75461163/python-how-to-parse-boolean-sympy-tree-expressions-to-boolean-z3py-expressions
-
 compile_to_z3: Simple map from sympy to z3
 compile_to_z3_parallel: Parallel map from sympy to z3 -> contains bug when pickling z3 objects
+compile_to_z3_parallel_2: Parallel converter from sympy to z3 -> contains bug due to mismatched context
 cvt_parallel: Function that used in compile_to_z3_parallel
 
 From https://github.com/psy054duck/c2c/blob/5135209606bf054d370908a4c8c198991f07d3fb/utils.py
-to_z3: Converter from sympy to z3
-to_sympy: Converter from z3 to sympy
+to_z3: Converter from sympy to z3 -> use bfs, which is not efficient
 to_z3_parallel: Parallel converter from sympy to z3 -> contains bug when pickling z3 objects
-to_sympy_parallel: Parallel converter from z3 to sympy -> Bug fixed.
+
+---------------------------------------------------z3 to sympy--------------------------------------------------
+to_sympy: Converter from z3 to sympy -> single thread, not efficient
+to_sympy_parallel: Parallel converter from z3 to sympy -> Bug fixed. This works! But sometimes may occur bug, due to memory model?
+
 '''
 
 
-def check_conditions_consistency(conditions):
-    s = z3.Solver()
-    for i, cond1 in enumerate(conditions):
-        for j, cond2 in enumerate(conditions):
-            if i >= j: continue
-            try:
-                res = s.check(to_z3(sp.And(cond1, cond2)))
-            except:
-                res = s.check(z3.And(cond1, cond2))
-            print(res)
-            if res == z3.sat:
-                print(cond1)
-                print(cond2)
-                print(s.model())
-    print('*'*100)
+'''
+-------------------------------Use to "No Bugs" label function !--------------------------------------
+-------------------------------"WIP" label function is still under development.-----------------------
+'''
 
+
+'''
+---------
+WIP?    |
+---------
+'''
 def z3_deep_simplify(expr):
     # print(expr)
     sim = z3.Tactic('ctx-solver-simplify')
@@ -98,7 +98,12 @@ def z3_deep_simplify(expr):
         return cond_list[0]
     else:
         return z3.And(*[z3_deep_simplify(cond) for cond in cond_list])
-    
+
+'''
+---------
+No Bugs |
+---------
+'''
 @lru_cache(maxsize=None)
 def to_z3(sp_expr):
     #self = sp.simplify(sp_expr)
@@ -122,8 +127,13 @@ def to_z3(sp_expr):
     #return z3.simplify(res)
     return res
 
+'''
+---------
+No Bugs |
+---------
+'''
 @lru_cache(maxsize=None)
-def to_sympy(expr):
+def to_sympy(expr,t=None):
     # check whether the expression is a sympy expression
     if isinstance(expr, sp.Expr):
         return expr
@@ -149,6 +159,11 @@ def to_sympy(expr):
     #return sp.simplify(res)
     return res
 
+'''
+---------
+   WIP  |
+---------
+'''
 @lru_cache(maxsize=None)
 def to_z3_parallel(sp_expr):
     #self = sp.factor(sp_expr)
@@ -175,9 +190,13 @@ def to_z3_parallel(sp_expr):
         raise Exception('Conversion for "%s" has not been implemented yet: %s' % (type(self), self))
     return res
 
-
+'''
+---------
+No Bugs |
+---------
+'''
 #@lru_cache(maxsize=None)
-def to_sympy_parallel(expr):
+def to_sympy_parallel(expr, t=None):
     # check whether the expression is a sympy expression
     if isinstance(expr, sp.Expr):
         return expr
@@ -203,178 +222,19 @@ def to_sympy_parallel(expr):
             raise Exception('Conversion for "%s" has not been implemented yet: %s' % (op, expr))
     else:
         raise Exception('conversion for type "%s" is not implemented: %s' % (type(expr), expr))
+    #XXX: Double check before running the script
     #return sp.simplify(res)
     return res
 
-def get_app_by_var(var, expr):
-    '''for sympy'''
-    if expr.func is var:
-        return expr
-    for arg in expr.args:
-        res = get_app_by_var(var, arg)
-        if res is not None:
-            return res
-    return None
-
-def expr2c(expr: sp.Expr):
-    if isinstance(expr, sp.Add):
-        # assert(len(expr.args) == 2)
-        res = ast.BinaryOp('+', expr2c(expr.args[0]), expr2c(expr.args[1]))
-        for i in range(2, len(expr.args)):
-            res = ast.BinaryOp('+', res, expr2c(expr.args[i]))
-    elif isinstance(expr, sp.Mul):
-        # print(expr)
-        # print(expr.args)
-        # assert(len(expr.args) == 2)
-        res = ast.BinaryOp('*', expr2c(expr.args[0]), expr2c(expr.args[1]))
-        for i in range(2, len(expr.args)):
-            res = ast.BinaryOp('*', res, expr2c(expr.args[i]))
-    elif isinstance(expr, sp.Integer) or isinstance(expr, int):
-        res = ast.Constant('int', str(expr))
-    elif expr.is_Function:
-        # assert(len(expr.args) == 1)
-        # arg = expr.args[0]
-        array_ref = ast.ArrayRef(ast.ID(str(expr.func)), expr2c(expr.args[0]))
-        for i in range(1, len(expr.args)):
-            array_ref = ast.ArrayRef(array_ref, expr2c(expr.args[i]))
-        res = array_ref
-        # res = ast.ArrayRef(ast.ID(str(expr.func)), *[expr2c(arg) for arg in expr.args])
-    elif isinstance(expr, sp.Symbol):
-        res = ast.ID(str(expr))
-    else:
-        raise Exception('conversion for type "%s" is not implemented: %s' % (type(expr), expr))
-    return res
-
-def compute_N(cond, closed_form):
-    ind_var = closed_form.ind_var
-    z3_cond = to_z3(cond.subs(closed_form.to_sympy()))
-    ind_var_z3 = to_z3(ind_var)
-    N = z3.Int('N')
-    e1 = z3.ForAll(ind_var_z3, z3.Implies(z3.And(0 <= ind_var_z3, ind_var_z3 < N), z3_cond))
-    e2 = z3.Not(z3.substitute(z3_cond, (ind_var_z3, N)))
-    qe = z3.Tactic('qe')
-    simplified = qe(z3.And(e1, e2))[0]
-    res = solve_k(simplified, N, set())
-    return to_sympy(res)
-
-def solve_k(constraints, k, all_ks):
-    solver = z3.Solver()
-    solver.add(*constraints)
-    all_vars = list(reduce(lambda x, y: x.union(y), [z3_all_vars(expr) for expr in constraints]) - set(all_ks))
-    all_vars_1 = all_vars + [z3.IntVal(1)]
-    # det_vars = [z3.Real('c_%d' % i) for i in range(len(all_vars_1))]
-    det_vars = [z3.Int('c_%d' % i) for i in range(len(all_vars_1))]
-    template = sum([c*v for c, v in zip(det_vars, all_vars_1)])
-    eqs = []
-    while solver.check() == z3.sat:
-        linear_solver = z3.Solver()
-        for _ in range(len(all_vars_1)):
-            solver.check()
-            m = solver.model()
-            eq = (m[k] == m.eval(template))
-            # print(m)
-            eqs.append(eq)
-            for var in (all_vars + list(all_ks)):
-                solver.push()
-                # var = random.choice(all_vars + list(all_ks))
-                solver.add(z3.Not(var == m[var]))
-                if solver.check() == z3.unsat:
-                    solver.pop()
-            # solver.add(*[z3.Not(var == m[var]) for var in all_vars + [k]])
-        linear_solver.add(*eqs)
-        linear_solver.check()
-        m_c = linear_solver.model()
-        cur_sol = m_c.eval(template)
-        # check whether k is a constant
-        solver.push()
-        solver.add(z3.Not(k == m.eval(cur_sol)))
-        if solver.check() == z3.unsat:
-            cur_sol = m.eval(cur_sol)
-            break
-        solver.pop()
-        ###############################
-        solver.add(z3.Not(k == cur_sol))
-    return cur_sol
-
-
-def z3_all_vars(expr):
-    if z3.is_const(expr):
-        if z3.is_int_value(expr):
-            return set()
-        else:
-            return {expr}
-    else:
-        try:
-            return reduce(lambda x, y: x.union(y), [z3_all_vars(ch) for ch in expr.children()])
-        except:
-            return set()
-
-def my_sp_simplify(expr, assumptions):
-    res = expr
-    if isinstance(expr, sp.Piecewise):
-        s = z3.Solver()
-        s.add(to_z3(assumptions))
-        remains = []
-        for e, cond in expr.args:
-            s.push()
-            s.add(to_z3(cond))
-            z3_res = s.check()
-            if z3_res == z3.sat:
-                remains.append((e, cond))
-            s.pop()
-        res = sp.Piecewise(*remains)
-    else:
-        try:
-            res = expr.func(*[my_sp_simplify(arg, assumptions) for arg in expr.args])
-        except:
-            pass
-    return sp.simplify(res)
-
-def collapse_piecewise(expr):
-    sim = z3.Tactic('ctx-solver-simplify')
-    res = expr
-    merged = {}
-    if isinstance(expr, sp.Piecewise):
-        exprs = [e for e, _ in expr.args]
-        conditions = [to_z3(expr.args[0][1])]
-        for _, cond in expr.args[1:]:
-            conditions.append(z3.And(to_z3(cond), z3.Not(conditions[-1])))
-        for i in range(len(conditions)):
-            absorbed = reduce(set.union, (merged[idx] for idx in merged), set())
-            if i in absorbed: continue
-            merged[i] = set()
-            for j in range(len(conditions)):
-                absorbed = reduce(set.union, (merged[idx] for idx in merged))
-                if i == j or j in absorbed: continue
-                s = z3.Solver()
-                s.add(conditions[j])
-                s.push()
-                s.add(z3.Not(to_z3(exprs[i]) == to_z3(exprs[j])))
-                check_res = s.check()
-                print(s.model())
-                s.pop()
-                if check_res == z3.unsat:
-                    merged[i].add(j)
-        new_exprs = []
-        new_conditions = []
-        absorbed = reduce(set.union, (merged[idx] for idx in merged))
-        for i in merged:
-            cur_condition = to_sympy(z3_deep_simplify(z3.And(z3.BoolVal(True), *sim(z3.Or(conditions[i], *[conditions[j] for j in merged[i]]))[0])))
-            # cur_condition = to_sympy(z3_deep_simplify(z3.And(z3.BoolVal(True), *sim(to_z3(sp.Or(conditions[i], *[conditions[j] for j in merged[i]])))[0])))
-            if i not in absorbed:
-                new_exprs.append(exprs[i])
-                new_conditions.append(cur_condition)
-            else:
-                conditions[i] = cur_condition
-        res = sp.Piecewise(*[(e, c) for e, c in zip(new_exprs, new_conditions)])
-    return res
-        # self.closed_forms = new_closed_forms
-        # self.conditions = new_conditions
         
 # sympy to z3 -> new version from: 
 # https://stackoverflow.com/questions/75461163/python-how-to-parse-boolean-sympy-tree-expressions-to-boolean-z3py-expressions
 # define cvt outside of compile_to_z3
-
+'''
+---------
+   WIP  |
+---------
+'''
 def cvt_parallel(expr, pvs, constants, table):
     if expr in pvs:
         return str(pvs[expr])  # convert Z3 object to string
@@ -388,7 +248,11 @@ def cvt_parallel(expr, pvs, constants, table):
 
     raise NameError("Unimplemented: " + str(expr))
 
-
+'''
+---------
+   WIP  |
+---------
+'''
 @lru_cache(maxsize=None)
 def compile_to_z3_parallel(exp):
     """Compile sympy expression to z3"""
@@ -422,6 +286,11 @@ def compile_to_z3_parallel(exp):
     #return cvt(pexp) # non-parallel
     return table[type(pexp)](*output) # parallel
 
+'''
+---------
+   WIP  |
+---------
+'''
 def compile_to_z3_parallel_2(exp, memo={}):
     # Sympy vs Z3. Add more correspondences as necessary!
     table = { sp.logic.boolalg.And    : z3.And
@@ -461,7 +330,8 @@ def compile_to_z3_parallel_2(exp, memo={}):
         pvs = dict([(v, z) for v, z, c in variables_z3])
     
     # Step 2: Convert sub-expressions to Z3 expressions in parallel
-    def cvt(expr):
+    def cvt(expr, i_context):
+        i_context = z3.Context()
         if expr in pvs:
             return pvs[expr]
 
@@ -471,19 +341,23 @@ def compile_to_z3_parallel_2(exp, memo={}):
 
         if texpr in table:
             #return table[texpr](*map(cvt, expr.args)) # if not using memoization
-            result = table[texpr](*map(cvt, expr.args))
+            result = table[texpr](*map(cvt, deepcopy(expr.args), [i_context]*len(expr.args)))
             memo[expr] = result  # Store computed result
             return result
 
         raise NameError("Unimplemented: " + str(expr))
 
-    result = cvt(pexp)
+    result = cvt(pexp, None)
     memo[pexp] = result  # Store computed result
     
     #return cvt(pexp) # if not using memoization
     return result
 
-
+'''
+---------
+No Bugs |
+---------
+'''
 def compile_to_z3(exp, memo={}):
     # Sympy vs Z3. Add more correspondences as necessary!
     table = { sp.logic.boolalg.And    : z3.And
@@ -541,21 +415,4 @@ if __name__ == '__main__':
     c = z3.Not(z3.And(z3.Not(a), z3.Not(b)))
     #print(z3.simplify(compile_to_z3(to_sympy_parallel(c))))
     #print(sympy2pysmt((to_sympy_parallel(c))))
-    print(z3.simplify(compile_to_z3(to_sympy_parallel(c))))
-    
-    # a = sp.Function('a')
-    # bb = sp.Function('bb')
-    # cc = sp.Function('cc')
-    # d = sp.Function('d')
-    # _t0 = sp.Symbol('_t0', integer=True)
-    # _t1 = sp.Symbol('_t1', integer=True)
-    # e = sp.Piecewise((a(0) + bb(0, _t1)*d(0) + cc(0, _t1), sp.Eq(_t0, 0)), (a(_t0) + bb(_t0, _t1)*d(_t0), True))
-    # print(collapse_piecewise(e))
-    # a = sp.Function('a')
-    # i = sp.Symbol('i', integer=True)
-    # e = 2*a(i+1) + 1
-    # from pycparser import c_generator
-    # generator = c_generator.CGenerator()
-    # print(generator.visit(expr2c(e)))
-
-    # print(get_app_by_var(a, e))
+    print(z3.simplify(compile_to_z3_parallel_2(to_sympy_parallel(c))))

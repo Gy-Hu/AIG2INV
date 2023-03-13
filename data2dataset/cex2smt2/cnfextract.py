@@ -18,6 +18,7 @@ import itertools
 import sp_converter
 import copy
 import sympy as sp
+from sym_to_smt2 import SympyToZ3
 
 
 class ExtractCnf(object):
@@ -51,10 +52,12 @@ class ExtractCnf(object):
         # Use symbolic simplification to simplify the transition relation 
         if self.deep_simplification:
             self.vprime2nxt_without_simplification = copy.deepcopy(self.vprime2nxt)# backup the original transition relation
-            self.vprime2nxt = [(vprime, z3.simplify(sp_converter.compile_to_z3(sp_converter.to_sympy_parallel(nxt)))) for vprime, nxt in self.vprime2nxt]
+            #XXX: Double Check before running the script -> has already simplify? use parallel version?
+            self.vprime2nxt = [(vprime, z3.simplify(SympyToZ3(sp_converter.to_sympy_parallel(nxt,vprime)).sympy2smt())) for vprime, nxt in self.vprime2nxt]
+            #self.vprime2nxt = [(vprime, z3.simplify(sp_converter.compile_to_z3(sp_converter.to_sympy_parallel(nxt)))) for vprime, nxt in self.vprime2nxt]
             #self.vprime2nxt = [(vprime, z3.simplify(sp_converter.to_z3(sp.simplify(sp_converter.to_sympy(nxt))))) for vprime, nxt in self.vprime2nxt]
             #XXX: Double Check before running the script
-            #self._check_tr_correctness_after_simplification(self.vprime2nxt_without_simplification, self.vprime2nxt)
+            self._check_tr_correctness_after_simplification(self.vprime2nxt_without_simplification, self.vprime2nxt)
 
         self.init = aagmodel.init
         self.lMap = {str(v):v for v in aagmodel.svars}
@@ -85,6 +88,10 @@ class ExtractCnf(object):
     
     def _check_tr_correctness_after_simplification(self, t1, t2):
         for a,b in zip(t1, t2):
+            # if z3.is_true(a[1]) or z3.is_false(a[1]) or z3.is_true(b[1]) or z3.is_false(b[1]), skip this loop
+            if z3.is_true(a[1]) or z3.is_false(a[1]) or z3.is_true(b[1]) or z3.is_false(b[1]):
+                assert str(a[1])==str(b[1]), "The transition relation is not simplified correctly!"
+                continue
             s = z3.Solver()
             proposition = a[1] == b[1] # assertion is whether b1 and b2 are equal
             s.add(z3.Not(proposition))
@@ -92,6 +99,7 @@ class ExtractCnf(object):
             if s.check() == z3.sat:
                 # it should be unsat if the transition relation is simplified correctly -> which is unsat
                 print("The transition relation is not simplified correctly!")
+                assert False, "The transition relation is not simplified correctly!"
         
     def _check_eq_of_tr(self):
         prime_variable = [_[1] for _ in self.vprime2nxt]

@@ -4,9 +4,14 @@ import sp_converter
 
 def get_literal(vartable, lid):
     expr = vartable[int(lid/2)]
-    if lid%2==1:
+    if lid%2==1 and int(lid/2) != 0: # odd
+        # when lid is odd, it is negated  
+        # -> but if expr is false (which is in the first index of vartable), we make it true
         expr=z3.Not(expr)
-    return expr
+    elif lid%2==1 and int(lid/2) == 0: # True
+        # Not(False) -> True
+        expr=z3.BoolVal(True)
+    return expr # even
 
 class AAGmodel():
     def __init__(self):
@@ -30,6 +35,8 @@ class AAGmodel():
             # in case z3.is_expr() fails when do substitution in the future
             # 'z3 no pair' error: "Z3 invalid substitution, expression pairs expected." 
             # if z3.is_expr() fails in substitution (latch value is boolean type not z3 type)
+            # XXX: Double check before running the script
+            #var_table[0]=False
             var_table[0]=z3.BoolVal(False) 
 
             if M == 0 or L == 0 or O != 1:
