@@ -85,7 +85,9 @@ if __name__ == "__main__":
     parser.add_argument('--inv-correctness-check', type=str2bool, default=True, help='check the correctness of the invariant')
     parser.add_argument('--run-mode', type=str, default='debug', help='normal or debug. Debug model will exit after inv correctness check')
     parser.add_argument('--model-checker', type=str, default='ic3ref', help='ic3ref or abc')
-    parser.add_argument('--deep-simplification', type=str2bool, default=True, help='use sympy in tr simplification (this will disable ternary simulation)')
+    parser.add_argument('--deep-simplification', type=str2bool, default=False, help='use sympy in tr simplification + aig simplification during tr construction + z3 simplification')
+    parser.add_argument('--moderate-simplification', type=str2bool, default=False, help='aig aig simplification during tr construction + z3 simplification')
+    parser.add_argument('--slight-simplification', type=str2bool, default=False, help='z3 simplification only')
     
     # parse the arguments to test()
     args = parser.parse_args()
