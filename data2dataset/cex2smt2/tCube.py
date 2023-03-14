@@ -60,11 +60,16 @@ class tCube:
             if (str(l)!= 'True' and str(l) != 'False'): 
                 self.add(lMap[str(l)] == model[l]) #TODO: Get model overhead is too high, using C API
             elif aig_path is not None:
+                #Some l like True==True or False==False. If True==False or False==True, it will be caught by the assert below.
+                assert str(l.children()[0])==str(l.children()[1]), "Encountered strange model, please specify the log path to dump log."
+                #XXX: Double check before running the script -> ensure this is not a bug!
                 # l -> True or l -> False, and aig_path is not None
                 self._report2log_add_model(aig_path,\
                 "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/bad_model.log", \
                 f"{aig_path} has bad model {str(l)}")
                 print("Strange model, please check the log file.")
+            else:
+                assert False, "Encountered strange model, please specify the log path to dump log."
                 
     def _report2log_add_model(self, aig_path, log_file, error_msg):
         # append the error message to the log file

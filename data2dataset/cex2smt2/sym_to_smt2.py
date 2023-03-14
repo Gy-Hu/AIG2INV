@@ -11,6 +11,7 @@ import z3
 import subprocess
 import os
 import sympy as sp
+import multiprocessing as mp
 
 
 
@@ -81,6 +82,36 @@ class SympyToZ3:
                 sform = sform + " " + self.symbolic_to_lisp(arg)
             sform = sform + ")"
         return sform
+    
+    def apply_symbolic_to_lisp(self, expr):
+        """Translate function from symbolic python to SMT2 expressions."""
+        name = expr.func.__name__
+        if name in self.num_dict:
+            # for rational we must convert to numerical value
+            if name == "Rational" or name == "Half":
+                expr = float(expr)
+            sform = str(expr)
+        elif name in self.sym_dict_exceptions:
+            sform = "(" + self.symbolic_name_to_lisp(name)
+            sform = sform + " " + self.symbolic_to_lisp(expr.args[0])
+            for arg in expr.args[1:-1]:
+                sform = sform + " (" + self.symbolic_name_to_lisp(name) + \
+                    " " + self.symbolic_to_lisp(arg)
+            sform = sform + " " + self.symbolic_to_lisp(expr.args[-1])
+            for arg in expr.args[1:]:
+                sform = sform + ")"
+        else:
+            sform = "(" + self.symbolic_name_to_lisp(name)
+            for arg in expr.args:
+                sform = sform + " " + self.symbolic_to_lisp(arg)
+            sform = sform + ")"
+        return sform
+    
+    def symbolic_to_lisp_parallel(self, exprs):
+        """Translate functions from symbolic python to SMT2 expressions in parallel."""
+        with mp.Pool() as pool:
+            results = pool.map(self.apply_symbolic_to_lisp, exprs)
+        return results
 
     def make_SMT2_string(self, symbolic_expr, symbol_list, domain=None):
         """Write an SMT file in string format.
@@ -92,7 +123,9 @@ class SympyToZ3:
         string = ""
         for var in symbol_list:
             string = string + "(declare-fun " + str(var) + " () Bool)\n"
+        #XXX: Double check before running the script
         string = string + "(assert " + self.symbolic_to_lisp(symbolic_expr) + ")\n"
+        #string = string + "(assert " + self.symbolic_to_lisp_parallel(symbolic_expr) + ")\n"
         # check satisfiability
         string = string + "(check-sat)\n"
         string = string + "(exit)"

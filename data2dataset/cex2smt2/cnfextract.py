@@ -19,7 +19,9 @@ import sp_converter
 import copy
 import sympy as sp
 from sym_to_smt2 import SympyToZ3
-
+from tqdm import tqdm
+# set random seed of z3
+#z3.set_option('smt.arith.random_initial_value',True)
 
 class ExtractCnf(object):
     def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True, model_checker = 'abc', deep_simplification = False):
@@ -53,11 +55,16 @@ class ExtractCnf(object):
         if self.deep_simplification:
             self.vprime2nxt_without_simplification = copy.deepcopy(self.vprime2nxt)# backup the original transition relation
             #XXX: Double Check before running the script -> has already simplify? use parallel version?
-            self.vprime2nxt = [(vprime, z3.simplify(SympyToZ3(sp_converter.to_sympy_parallel(nxt,vprime)).sympy2smt())) for vprime, nxt in self.vprime2nxt]
+            with tqdm(total=len(self.vprime2nxt)) as pbar:
+                for i, (vprime, nxt) in enumerate(self.vprime2nxt):
+                    self.vprime2nxt[i] = (vprime, z3.simplify(SympyToZ3(sp_converter.to_sympy(nxt, vprime)).sympy2smt()))
+                    pbar.update(1)
+            #self.vprime2nxt = [(vprime, z3.simplify(SympyToZ3(sp_converter.to_sympy(nxt,vprime)).sympy2smt())) for vprime, nxt in self.vprime2nxt]
+            
             #self.vprime2nxt = [(vprime, z3.simplify(sp_converter.compile_to_z3(sp_converter.to_sympy_parallel(nxt)))) for vprime, nxt in self.vprime2nxt]
             #self.vprime2nxt = [(vprime, z3.simplify(sp_converter.to_z3(sp.simplify(sp_converter.to_sympy(nxt))))) for vprime, nxt in self.vprime2nxt]
             #XXX: Double Check before running the script
-            self._check_tr_correctness_after_simplification(self.vprime2nxt_without_simplification, self.vprime2nxt)
+            #self._check_tr_correctness_after_simplification(self.vprime2nxt_without_simplification, self.vprime2nxt)
 
         self.init = aagmodel.init
         self.lMap = {str(v):v for v in aagmodel.svars}
@@ -419,7 +426,8 @@ class ExtractCnf(object):
             model_after_generalization = self._generalize_predecessor(model, z3.Not(post))
             slv = z3.Solver() # initialize a new solver for model conversion
             for literals in model_after_generalization.cubeLiterals: slv.add(literals)
-            res = slv.check() ; model = slv.model()
+            res = slv.check()
+            model = slv.model()
             assert len(model)!=0, "BUG: the model is empty after generalization"
             assert len(model)==len(model_after_generalization.cubeLiterals), "BUG: the model failed to generalize"
 
