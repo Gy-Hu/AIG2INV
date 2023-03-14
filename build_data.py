@@ -42,6 +42,9 @@ from threading import Timer
 import shutil
 import time
 
+# Global variable initialization
+# dataset_folder_prefix = None
+
 def initialization(old_dir_name, with_re_generate_inv=False):
     
     '''
@@ -66,11 +69,14 @@ def initialization(old_dir_name, with_re_generate_inv=False):
         )
         # if old directory exists and file size is not zero, then move it to new directory
         if os.path.exists(old_dir_name):
+            assert False, "The folder already exists!"
+            '''
             if os.listdir(f"{old_dir_name}/bad_cube_cex2graph/json_to_graph_pickle")!= [] and os.path.getsize(f"{old_dir_name}/bad_cube_cex2graph/json_to_graph_pickle") >= 4096: # exist and not empty, change the name
                 shutil.move(old_dir_name, new_dir_name)
             else: # exist but empty, delete it
                 # use trash command to delete the empty directory
                 os.system(f"trash {old_dir_name}")
+            '''
         # old directory has been handled, then create new directory
         os.mkdir(old_dir_name)
         # make file folder under old_dir_name
@@ -146,7 +152,7 @@ def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
 
     # initialize the list to store all the abnormal cases
     AigCaseBlackList = [
-        'eijk.bs3271.S',\
+        #'eijk.bs3271.S',\
     ]
 
     all_cases_name_lst = [] # put into multi-threading pool
@@ -230,16 +236,16 @@ def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False, ic3ref
     #mkdir for the cases that has mismatched inductive invariants
     
     cases_with_mismatched_inv = [case for case in cases_with_mismatched_inv  \
-        if not os.path.exists(f"dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}/inv.cnf")]
+        if not os.path.exists(f"{dataset_folder_prefix}/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}/inv.cnf")]
     
     if cases_with_mismatched_inv != []:
         # create the folder for the cases that has mismatched inductive invariants (and have not been fixed yet)
         for case in cases_with_mismatched_inv:
             if not os.path.exists(
-                f"dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}"
+                f"{dataset_folder_prefix}/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}"
             ):    
                 # if the inv.cnf and the folder does not exist, then we create the folder
-                os.mkdir(f"dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}")
+                os.mkdir(f"{dataset_folder_prefix}/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}")
         # call IC3 to re-generate the inv.cnf for the cases that has mismatched inductive invariants
         pool = ThreadPool(multiprocessing.cpu_count())
         results = []
@@ -247,7 +253,7 @@ def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False, ic3ref
             pool.apply_async(
                 run_cmd,
                 (
-                    f"cd dataset/re-generate_inv/{case.split('/')[-1].split('.aag')[0]} && /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -d {ic3ref_basic_generalization} < {case}",
+                    f"cd {dataset_folder_prefix}/re-generate_inv/{case.split('/')[-1].split('.aag')[0]} && /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -d {ic3ref_basic_generalization} < {case}",
                 ),
             )
             for case in cases_with_mismatched_inv
@@ -275,7 +281,7 @@ def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False, ic3ref
             results.append(pool.apply_async(
                 call_proc,
                 (
-                    f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2} --cnf dataset/re-generate_inv/{aig_to_generate_smt2.split('/')[-1].split('.aag')[0]}/inv.cnf",
+                    f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2} --cnf {dataset_folder_prefix}/re-generate_inv/{aig_to_generate_smt2.split('/')[-1].split('.aag')[0]}/inv.cnf",
                 ),
             ))
         pool.close()
@@ -295,7 +301,7 @@ def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False, ic3ref
     
 def generate_pre_graph():
     # generate pre-graph, constructed as json
-    smt2_dir = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/"
+    smt2_dir = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{dataset_folder_prefix}/bad_cube_cex2graph/expr_to_build_graph/"
     # get all the subfolder name under smt2_dir
     data4json_conversion = os.listdir(smt2_dir)
 
@@ -323,8 +329,8 @@ def generate_pre_graph():
 
 def generate_post_graph():
     # generate post-graph, serialization as pickle
-    json_dir = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph"
-    ground_truth_dir = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/ground_truth_table"
+    json_dir = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{dataset_folder_prefix}/bad_cube_cex2graph/expr_to_build_graph"
+    ground_truth_dir = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{dataset_folder_prefix}/bad_cube_cex2graph/ground_truth_table"
     # get all the subfolder name under expr_to_build_graph (expression to build graph)
     data4pickle_conversion = os.listdir(json_dir)
 
@@ -369,7 +375,13 @@ if __name__ == '__main__':
     parser.add_argument('--error_handle_with_ic3ref_basic_generalization', action='store_true', help='error handle with ic3ref basic generalization')
     parser.add_argument('--run-mode', type=str, default="normal", help='run mode, normal or debug. Debug is for testing invariants correctness only')
     parser.add_argument('--model-checker', type=str, default="ic3ref", help='model checker, ic3ref or abc')
+    parser.add_argument('--dataset-folder-prefix', type=str, default="dataset", help='dataset folder prefix')
     args = parser.parse_args()
+    
+    # Global variable assignment
+    global dataset_folder_prefix
+    dataset_folder_prefix = args.dataset_folder_prefix
+    
     # for testing only
     # args = parser.parse_args(['--only_re_generate_inv','--error_handle_with_ic3ref_basic_generalization'])
     '''
@@ -379,12 +391,12 @@ if __name__ == '__main__':
     (only has error log, and user want to generate the inv.cnf only)
     ---------------------------------------------------------
     '''
-    if args.only_re_generate_inv:
-        args.error_handle_with_ic3ref_basic_generalization = "-b" if args.error_handle_with_ic3ref_basic_generalization else ""
-        assert not os.path.exists("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset"), "dataset/re-generate_inv/ folder already exists, please remove it first"
-        os.mkdir("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/"); os.mkdir("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv")
-        generate_smt2_error_handle("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log", only_re_generate_inv=True, ic3ref_basic_generalization=args.error_handle_with_ic3ref_basic_generalization)
-        exit(0)
+    # if args.only_re_generate_inv:
+    #     args.error_handle_with_ic3ref_basic_generalization = "-b" if args.error_handle_with_ic3ref_basic_generalization else ""
+    #     assert not os.path.exists("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset"), "dataset/re-generate_inv/ folder already exists, please remove it first"
+    #     os.mkdir("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/"); os.mkdir("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv")
+    #     generate_smt2_error_handle("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log", only_re_generate_inv=True, ic3ref_basic_generalization=args.error_handle_with_ic3ref_basic_generalization)
+    #     exit(0)
     
     '''
     ---------------------------------------------------------
@@ -397,12 +409,12 @@ if __name__ == '__main__':
     (step 1: )Then, generate smt2 file for prediction (-> inducitve invariant)
     ---------------------------------------------------------
     '''
-    old_dir_name = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset"
+    dir_name = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{dataset_folder_prefix}"
     if args.initialization_with_inv_generated:
-        initialization(old_dir_name, with_re_generate_inv=True)
+        initialization(dir_name, with_re_generate_inv=True)
         generate_smt2_error_handle("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
     else:
-        initialization(old_dir_name, with_re_generate_inv=False)
+        initialization(dir_name, with_re_generate_inv=False)
         # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py
         generate_smt2(args.run_mode,args.model_checker) # if mode is debug, the program will exit after inv checking
     

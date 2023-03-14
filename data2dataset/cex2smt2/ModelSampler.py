@@ -11,7 +11,7 @@ class z3_workaround:
         self.solver = old_solver
         self.solver.set("random_seed", seed)
         self.solver.set("phase_selection", 5)
-        print("seed is ", seed)
+        #print("seed is ", seed)
 
     def check(self):
         decl_vars = [x.name() for x in self.decls]
@@ -60,7 +60,11 @@ if __name__ == "__main__":
     a, b, c = Bools('a b c')
     s = Solver()
     s.add(Or(a, b, c))
+    print("Original constraints:")
     print(s)
     models = list(all_smt(s,[a,b,c]))
-    print(models)
+    print("All models with random generated seeds:")
+    #print(models)
+    for m in models:
+        print(m)
     print(time.time()-start_time)
