@@ -179,7 +179,7 @@ def generate_smt2(run_mode='normal', model_checker='ic3ref'):
         results.append(pool.apply_async(
             call_proc,
             (
-                f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2} --run-mode {run_mode} --model-checker {model_checker} {SIMPLIFICATION_LABEL} --ground-truth-folder-prefix {GROUND_TRUTH_FOLDER_PREFIX}",
+                f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2} --run-mode {run_mode} --model-checker {model_checker} {SIMPLIFICATION_LABEL} --ground-truth-folder-prefix {GROUND_TRUTH_FOLDER_PREFIX} --dump-folder-prefix {DATASET_FOLDER_PREFIX}",
             ),
         ))
     pool.close()

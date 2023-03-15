@@ -25,9 +25,11 @@ from tqdm import tqdm
 #from collect import SIMPLIFICATION_LEVEL
 
 class ExtractCnf(object):
-    def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True, model_checker = 'abc', deep_simplification = False, simplification_level = None):
+    def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True, model_checker = 'abc', deep_simplification = False, simplification_level = None, dump_folder_prefix = None):
         global SIMPLIFICATION_LEVEL
+        global DUMP_FOLDER_PREFIX
         SIMPLIFICATION_LEVEL = simplification_level
+        DUMP_FOLDER_PREFIX = dump_folder_prefix
         self.aig_path = aig_path
         self.generate_smt2 = generate_smt2 # default: generate smt2
         self.model_checker = model_checker
@@ -359,8 +361,8 @@ class ExtractCnf(object):
         for literals in model_var_lst: s_smt.add(literals)
         s_smt.add(Cube)
         # new a folder to store the smt2 files
-        if not os.path.exists(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/{self.model_name}"): os.makedirs(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/{self.model_name}")
-        filename = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/{self.model_name}/{self.model_name}_{len(self.cex_generalization_ground_truth)}.smt2"
+        if not os.path.exists(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DUMP_FOLDER_PREFIX}/bad_cube_cex2graph/expr_to_build_graph/{self.model_name}"): os.makedirs(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DUMP_FOLDER_PREFIX}/bad_cube_cex2graph/expr_to_build_graph/{self.model_name}")
+        filename = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DUMP_FOLDER_PREFIX}/bad_cube_cex2graph/expr_to_build_graph/{self.model_name}/{self.model_name}_{len(self.cex_generalization_ground_truth)}.smt2"
         data = {'inductive_check': f"{self.model_name}_{len(self.cex_generalization_ground_truth)}.smt2"} # create a dictionary that store the smt2 file name and its corresponding ground truth
         with open(filename, mode='w') as f: f.write(s_smt.to_smt2())
         f.close() 
@@ -552,8 +554,8 @@ class ExtractCnf(object):
         if self.cex_generalization_ground_truth: # When this list is not empty, it return true
             df = pd.DataFrame(self.cex_generalization_ground_truth)
             df = df.fillna(0)
-            if not os.path.exists(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/ground_truth_table/{self.model_name}"): os.makedirs(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/ground_truth_table/{self.model_name}")
-            df.to_csv(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/ground_truth_table/{self.model_name}/{self.model_name}.csv")
+            if not os.path.exists(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DUMP_FOLDER_PREFIX}/bad_cube_cex2graph/ground_truth_table/{self.model_name}"): os.makedirs(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DUMP_FOLDER_PREFIX}/bad_cube_cex2graph/ground_truth_table/{self.model_name}")
+            df.to_csv(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DUMP_FOLDER_PREFIX}/bad_cube_cex2graph/ground_truth_table/{self.model_name}/{self.model_name}.csv")
 
     
     def get_clause_cex_pair(self):

@@ -29,8 +29,8 @@ def dump4check_map(cex_clause_pair_list_prop, cex_clause_pair_list_ind, aag_name
                                 if str(x[1])=='1' 
                                 else str(int(str(m.svars[x[0]]).replace('v',''))+1),cube_literals))
     # open a file for writing
-    if not os.path.exists(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/cti_for_inv_map_checking/{aag_name.split('/')[-1]}"): os.makedirs(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/cti_for_inv_map_checking/{aag_name.split('/')[-1]}")
-    with open(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/cti_for_inv_map_checking/{aag_name.split('/')[-1]}/{aag_name.split('/')[-1]}_inv_CTI.txt", "w") as text_file:
+    if not os.path.exists(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DUMP_FOLDER_PREFIX}/bad_cube_cex2graph/cti_for_inv_map_checking/{aag_name.split('/')[-1]}"): os.makedirs(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DUMP_FOLDER_PREFIX}/bad_cube_cex2graph/cti_for_inv_map_checking/{aag_name.split('/')[-1]}")
+    with open(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DUMP_FOLDER_PREFIX}/bad_cube_cex2graph/cti_for_inv_map_checking/{aag_name.split('/')[-1]}/{aag_name.split('/')[-1]}_inv_CTI.txt", "w") as text_file:
         for cti in cex_clause_pair_list:
             text_file.write(cubeliteral_to_str(cti[0]) + "\n")
     
@@ -53,7 +53,8 @@ def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, gene
         inv_correctness_check = inv_correctness_check,\
         model_checker = model_checker,\
         deep_simplification=deep_simplification,\
-        simplification_level=SIMPLIFICATION_LEVEL)
+        simplification_level=SIMPLIFICATION_LEVEL,\
+        dump_folder_prefix=DUMP_FOLDER_PREFIX)
     if run_mode == 'debug': sys.exit()
     cex_clause_pair_list_prop, cex_clause_pair_list_ind, is_inductive, has_fewer_clauses = extractor.get_clause_cex_pair()
     if dump4check_map(cex_clause_pair_list_prop,cex_clause_pair_list_ind,aag_name,m, return_after_finished = True)!= None: return
@@ -92,14 +93,17 @@ if __name__ == "__main__":
     parser.add_argument('--slight-simplification', type=str2bool, default=False, help='z3 simplification + ternary simulation')
     parser.add_argument('--naive-simplification', type=str2bool, default=False, help='only use sympy to simplify the counterexample cube')
     parser.add_argument('--ground-truth-folder-prefix', type=str, default='/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/', help='the prefix of the ground truth folder')
+    parser.add_argument('--dump-folder-prefix', type=str, default='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset', help='the prefix of the dump folder')
     
     # parse the arguments to test()
     args = parser.parse_args()
     
     # set global variables
     global SIMPLIFICATION_LEVEL
+    global DUMP_FOLDER_PREFIX
     SIMPLIFICATION_LEVEL = "naive" if args.naive_simplification else "slight" if args.slight_simplification else "moderate" if args.moderate_simplification else "deep" if args.deep_simplification else "thorough" if args.thorough_simplification else "none"
     assert SIMPLIFICATION_LEVEL != "none", "Please specify the simplification level"
+    DUMP_FOLDER_PREFIX = args.dump_folder_prefix
     
     '''
     #XXX: Double check before running the script
