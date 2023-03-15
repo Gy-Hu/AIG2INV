@@ -13,6 +13,10 @@ script to run ic3ref
 `/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/run_single.sh`
 `/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/collect.sh`
 
+for ground truth
+`/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/`
+`/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_ground_truth/`
+
 ### For deps
 clone modified ic3ref to utils
 https://github.com/zhanghongce/IC3ref - modified Makefile (may not be necessary)

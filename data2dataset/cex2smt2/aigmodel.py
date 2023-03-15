@@ -1,5 +1,6 @@
 import z3
 import sp_converter
+from collect import SIMPLIFICATION_LEVEL
 # load aig so that we have the transition relations
 
 def get_literal(vartable, lid):
@@ -96,7 +97,7 @@ class AAGmodel():
                 rexpr = get_literal(var_table, right)
                 #XXX: Double check before running the script -> this simplification will reduce graph size?
                 # if left && right is odd, then use z3.Not(z3.Or()) to replace z3.And()
-                if left%2==1 and right%2==1:
+                if left%2==1 and right%2==1 and SIMPLIFICATION_LEVEL in ["moderate", "deep", "thorough"]:
                     var_table[aid/2] = z3.simplify(z3.Not(z3.Or(z3.Not(lexpr), z3.Not(rexpr))))
                 else:
                     var_table[aid/2] = z3.And(lexpr, rexpr)

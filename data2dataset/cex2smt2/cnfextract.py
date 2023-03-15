@@ -22,6 +22,7 @@ from sym_to_smt2 import SympyToZ3
 from tqdm import tqdm
 # set random seed of z3
 #z3.set_option('smt.arith.random_initial_value',True)
+from collect import SIMPLIFICATION_LEVEL
 
 class ExtractCnf(object):
     def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True, model_checker = 'abc', deep_simplification = False):
@@ -52,14 +53,15 @@ class ExtractCnf(object):
         
         #XXX: Double Check before running the script
         # Use symbolic simplification to simplify the transition relation 
-        if self.deep_simplification:
+        #if self.deep_simplification:
+        if SIMPLIFICATION_LEVEL in ["deep", "thorough"]:
             self.vprime2nxt_without_simplification = copy.deepcopy(self.vprime2nxt)# backup the original transition relation
             #XXX: Double Check before running the script -> has already simplify? use parallel version?
-            with tqdm(total=len(self.vprime2nxt)) as pbar:
-                for i, (vprime, nxt) in enumerate(self.vprime2nxt):
-                    self.vprime2nxt[i] = (vprime, z3.simplify(SympyToZ3(sp_converter.to_sympy(nxt, vprime)).sympy2smt()))
-                    pbar.update(1)
-            #self.vprime2nxt = [(vprime, z3.simplify(SympyToZ3(sp_converter.to_sympy(nxt,vprime)).sympy2smt())) for vprime, nxt in self.vprime2nxt]
+            # with tqdm(total=len(self.vprime2nxt)) as pbar:
+            #     for i, (vprime, nxt) in enumerate(self.vprime2nxt):
+            #         self.vprime2nxt[i] = (vprime, z3.simplify(SympyToZ3(sp_converter.to_sympy(nxt,vprime)).sympy2smt()))
+            #         pbar.update(1)
+            self.vprime2nxt = [(vprime, z3.simplify(SympyToZ3(sp_converter.to_sympy(nxt,vprime)).sympy2smt())) for vprime, nxt in self.vprime2nxt]
             
             #self.vprime2nxt = [(vprime, z3.simplify(sp_converter.compile_to_z3(sp_converter.to_sympy_parallel(nxt)))) for vprime, nxt in self.vprime2nxt]
             #self.vprime2nxt = [(vprime, z3.simplify(sp_converter.to_z3(sp.simplify(sp_converter.to_sympy(nxt))))) for vprime, nxt in self.vprime2nxt]
@@ -83,7 +85,8 @@ class ExtractCnf(object):
                 self.ternary_simulator_valid = False
                 break
         
-        if self.ternary_simulator_valid==True and self.deep_simplification==False:
+        #if self.ternary_simulator_valid==True and self.deep_simplification==False:
+        if self.ternary_simulator_valid==True and SIMPLIFICATION_LEVEL in ["slight"]:
             for _, updatefun in self.vprime2nxt: self.ternary_simulator.register_expr(updatefun)
         
         #XXX: Double Check before running the script
@@ -344,6 +347,8 @@ class ExtractCnf(object):
         #XXX: Double check before running the script
         # maybe make it too simple...
         # sp_converter.to_sympy(Cube)
+        if SIMPLIFICATION_LEVEL in ["naive","thorough"]:
+            Cube = z3.simplify(SympyToZ3(sp_converter.to_sympy(Cube)).sympy2smt())
         
         
         '''

@@ -85,17 +85,24 @@ if __name__ == "__main__":
     parser.add_argument('--inv-correctness-check', type=str2bool, default=True, help='check the correctness of the invariant')
     parser.add_argument('--run-mode', type=str, default='debug', help='normal or debug. Debug model will exit after inv correctness check')
     parser.add_argument('--model-checker', type=str, default='ic3ref', help='ic3ref or abc')
-    parser.add_argument('--deep-simplification', type=str2bool, default=False, help='use sympy in tr simplification + aig simplification during tr construction + z3 simplification')
-    parser.add_argument('--moderate-simplification', type=str2bool, default=False, help='aig aig simplification during tr construction + z3 simplification')
-    parser.add_argument('--slight-simplification', type=str2bool, default=False, help='z3 simplification only')
+    parser.add_argument('--thorough-simplification', type=str2bool, default=False, help='use sympy in tr simplification + aig operator simplification during tr construction + z3 simplification + counterexample cube simplification')
+    parser.add_argument('--deep-simplification', type=str2bool, default=False, help='use sympy in tr simplification + aig operator simplification during tr construction + z3 simplification')
+    parser.add_argument('--moderate-simplification', type=str2bool, default=False, help='aig operator simplification during tr construction + z3 simplification')
+    parser.add_argument('--slight-simplification', type=str2bool, default=False, help='z3 simplification + ternary simulation')
+    parser.add_argument('--naive-simplification', type=str2bool, default=False, help='only use sympy to simplify the counterexample cube')
     
     # parse the arguments to test()
     args = parser.parse_args()
     
+    # set global variables
+    global SIMPLIFICATION_LEVEL
+    SIMPLIFICATION_LEVEL = "naive" if args.naive_simplification else "slight" if args.slight_simplification else "moderate" if args.moderate_simplification else "deep" if args.deep_simplification else "thorough" if args.thorough_simplification else "none"
+    assert SIMPLIFICATION_LEVEL != "none", "Please specify the simplification level"
+    
     '''
     #XXX: Double check before running the script
     for testing only
-    '''
+    
     args = parser.parse_args(['--aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_4/nusmv.brp.B.aag',
         '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_0/nusmv.syncarb5^2.B.aag',
@@ -125,7 +132,7 @@ if __name__ == "__main__":
         '--deep-simplification',
         'T' #XXX: Double check before running scripts -> want to use sympy rather than ternary simulation?
         ])
-    
+    '''
     
     case = args.aag.split('/')[-1].split('.aag')[0]
     
