@@ -378,6 +378,7 @@ if __name__ == '__main__':
         '--ground_truth_folder_prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result'])
     '''
     
+    
     # Global variable assignment
     global DATASET_FOLDER_PREFIX
     global SIMPLIFICATION_LABEL

@@ -29,6 +29,11 @@ https://github.com/zhanghongce/IC3ref - modified Makefile (may not be necessary)
 * `main.py` : predict the induction invariant from SAT models
 * `clean_trival_log.py` : clean the trivial logs (line <= 20)
 
+### Usage
+**build dataset**
+* `python build_data.py --model-checker abc --dataset-folder-prefix dataset_hwmcc20_big --simplification-label slight --benchmark hwmcc2020_all --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result`
+* `python build_data.py --model-checker abc --dataset-folder-prefix dataset_hwmcc20_small --simplification-label slight --benchmark hwmcc2020_small --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result`
+
 ### For dataset
 * `dataset_20230106_014957_toy` : contains only one aiger's cex
 * `dataset_20230106_025223_small`: contains 5 simplest aigers from hwmcc07

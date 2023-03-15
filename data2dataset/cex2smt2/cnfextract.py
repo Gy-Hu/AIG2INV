@@ -83,14 +83,14 @@ class ExtractCnf(object):
         self.ternary_simulator = ternary_sim.AIGBuffer()
         
         # check validation of using the ternary simulator
-        self.ternary_simulator_valid = True
+        self.ternary_simulator_valid = True if SIMPLIFICATION_LEVEL in ["slight"] else False
         for _, updatefun in self.vprime2nxt: 
             if self.ternary_simulator.check_validation(updatefun) == False:
                 self.ternary_simulator_valid = False
                 break
         
         #if self.ternary_simulator_valid==True and self.deep_simplification==False:
-        if self.ternary_simulator_valid==True and SIMPLIFICATION_LEVEL in ["slight"]:
+        if self.ternary_simulator_valid==True and (SIMPLIFICATION_LEVEL in ["slight"]):
             for _, updatefun in self.vprime2nxt: self.ternary_simulator.register_expr(updatefun)
         
         #XXX: Double Check before running the script
