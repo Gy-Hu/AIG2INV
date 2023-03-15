@@ -31,4 +31,4 @@ deprecated/
 abc/
 *.jpg
 *.svg
-hwmcc20_ground_truth/
+hwmcc20_abc_7200_result/

@@ -124,19 +124,19 @@ def walkFile(dir):
 def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
     #generate smt2 file for prediction -> SAT model/conterexample
     print("Start to find the cases with inductive invariants!")
-    subset_dir = '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/{BENCHMARK}/subset_'
+    subset_dir = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/{BENCHMARK}/subset_"
     subset_dir_lst = [subset_dir+str(i) for i in range(10)] # 10 is the number for test subset
     
     # get all the generated inductive invariants cases' name
     # store all folder name in '/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip'
     
     #XXX: Double check before running the script
-    cases_with_inductive_invariants = os.listdir(f"/data/hongcezh/clause-learning/data-collect/{GROUND_TRUTH_FOLDER_PREFIX}")
+    cases_with_inductive_invariants = os.listdir(f"{GROUND_TRUTH_FOLDER_PREFIX}")
     # check whether it contains inv.cnf in subfolder
     cases_with_inductive_invariants = [
     case
     for case in cases_with_inductive_invariants
-    if os.path.exists(f'/data/hongcezh/clause-learning/data-collect/{GROUND_TRUTH_FOLDER_PREFIX}/{case}/inv.cnf')
+    if os.path.exists(f"{GROUND_TRUTH_FOLDER_PREFIX}/{case}/inv.cnf")
     ]
 
     # initialize the list to store all the abnormal cases
@@ -154,7 +154,7 @@ def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
             for case in _
             if (case.split('.aag')[0] in cases_with_inductive_invariants and case.split('.aag')[0] not in AigCaseBlackList)
         ]: 
-            all_cases_name_lst.extend(f'{subset}/{case}' for case in _)
+            all_cases_name_lst.extend(f"{subset}/{case}" for case in _)
 
     return all_cases_name_lst
     
@@ -179,7 +179,7 @@ def generate_smt2(run_mode='normal', model_checker='ic3ref'):
         results.append(pool.apply_async(
             call_proc,
             (
-                f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2} --run-mode {run_mode} --model-checker {model_checker} {SIMPLIFICATION_LABEL}",
+                f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2} --run-mode {run_mode} --model-checker {model_checker} {SIMPLIFICATION_LABEL} --ground-truth-folder-prefix {GROUND_TRUTH_FOLDER_PREFIX}",
             ),
         ))
     pool.close()
@@ -370,6 +370,13 @@ if __name__ == '__main__':
     parser.add_argument('--ground_truth_folder_prefix', type=str, default=None, help='ground truth folder prefix, the final aim generated folder, in the root folder')
     
     args = parser.parse_args()
+    '''
+    args = parser.parse_args(['--model-checker', 'abc', \
+        '--dataset-folder-prefix', 'dataset_hwmcc20_small', \
+        '--simplification-label', 'slight', \
+        '--benchmark', 'hwmcc2020_small', \
+        '--ground_truth_folder_prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result'])
+    '''
     
     # Global variable assignment
     global DATASET_FOLDER_PREFIX
@@ -377,11 +384,11 @@ if __name__ == '__main__':
     global BENCHMARK
     global GROUND_TRUTH_FOLDER_PREFIX
     DATASET_FOLDER_PREFIX = args.dataset_folder_prefix
-    SIMPLIFICATION_LABEL = "--thorough-simplification" if args.simplification_label == "thorough" \
-        else "--deep-simplification" if args.simplification_label == "deep" \
-        else "--moderate-simplification" if args.simplification_label == "moderate"\
-        else "--slight-simplification" if args.simplification_label == "slight"\
-        else "--naive-simplification" if args.simplification_label == "naive"\
+    SIMPLIFICATION_LABEL = "--thorough-simplification T" if args.simplification_label == "thorough" \
+        else "--deep-simplification T" if args.simplification_label == "deep" \
+        else "--moderate-simplification T" if args.simplification_label == "moderate"\
+        else "--slight-simplification T" if args.simplification_label == "slight"\
+        else "--naive-simplification T" if args.simplification_label == "naive"\
         else ""
     assert SIMPLIFICATION_LABEL != "", "simplification label is not correct"
     BENCHMARK = args.benchmark
@@ -430,11 +437,11 @@ if __name__ == '__main__':
     '''
     # generate pre-graph (json format)
     # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/model2graph
-    generate_pre_graph()
+    #generate_pre_graph()
 
     # generate post-graph (pickle format)
     # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/json2networkx.py
-    generate_post_graph()
+    #generate_post_graph()
 
     print("Finish building data! Ready to train!")
 

@@ -22,10 +22,12 @@ from sym_to_smt2 import SympyToZ3
 from tqdm import tqdm
 # set random seed of z3
 #z3.set_option('smt.arith.random_initial_value',True)
-from collect import SIMPLIFICATION_LEVEL
+#from collect import SIMPLIFICATION_LEVEL
 
 class ExtractCnf(object):
-    def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True, model_checker = 'abc', deep_simplification = False):
+    def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True, model_checker = 'abc', deep_simplification = False, simplification_level = None):
+        global SIMPLIFICATION_LEVEL
+        SIMPLIFICATION_LEVEL = simplification_level
         self.aig_path = aig_path
         self.generate_smt2 = generate_smt2 # default: generate smt2
         self.model_checker = model_checker

@@ -1,6 +1,6 @@
 import z3
 import sp_converter
-from collect import SIMPLIFICATION_LEVEL
+#from collect import SIMPLIFICATION_LEVEL
 # load aig so that we have the transition relations
 
 def get_literal(vartable, lid):
@@ -15,7 +15,9 @@ def get_literal(vartable, lid):
     return expr # even
 
 class AAGmodel():
-    def __init__(self):
+    def __init__(self,_):
+        global SIMPLIFICATION_LEVEL
+        SIMPLIFICATION_LEVEL = _
         self.inputs = []  # I
         self.svars = []   # L
         self.primed_inputs = []

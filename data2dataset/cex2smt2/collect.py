@@ -40,7 +40,7 @@ def dump4check_map(cex_clause_pair_list_prop, cex_clause_pair_list_ind, aag_name
 
 def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, generate_smt2, inv_correctness_check, run_mode, model_checker, deep_simplification):
     file_path = aag_name
-    m = AAGmodel()
+    m = AAGmodel(SIMPLIFICATION_LEVEL)
     m.from_file(fname=aag_name, deep_simplify=deep_simplification)
     inv_cnf = Clauses(fname=cnf_name, num_sv = len(m.svars), num_input = len(m.inputs))
     extractor = ExtractCnf(\
@@ -52,7 +52,8 @@ def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, gene
         generate_smt2 = generate_smt2,\
         inv_correctness_check = inv_correctness_check,\
         model_checker = model_checker,\
-        deep_simplification=deep_simplification)
+        deep_simplification=deep_simplification,\
+        simplification_level=SIMPLIFICATION_LEVEL)
     if run_mode == 'debug': sys.exit()
     cex_clause_pair_list_prop, cex_clause_pair_list_ind, is_inductive, has_fewer_clauses = extractor.get_clause_cex_pair()
     if dump4check_map(cex_clause_pair_list_prop,cex_clause_pair_list_ind,aag_name,m, return_after_finished = True)!= None: return
@@ -90,6 +91,7 @@ if __name__ == "__main__":
     parser.add_argument('--moderate-simplification', type=str2bool, default=False, help='aig operator simplification during tr construction + z3 simplification')
     parser.add_argument('--slight-simplification', type=str2bool, default=False, help='z3 simplification + ternary simulation')
     parser.add_argument('--naive-simplification', type=str2bool, default=False, help='only use sympy to simplify the counterexample cube')
+    parser.add_argument('--ground-truth-folder-prefix', type=str, default='/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/', help='the prefix of the ground truth folder')
     
     # parse the arguments to test()
     args = parser.parse_args()
@@ -139,10 +141,10 @@ if __name__ == "__main__":
     if args.cnf is None: 
         # check which model checker is used, and use the corresponding output folder
         if args.model_checker == 'ic3ref':
-            convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker, args.deep_simplification)
+            convert_one_aag(args.aag, f"{args.ground_truth_folder_prefix}/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker, args.deep_simplification)
             #convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output-wrong-result/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
         elif args.model_checker == 'abc':
-            convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker, args.deep_simplification)
+            convert_one_aag(args.aag, f"{args.ground_truth_folder_prefix}/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker, args.deep_simplification)
     else:
         convert_one_aag(args.aag, args.cnf, case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
 
