@@ -11,10 +11,12 @@ aag+inv to cnf
 
 script to run ic3ref
 `/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/run_single.sh`
+
 `/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/collect.sh`
 
 for ground truth
 `/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/`
+
 `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_ground_truth/`
 
 ### For deps
@@ -24,10 +26,10 @@ https://github.com/zhanghongce/IC3ref - modified Makefile (may not be necessary)
 > usage: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -v -f xxx.cnf < xxx.aig
 
 ### For scripts
-`build_data.py` : build data from aag+inv to graph
-`train_data.py` : train data from graph
-`main.py` : predict the induction invariant from SAT models
-`clean_trival_log.py` : clean the trivial logs (line <= 20)
+* `build_data.py` : build data from aag+inv to graph
+* `train_data.py` : train data from graph
+* `main.py` : predict the induction invariant from SAT models
+* `clean_trival_log.py` : clean the trivial logs (line <= 20)
 
 ### For dataset
 * `dataset_20230106_014957_toy` : contains only one aiger's cex
