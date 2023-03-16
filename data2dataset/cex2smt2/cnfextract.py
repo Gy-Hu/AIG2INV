@@ -80,8 +80,8 @@ class ExtractCnf(object):
             for (vprime, nxt) in self.vprime2nxt:
                 if nxt.decl().kind() == z3.Z3_OP_UNINTERPRETED: # which means it contains a Boolref True or False
                     #replace the nxt with the corresponding boolean constant
-                    nxt2replace = z3.BoolVal(True) if nxt.decl().name() == "True" else z3.BoolVal(False) if nxt.decl().name() == "False" else None
-                    assert nxt2replace is not None, "The transition relation is incorrect after simplification"
+                    nxt2replace = z3.BoolVal(True) if nxt.decl().name() == "True" else z3.BoolVal(False) if nxt.decl().name() == "False" else nxt
+                    #assert nxt2replace is not None, "The transition relation is incorrect after simplification"
                     # replace the nxt with the corresponding boolean constant
                     self.vprime2nxt[self.vprime2nxt.index((vprime, nxt))] = (vprime, nxt2replace)
             

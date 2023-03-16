@@ -18,7 +18,9 @@ def log_analyzer():
     df.drop_duplicates(subset="case name", keep="first", inplace=True)
     # re-index the dataframe
     df = df.reset_index(drop=True)
-    print(df)
+    #print(df)
+    # only print the table with top 3 columns
+    print(df.iloc[:, :-2])
     
     
 
