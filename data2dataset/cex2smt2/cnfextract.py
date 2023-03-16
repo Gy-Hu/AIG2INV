@@ -69,8 +69,25 @@ class ExtractCnf(object):
             
             #self.vprime2nxt = [(vprime, z3.simplify(sp_converter.compile_to_z3(sp_converter.to_sympy_parallel(nxt)))) for vprime, nxt in self.vprime2nxt]
             #self.vprime2nxt = [(vprime, z3.simplify(sp_converter.to_z3(sp.simplify(sp_converter.to_sympy(nxt))))) for vprime, nxt in self.vprime2nxt]
+            
+            '''
+            The last simplification make the transition relation incorrect,
+            such as (v2, True) will be simplified to (v2, True)
+            It looks the same, but previsouly, that "True" is a boolean constant,
+            later, it becomes a variable, which is named "True"
+            '''
+            # iterate over the transition relation, and check the correctness
+            for (vprime, nxt) in self.vprime2nxt:
+                if nxt.decl().kind() == z3.Z3_OP_UNINTERPRETED: # which means it contains a Boolref True or False
+                    #replace the nxt with the corresponding boolean constant
+                    nxt2replace = z3.BoolVal(True) if nxt.decl().name() == "True" else z3.BoolVal(False) if nxt.decl().name() == "False" else None
+                    assert nxt2replace is not None, "The transition relation is incorrect after simplification"
+                    # replace the nxt with the corresponding boolean constant
+                    self.vprime2nxt[self.vprime2nxt.index((vprime, nxt))] = (vprime, nxt2replace)
+            
             #XXX: Double Check before running the script
-            #self._check_tr_correctness_after_simplification(self.vprime2nxt_without_simplification, self.vprime2nxt)
+            self._check_tr_correctness_after_simplification(self.vprime2nxt_without_simplification, self.vprime2nxt)
+            
 
         self.init = aagmodel.init
         self.lMap = {str(v):v for v in aagmodel.svars}
@@ -466,7 +483,8 @@ class ExtractCnf(object):
         '''
         tcube_cp = tCube(0)
         tcube_cp.addModel(self.Inp_SVars_Map, prev_cube, remove_input=False, aig_path=self.aig_path)
-
+        #XXX: Check before running the script
+        assert len(prev_cube)==len(tcube_cp.cubeLiterals), "BUG: the model list built wrongly before generalization"
         print("original size of CTI (including input variable): ", len(tcube_cp.cubeLiterals))
         print("Begin to generalize predessor")
 

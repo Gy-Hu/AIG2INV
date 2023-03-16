@@ -12,6 +12,7 @@ def get_literal(vartable, lid):
     elif lid%2==1 and int(lid/2) == 0: # True
         # Not(False) -> True
         expr=z3.BoolVal(True)
+        #expr = True
     return expr # even
 
 class AAGmodel():

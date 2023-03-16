@@ -6,7 +6,7 @@ import z3
 import os
 import argparse
 import sys
-
+import copy
 
 '''
 Some assumptions (Maybe useful for debugging):
@@ -54,9 +54,44 @@ def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, gene
         model_checker = model_checker,\
         simplification_level=SIMPLIFICATION_LEVEL,\
         dump_folder_prefix=DUMP_FOLDER_PREFIX)
+    #XXX: Double check before running the script
+    if SIMPLIFICATION_LEVEL in ["deep"]: check_extractor_eq(aag_name, cnf_name, model_name, generalize_predecessor, generate_smt2, inv_correctness_check, run_mode, model_checker, copy.deepcopy(extractor))
     if run_mode == 'debug': sys.exit()
     cex_clause_pair_list_prop, cex_clause_pair_list_ind, is_inductive, has_fewer_clauses = extractor.get_clause_cex_pair()
     if dump4check_map(cex_clause_pair_list_prop,cex_clause_pair_list_ind,aag_name,m, return_after_finished = True)!= None: return
+
+def check_extractor_eq(aag_name, cnf_name, model_name, generalize_predecessor, generate_smt2, inv_correctness_check, run_mode, model_checker, extractor):
+    file_path = aag_name
+    #extractor_old = copy.deepcopy(extractor)
+    m_without_simplification = AAGmodel(None)
+    m_without_simplification.from_file(fname=aag_name)
+    inv_cnf = Clauses(fname=cnf_name, num_sv = len(m_without_simplification.svars), num_input = len(m_without_simplification.inputs))
+    extractor_without_simplification = ExtractCnf(\
+        aagmodel = m_without_simplification,\
+        clause = inv_cnf,\
+        name = model_name,\
+        generalize = generalize_predecessor,\
+        aig_path=file_path,\
+        generate_smt2 = generate_smt2,\
+        inv_correctness_check = inv_correctness_check,\
+        model_checker = model_checker,\
+        simplification_level=None,\
+        dump_folder_prefix=DUMP_FOLDER_PREFIX)
+    
+    for a,b in zip(extractor.vprime2nxt, extractor_without_simplification.vprime2nxt):
+        # if z3.is_true(a[1]) or z3.is_false(a[1]) or z3.is_true(b[1]) or z3.is_false(b[1]), skip this loop
+        if z3.is_true(a[1]) or z3.is_false(a[1]) or z3.is_true(b[1]) or z3.is_false(b[1]):
+            assert str(a[1])==str(b[1]), "The transition relation is not simplified correctly!"
+            continue
+        s = z3.Solver()
+        proposition = a[1] == b[1] # assertion is whether b1 and b2 are equal
+        s.add(z3.Not(proposition))
+        # proposition proved if negation of proposition is unsat
+        if s.check() == z3.sat:
+            # it should be unsat if the transition relation is simplified correctly -> which is unsat
+            print("The transition relation is not simplified correctly!")
+            assert False, "The transition relation is not simplified correctly!"
+    
 
 def test():
     #case = "nusmv.syncarb5^2.B"
@@ -102,6 +137,7 @@ if __name__ == "__main__":
     '''
     #XXX: Double check before running the script
     for testing only
+    
     args = parser.parse_args(['--aag',
         '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2020_all/subset_0/simple_alu.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_4/nusmv.brp.B.aag',
@@ -130,6 +166,7 @@ if __name__ == "__main__":
         '--model-checker', 
         'abc', #XXX: Double check before running scripts
         '--deep-simplification', 'T',
+        #'--moderate-simplification', 'T',
         '--ground-truth-folder-prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result'
         #'--deep-simplification',
         #'T' #XXX: Double check before running scripts -> want to use sympy rather than ternary simulation?
@@ -140,7 +177,7 @@ if __name__ == "__main__":
     global SIMPLIFICATION_LEVEL
     global DUMP_FOLDER_PREFIX
     SIMPLIFICATION_LEVEL = "naive" if args.naive_simplification else "slight" if args.slight_simplification else "moderate" if args.moderate_simplification else "deep" if args.deep_simplification else "thorough" if args.thorough_simplification else "none"
-    assert SIMPLIFICATION_LEVEL != "none", "Please specify the simplification level"
+    #assert SIMPLIFICATION_LEVEL != "none", "Please specify the simplification level"
     DUMP_FOLDER_PREFIX = args.dump_folder_prefix
     
     
