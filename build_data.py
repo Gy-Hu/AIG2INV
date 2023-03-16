@@ -300,7 +300,7 @@ def generate_pre_graph():
         pool.apply_async(
             call_proc,
             (#XXX: Double check before running the script -> did you recompile it and update it to the latest version?
-                f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/model2graph {case_name}",
+                f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/model2graph {case_name} {smt2_dir}",
             ),
         )
         for case_name in data4json_conversion
@@ -438,11 +438,11 @@ if __name__ == '__main__':
     '''
     # generate pre-graph (json format)
     # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/model2graph
-    #generate_pre_graph()
+    generate_pre_graph()
 
     # generate post-graph (pickle format)
     # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/json2networkx.py
-    #generate_post_graph()
+    generate_post_graph()
 
     print("Finish building data! Ready to train!")
 

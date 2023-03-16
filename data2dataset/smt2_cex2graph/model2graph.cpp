@@ -154,8 +154,9 @@ int main(int argc, char ** argv) {
     //XXX: Double check before running the script
     //TestSimplify();
     // get the file name from argv
-    //string file_name = argv[1];
-    //cout<<"file name:"<<file_name<<endl;
+    string file_name = argv[1];
+    string file_path = argv[2];
+    cout<<"file name:"<<file_name<<endl;
 
     z3::context ctx;
     //auto&& opt = z3::optimize(ctx);
@@ -172,8 +173,9 @@ int main(int argc, char ** argv) {
     //XXX: Double check before running the script
     //const char* filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_20230106_014957_toy/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
     //string filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/" + file_name;
+    string filePath = file_path + file_name;
     //const char* filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B";
-    const char* filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc07_almost_complete/bad_cube_cex2graph/expr_to_build_graph/eijk.bs4863.S";
+    //const char* filePath = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc07_almost_complete/bad_cube_cex2graph/expr_to_build_graph/eijk.bs4863.S";
 
     vector<string> filenames;
     GetFileNames(filePath,filenames);
