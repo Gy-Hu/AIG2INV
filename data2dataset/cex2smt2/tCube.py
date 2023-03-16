@@ -61,7 +61,10 @@ class tCube:
                 self.add(lMap[str(l)] == model[l]) #TODO: Get model overhead is too high, using C API
             elif aig_path is not None:
                 #Some l like True==True or False==False. If True==False or False==True, it will be caught by the assert below.
-                assert str(l.children()[0])==str(l.children()[1]), "Encountered strange model, please specify the log path to dump log."
+                # if isinstance(l, z3.z3.FuncDeclRef):
+                    #do something?
+                if isinstance(l, z3.z3.BoolRef):
+                    assert str(l.children()[0])==str(l.children()[1]), f"Encountered strange model in {aig_path}"
                 #XXX: Double check before running the script -> ensure this is not a bug!
                 # l -> True or l -> False, and aig_path is not None
                 self._report2log_add_model(aig_path,\

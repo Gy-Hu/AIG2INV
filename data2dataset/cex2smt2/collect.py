@@ -38,10 +38,10 @@ def dump4check_map(cex_clause_pair_list_prop, cex_clause_pair_list_ind, aag_name
         print('program finished, only dump cti to file')
         return 'Finish all the work!'
 
-def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, generate_smt2, inv_correctness_check, run_mode, model_checker, deep_simplification):
+def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, generate_smt2, inv_correctness_check, run_mode, model_checker):
     file_path = aag_name
     m = AAGmodel(SIMPLIFICATION_LEVEL)
-    m.from_file(fname=aag_name, deep_simplify=deep_simplification)
+    m.from_file(fname=aag_name)
     inv_cnf = Clauses(fname=cnf_name, num_sv = len(m.svars), num_input = len(m.inputs))
     extractor = ExtractCnf(\
         aagmodel = m,\
@@ -52,7 +52,6 @@ def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, gene
         generate_smt2 = generate_smt2,\
         inv_correctness_check = inv_correctness_check,\
         model_checker = model_checker,\
-        deep_simplification=deep_simplification,\
         simplification_level=SIMPLIFICATION_LEVEL,\
         dump_folder_prefix=DUMP_FOLDER_PREFIX)
     if run_mode == 'debug': sys.exit()
@@ -98,20 +97,15 @@ if __name__ == "__main__":
     # parse the arguments to test()
     args = parser.parse_args()
     
-    # set global variables
-    global SIMPLIFICATION_LEVEL
-    global DUMP_FOLDER_PREFIX
-    SIMPLIFICATION_LEVEL = "naive" if args.naive_simplification else "slight" if args.slight_simplification else "moderate" if args.moderate_simplification else "deep" if args.deep_simplification else "thorough" if args.thorough_simplification else "none"
-    assert SIMPLIFICATION_LEVEL != "none", "Please specify the simplification level"
-    DUMP_FOLDER_PREFIX = args.dump_folder_prefix
+    
     
     '''
     #XXX: Double check before running the script
     for testing only
-    
     args = parser.parse_args(['--aag',
+        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2020_all/subset_0/simple_alu.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_4/nusmv.brp.B.aag',
-        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_0/nusmv.syncarb5^2.B.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_0/nusmv.syncarb5^2.B.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_0/eijk.S208c.S.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_2/eijk.S386.S.aag', # encountered a bug in addModel(generalize predecessor)
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_17/vis.prodcell^03.E.aag',
@@ -135,20 +129,30 @@ if __name__ == "__main__":
         'normal',
         '--model-checker', 
         'abc', #XXX: Double check before running scripts
-        '--deep-simplification',
-        'T' #XXX: Double check before running scripts -> want to use sympy rather than ternary simulation?
+        '--deep-simplification', 'T',
+        '--ground-truth-folder-prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result'
+        #'--deep-simplification',
+        #'T' #XXX: Double check before running scripts -> want to use sympy rather than ternary simulation?
         ])
     '''
+    
+    # set global variables
+    global SIMPLIFICATION_LEVEL
+    global DUMP_FOLDER_PREFIX
+    SIMPLIFICATION_LEVEL = "naive" if args.naive_simplification else "slight" if args.slight_simplification else "moderate" if args.moderate_simplification else "deep" if args.deep_simplification else "thorough" if args.thorough_simplification else "none"
+    assert SIMPLIFICATION_LEVEL != "none", "Please specify the simplification level"
+    DUMP_FOLDER_PREFIX = args.dump_folder_prefix
+    
     
     case = args.aag.split('/')[-1].split('.aag')[0]
     
     if args.cnf is None: 
         # check which model checker is used, and use the corresponding output folder
         if args.model_checker == 'ic3ref':
-            convert_one_aag(args.aag, f"{args.ground_truth_folder_prefix}/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker, args.deep_simplification)
+            convert_one_aag(args.aag, f"{args.ground_truth_folder_prefix}/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker)
             #convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output-wrong-result/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
         elif args.model_checker == 'abc':
-            convert_one_aag(args.aag, f"{args.ground_truth_folder_prefix}/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker, args.deep_simplification)
+            convert_one_aag(args.aag, f"{args.ground_truth_folder_prefix}/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker)
     else:
         convert_one_aag(args.aag, args.cnf, case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
 
