@@ -39,7 +39,7 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 * `build_data.py` : build data from aag+inv to graph
 * `train_data.py` : train data from graph
 * `main.py` : predict the induction invariant from SAT models
-* `tool_box.py` : some useful functions (e.g. clean trivial log)
+* `tool_box.py` : some useful functions (e.g. clean trivial log, counterexample cube visualization)
 * `utils/fetch_aiger.py` : fetch aiger, this script must be ran in the same dir as `utils`
 
 ### Usage
@@ -57,9 +57,10 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 
 ### For converted aiger
 * `cnt1` , `cnt2` and `cnt-zeros` : For toy experiments
-* `case4test/hwmcc2007_all_comp_for_prediction_ic3ref`: hwmcc07 tip safety cases (only UNSAT cases) all aiger1.0 format, only use to dump predicted clauses, for ic3ref prediction
 * `case4test/hwmcc2007_all`: hwmcc07 tip all safety cases, including both UNSAT and SAT cases (all aiger1.0 format)
+* `case4test/hwmcc2007_all_comp_for_prediction_ic3ref`: hwmcc07 tip safety cases (only UNSAT cases) all aiger1.0 format, only use to dump predicted clauses, for ic3ref prediction
 * `case4test/hwmcc2020_all`: hwmcc20 safety cases (all aiger1.0 format)
+* `case4test/hwmcc2020_small`: part of hwmcc20 safety cases (all aiger1.0 format), only contains 50 simple cases
 * `case4test/hwmcc2020_all_without_sat_unknown`: hwmcc20 safety cases without SAT and UNKNOWN cases (all aiger1.0 format)
 
 ### Simplification Level

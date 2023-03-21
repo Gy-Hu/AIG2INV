@@ -9,7 +9,7 @@ import os
 # parse input arguments
 import argparse
 
-def json2graph_pickle(filename,ground_truth_path):
+def json2graph_pickle(filename,ground_truth_path, pickle_file_name_prefix):
     with open(filename) as f:
         json_data = json.loads(f.read())
 
@@ -84,7 +84,7 @@ def json2graph_pickle(filename,ground_truth_path):
     #dump G and json_data to pickle
 
     #define the pickle file name
-    pickle_file_name = '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/json_to_graph_pickle/' + filename.split('/')[-1].replace('.json', '.pkl')
+    pickle_file_name = pickle_file_name_prefix + filename.split('/')[-1].replace('.json', '.pkl')
 
     # get ground truth list from '../../dataset/IG2graph/generalization_no_enumerate/' + filename.split('/')[-1].replace('.json', '.csv')
     case_name = ground_truth_path.split('/')[-1]

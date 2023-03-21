@@ -125,7 +125,7 @@ def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
     #generate smt2 file for prediction -> SAT model/conterexample
     print("Start to find the cases with inductive invariants!")
     subset_dir = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/{BENCHMARK}/subset_"
-    subset_dir_lst = [subset_dir+str(i) for i in range(10)] # 10 is the number for test subset
+    subset_dir_lst = [subset_dir+str(i) for i in range(SUBSET_RANGE)] # 10 is the number for test subset
     
     # get all the generated inductive invariants cases' name
     # store all folder name in '/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip'
@@ -320,6 +320,7 @@ def generate_post_graph():
     # generate post-graph, serialization as pickle
     json_dir = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DATASET_FOLDER_PREFIX}/bad_cube_cex2graph/expr_to_build_graph"
     ground_truth_dir = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DATASET_FOLDER_PREFIX}/bad_cube_cex2graph/ground_truth_table"
+    pickle_file_name_prefix = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DATASET_FOLDER_PREFIX}/bad_cube_cex2graph/json_to_graph_pickle/"
     # get all the subfolder name under expr_to_build_graph (expression to build graph)
     data4pickle_conversion = os.listdir(json_dir)
 
@@ -331,7 +332,8 @@ def generate_post_graph():
             (
                 f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/json2networkx.py \
                 --json_file_path   {json_dir}/{case_name} \
-                --ground_truth_path  {ground_truth_dir}/{case_name}",
+                --ground_truth_path  {ground_truth_dir}/{case_name} \
+                --pickle_file_name_prefix {pickle_file_name_prefix}",
             ),
         )
         for case_name in data4pickle_conversion
@@ -368,15 +370,18 @@ if __name__ == '__main__':
     parser.add_argument('--simplification-label', type=str, default=None, help='simplification label')
     parser.add_argument('--benchmark', type=str, default=None, help='benchmark, which is used to generate the training dataset, in case4test')
     parser.add_argument('--ground_truth_folder_prefix', type=str, default=None, help='ground truth folder prefix, the final aim generated folder, in the root folder')
+    parser.add_argument('--subset_range', type=int, default=1, help='subset range, the number of subset')
     
     args = parser.parse_args()
     '''
     '''
     args = parser.parse_args(['--model-checker', 'abc', \
-        '--dataset-folder-prefix', 'dataset_hwmcc20_small', \
+        '--dataset-folder-prefix', 'dataset_hwmcc20_small_abc', \
         '--simplification-label', 'slight', \
         '--benchmark', 'hwmcc2020_small', \
-        '--ground_truth_folder_prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result'])
+        '--ground_truth_folder_prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result',\
+        '--subset_range', '1'
+        ])
     
     
     
@@ -385,6 +390,7 @@ if __name__ == '__main__':
     global SIMPLIFICATION_LABEL
     global BENCHMARK
     global GROUND_TRUTH_FOLDER_PREFIX
+    global SUBSET_RANGE
     DATASET_FOLDER_PREFIX = args.dataset_folder_prefix
     SIMPLIFICATION_LABEL = "--thorough-simplification T" if args.simplification_label == "thorough" \
         else "--deep-simplification T" if args.simplification_label == "deep" \
@@ -395,12 +401,13 @@ if __name__ == '__main__':
     assert SIMPLIFICATION_LABEL != "", "simplification label is not correct"
     BENCHMARK = args.benchmark
     GROUND_TRUTH_FOLDER_PREFIX = args.ground_truth_folder_prefix
+    SUBSET_RANGE = args.subset_range
     
     # for testing only
     # args = parser.parse_args(['--only_re_generate_inv','--error_handle_with_ic3ref_basic_generalization'])
     '''
     ---------------------------------------------------------
-    only re-generate the inv.cnf for the cases that has mismatched inductive invariants?
+    (step 0: )only re-generate the inv.cnf for the cases that has mismatched inductive invariants?
     
     (only has error log, and user want to generate the inv.cnf only)
     ---------------------------------------------------------
@@ -414,15 +421,15 @@ if __name__ == '__main__':
     
     '''
     ---------------------------------------------------------
-    (step 0: )change the directory name of "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset" with time stamp
+    (step 1: )change the directory name of "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset" with time stamp
     
     Choose mode:
     1. Generate_smt2 for all cases -> default
     2. Generate_smt2 for error cases -> with_re_generate_inv set to True in initialization()
     
-    (step 1: )Then, generate smt2 file for prediction (-> inducitve invariant)
+    Then, generate smt2 file for prediction (-> inducitve invariant)
     ---------------------------------------------------------
-    
+    '''
     dir_name = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DATASET_FOLDER_PREFIX}"
     if args.initialization_with_inv_generated:
         initialization(dir_name, with_re_generate_inv=True)
@@ -431,7 +438,7 @@ if __name__ == '__main__':
         initialization(dir_name, with_re_generate_inv=False)
         # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py
         generate_smt2(args.run_mode,args.model_checker) # if mode is debug, the program will exit after inv checking
-    '''
+    
     
     '''
     ---------------------------------------------------------
