@@ -61,3 +61,10 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 * `case4test/hwmcc2007_all`: hwmcc07 tip all safety cases, including both UNSAT and SAT cases (all aiger1.0 format)
 * `case4test/hwmcc2020_all`: hwmcc20 safety cases (all aiger1.0 format)
 * `case4test/hwmcc2020_all_without_sat_unknown`: hwmcc20 safety cases without SAT and UNKNOWN cases (all aiger1.0 format)
+
+### Simplification Level
+* `thorough`: use sympy in transition relation simplification + aig operator simplification during transition relation construction + z3 simplification + counterexample cube simplification
+* `deep`: use sympy in transition relation simplification + aig operator simplification during transition relation construction + z3 simplification
+* `moderate`: aig operator simplification during transition relation construction + z3 simplification
+* `slight`: z3 simplification + ternary simulation
+* `naive`: only use sympy to simplify the counterexample cube
