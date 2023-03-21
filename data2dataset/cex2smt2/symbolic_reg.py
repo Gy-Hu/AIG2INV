@@ -99,7 +99,7 @@ model = PySRRegressor(
     populations=8,
     population_size=50,
     ncyclesperiteration=500,
-    niterations=10000000,
+    niterations=100000,
     early_stop_condition=(
         "stop_if(loss, complexity) = loss < 1e-6 && complexity < 10"
     ),
