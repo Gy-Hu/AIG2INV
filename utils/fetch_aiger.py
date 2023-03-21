@@ -54,9 +54,11 @@ def fetch_aig_from_csv(csv_file):
 
     # Then sort the dataframe by 'Res' and 'N_clauses'
     # df = df[df["res"] == "unsat"].sort_values(['res','n_clause'], ascending = True).head(50)
-
+    
+    df = df[df["res"] == "unsat"]
     # Export the aag_name column to a list
     aag_list = df["aag_name"].tolist()
+    
 
     # Add file path to the aag_list
     for i in range(len(aag_list)):
@@ -74,6 +76,9 @@ if __name__ == '__main__':
     '''
     --------------------Get the aig list (and their path)-------------------
     '''
+    # make aag_dir if it does not exist
+    if not os.path.isdir(aag_dir): 
+        os.makedirs(aag_dir)
     csv_file = "/data/hongcezh/clause-learning/data-collect/stat/size20.csv"
     aig_list = fetch_aig_from_csv(csv_file)
 
