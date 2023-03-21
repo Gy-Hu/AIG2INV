@@ -421,7 +421,7 @@ if __name__ == '__main__':
     
     (step 1: )Then, generate smt2 file for prediction (-> inducitve invariant)
     ---------------------------------------------------------
-    '''
+    
     dir_name = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DATASET_FOLDER_PREFIX}"
     if args.initialization_with_inv_generated:
         initialization(dir_name, with_re_generate_inv=True)
@@ -430,6 +430,7 @@ if __name__ == '__main__':
         initialization(dir_name, with_re_generate_inv=False)
         # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py
         generate_smt2(args.run_mode,args.model_checker) # if mode is debug, the program will exit after inv checking
+    '''
     
     '''
     ---------------------------------------------------------

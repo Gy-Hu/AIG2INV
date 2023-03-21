@@ -1,40 +1,44 @@
 import z3
 
-OP_VAR=0
-OP_NOT=1
-OP_AND=2
-OP_CONST=3
+OP_VAR = 0
+OP_NOT = 1
+OP_AND = 2
+OP_OR = 3  # Added OR operation
+OP_CONST = 4  # Updated OP_CONST value
 
-_TRUE=(0,1)
-_FALSE=(1,0)
-_X = (1,1)
-_BOT = (0,0)
+
+_TRUE = (0, 1)
+_FALSE = (1, 0)
+_X = (1, 1)
+_BOT = (0, 0)
+
 
 def encode(v):
-    if str(v) == 'True':
+    if str(v) == "True":
         return _TRUE
-    if str(v) == 'False':
+    if str(v) == "False":
         return _FALSE
     assert False
 
+
 def decode(twobits):
     if twobits == _TRUE:
-        return 'True'
+        return "True"
     if twobits == _FALSE:
-        return 'False'
+        return "False"
     if twobits == _X:
-        return 'X'
+        return "X"
     if twobits == _BOT:
-        return 'BOT'
+        return "BOT"
     assert False
 
 
 def ToConstraint(v, val, solver):
     if val == _TRUE:
-        solver.add (v == True)
+        solver.add(v == True)
         return
     if val == _FALSE:
-        solver.add (v == False)
+        solver.add(v == False)
         return
     if val == _X:
         return
@@ -87,9 +91,7 @@ class AIGBuffer(object):
             # Transition relation will encounter problem when in substition
             return False
 
-    # for one register expr, the parent nodes have smaller IDs
-    # for multiple call to register_expr, the second tree may have bigger IDs
-    def register_expr(self, expr): # --> modify expr_to_item, item_to_expr, item_use_list, items
+    def register_expr(self, expr):  # --> modify expr_to_item, item_to_expr, item_use_list, items
         if expr in self.expr_to_item:
             return self.expr_to_item[expr]  # remember to incr reference in the item
         op = expr.decl().kind()
@@ -120,12 +122,25 @@ class AIGBuffer(object):
                 assert child_item_num < item_no
                 self.item_use_list[child_item_num] = self.item_use_list.get(child_item_num, []) + [item_no]
             self.items[item_no] = (OP_AND, children_item_no)
-        #add OR operation
+        elif op == z3.Z3_OP_OR:
+            assert len(children) >= 1
+            children_item_no = []
+            for c in children:
+                child_item_num = self.register_expr(c)
+                children_item_no.append(child_item_num)
+
+            item_no = self._new_item_number()
+            for child_item_num in children_item_no:
+                assert child_item_num < item_no
+                self.item_use_list[child_item_num] = self.item_use_list.get(child_item_num, []) + [item_no]
+            self.items[item_no] = (OP_OR, children_item_no)
         else:
             assert False
+
         self.expr_to_item[expr] = item_no
         self.item_to_expr[item_no] = expr
         return item_no
+
 
     # (a[0], a[1])
     # True (0,1)
@@ -201,6 +216,12 @@ class AIGBuffer(object):
             for idx in range(1, len(cvals)):
                 v = self._AND(v, cvals[idx])
             return v
+        elif op == OP_OR:
+            cvals = [self.item_assignments[cnid] for cnid in children]
+            v = cvals[0]
+            for idx in range(1, len(cvals)):
+                v = self._OR(v, cvals[idx])
+            return v
 
     def set_Li(self, var, value):
         vid = self.vname_to_vid[str(var)]
@@ -258,7 +279,6 @@ class AIGBuffer(object):
                 assert False
 
 
-
 def test0():
     assert ( AIGBuffer._AND(_TRUE, _TRUE) == _TRUE )
     assert ( AIGBuffer._AND(_TRUE, _FALSE) == _FALSE )
@@ -267,19 +287,57 @@ def test0():
     assert ( AIGBuffer._AND(_FALSE, _FALSE) == _FALSE )
     assert ( AIGBuffer._AND(_FALSE, _X) == _FALSE )
 
-    assert ( AIGBuffer._OR(_TRUE, _TRUE) == _TRUE )
-    assert ( AIGBuffer._OR(_TRUE, _FALSE) == _TRUE )
-    assert ( AIGBuffer._OR(_TRUE, _X) == _TRUE )
-    assert ( AIGBuffer._OR(_FALSE, _TRUE) == _TRUE )
-    assert ( AIGBuffer._OR(_FALSE, _FALSE) == _FALSE )
-    assert ( AIGBuffer._OR(_FALSE, _X) == _X )
+    assert AIGBuffer._OR(_TRUE, _TRUE) == _TRUE
+    assert AIGBuffer._OR(_TRUE, _FALSE) == _TRUE
+    assert AIGBuffer._OR(_TRUE, _X) == _TRUE
+    assert AIGBuffer._OR(_FALSE, _TRUE) == _TRUE
+    assert AIGBuffer._OR(_FALSE, _FALSE) == _FALSE
+    assert AIGBuffer._OR(_FALSE, _X) == _X
 
     assert ( AIGBuffer._NOT(_FALSE) == _TRUE )
     assert ( AIGBuffer._NOT(_TRUE) == _FALSE )
     assert ( AIGBuffer._NOT(_X) == _X )
 
 
-def test():
+def test1():
+    a = z3.Bool('a')
+    b = z3.Bool('b')
+    expr = z3.Not(z3.Or(a, z3.Not(b)))
+    print (expr)
+    slv = z3.Solver()
+    slv.add(expr)
+    assert slv.check() == z3.sat
+    m = slv.model()
+    print (m)
+    aigbuf = AIGBuffer()        # new object
+    aigbuf.register_expr(expr)  # register the next cube
+    aigbuf.set_initial_var_assignment(m)  # set initial model
+    assert aigbuf.get_val(expr) == _TRUE
+    aigbuf._check_consistency()
+    aigbuf.set_Li( a, _X )
+    aigbuf._check_consistency()
+    print ( aigbuf.interpret( aigbuf.get_val(expr) ) )
+    aigbuf.set_Li( b, _X )
+    aigbuf._check_consistency()
+    print ( aigbuf.interpret(aigbuf.get_val(expr) ) )
+    aigbuf.set_Li( b, _TRUE )
+    aigbuf._check_consistency()
+    print ( aigbuf.interpret(aigbuf.get_val(expr) ) )
+    aigbuf.set_Li( b, _FALSE )
+    aigbuf._check_consistency()
+    print ( aigbuf.interpret(aigbuf.get_val(expr) ) )
+    aigbuf.set_Li( a, _TRUE )
+    aigbuf._check_consistency()
+    print ( aigbuf.interpret(aigbuf.get_val(expr) ) )
+    aigbuf.set_Li( b, _X )
+    aigbuf._check_consistency()
+    print (aigbuf.interpret( aigbuf.get_val(expr) ) )
+    aigbuf.set_Li( a, _FALSE )
+    aigbuf.set_Li( b, _FALSE )
+    aigbuf._check_consistency()
+    print (aigbuf.interpret( aigbuf.get_val(expr) ) )
+    
+def test2():
     a = z3.Bool('a')
     b = z3.Bool('b')
     expr = z3.Not(z3.And(z3.Not(a), z3.Not(b), z3.And(True)))
@@ -319,10 +377,5 @@ def test():
 
 if __name__ == '__main__':
     test0()
-    test()
-
-
-        
-        
-        
-
+    test1()
+    test2()
