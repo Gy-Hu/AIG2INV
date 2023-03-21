@@ -300,6 +300,7 @@ def test0():
 
 
 def test1():
+    print("\nBegin to do test 1 simulation:\n")
     a = z3.Bool('a')
     b = z3.Bool('b')
     expr = z3.Not(z3.Or(a, z3.Not(b)))
@@ -314,30 +315,48 @@ def test1():
     aigbuf.set_initial_var_assignment(m)  # set initial model
     assert aigbuf.get_val(expr) == _TRUE
     aigbuf._check_consistency()
+    
+    print("\nBegin to do ternary simulation:\n")
+    # Set a to X
     aigbuf.set_Li( a, _X )
     aigbuf._check_consistency()
     print ( aigbuf.interpret( aigbuf.get_val(expr) ) )
+    
+    # Set b to X
     aigbuf.set_Li( b, _X )
     aigbuf._check_consistency()
     print ( aigbuf.interpret(aigbuf.get_val(expr) ) )
+    
+    # Set b to True
     aigbuf.set_Li( b, _TRUE )
     aigbuf._check_consistency()
     print ( aigbuf.interpret(aigbuf.get_val(expr) ) )
+    
+    # Set b to False
     aigbuf.set_Li( b, _FALSE )
     aigbuf._check_consistency()
     print ( aigbuf.interpret(aigbuf.get_val(expr) ) )
+    
+    # Set a to True
     aigbuf.set_Li( a, _TRUE )
     aigbuf._check_consistency()
     print ( aigbuf.interpret(aigbuf.get_val(expr) ) )
+    
+    # Set b to X
     aigbuf.set_Li( b, _X )
     aigbuf._check_consistency()
     print (aigbuf.interpret( aigbuf.get_val(expr) ) )
+    
+    # Set a to False
+    # Set b to False
     aigbuf.set_Li( a, _FALSE )
     aigbuf.set_Li( b, _FALSE )
     aigbuf._check_consistency()
+    
     print (aigbuf.interpret( aigbuf.get_val(expr) ) )
     
 def test2():
+    print("\nBegin to do test 2 simulation:\n")
     a = z3.Bool('a')
     b = z3.Bool('b')
     expr = z3.Not(z3.And(z3.Not(a), z3.Not(b), z3.And(True)))
@@ -352,6 +371,8 @@ def test2():
     aigbuf.set_initial_var_assignment(m)  # set initial model
     assert aigbuf.get_val(expr) == _TRUE
     aigbuf._check_consistency()
+    
+    print("\nBegin to do ternary simulation:\n")
     aigbuf.set_Li( a, _X )
     aigbuf._check_consistency()
     print ( aigbuf.interpret( aigbuf.get_val(expr) ) )
