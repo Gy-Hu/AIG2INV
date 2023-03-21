@@ -29,7 +29,7 @@ https://github.com/zhanghongce/IC3ref - modified Makefile (may not be necessary)
 * `build_data.py` : build data from aag+inv to graph
 * `train_data.py` : train data from graph
 * `main.py` : predict the induction invariant from SAT models
-* `clean_trival_log.py` : clean the trivial logs (line <= 20)
+* `tool_box.py` : some useful functions (e.g. clean trivial log)
 * `utils/fetch_aiger.py` : fetch aiger, this script must be ran in the same dir as `utils`
 
 ### Usage
@@ -42,10 +42,11 @@ https://github.com/zhanghongce/IC3ref - modified Makefile (may not be necessary)
     * `python build_data.py --model-checker ic3ref --dataset-folder-prefix dataset_hwmcc07_small --simplification-label slight --benchmark hwmcc2007_small --ground_truth_folder_prefix /data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`
 
 ### For dataset
-* `dataset_hwmcc07_toy` : contains only one aiger's cex
-* `dataset_hwmcc07_small`: contains 5 simplest aigers from hwmcc07
+* `dataset_hwmcc07_toy_no_simplification` : contains only one aiger's cex
+* `dataset_hwmcc07_small_no_simplification`: contains 5 simplest aigers from hwmcc07
 
 ### For converted aiger
-* `case4test/hwmcc2007_big_comp_for_prediction`: hwmcc07 tip safety cases (only UNSAT cases) all aiger1.0 format, only use to dump predicted clauses
-* `case4test/hwmcc2007`: hwmcc07 tip all safety cases, including both UNSAT and SAT cases (all aiger1.0 format)
+* `cnt1` , `cnt2` and `cnt-zeros` : For toy experiments
+* `case4test/hwmcc2007_all_comp_for_prediction`: hwmcc07 tip safety cases (only UNSAT cases) all aiger1.0 format, only use to dump predicted clauses
+* `case4test/hwmcc2007_all`: hwmcc07 tip all safety cases, including both UNSAT and SAT cases (all aiger1.0 format)
 * `case4test/hwmcc2020_all`: hwmcc20 safety cases (all aiger1.0 format)
