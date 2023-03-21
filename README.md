@@ -20,10 +20,20 @@ Accelerating IC3 by inducive clauses prediction
 * ic3ref hwmcc20: `/data/hongcezh/clause-learning/data-collect/hwmcc20-7200-result/output/aig`
 
 ### For deps
+
+**For modified ic3ref:**
+
 clone modified ic3ref to utils
 https://github.com/zhanghongce/IC3ref - modified Makefile (may not be necessary)
 
 > usage: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/IC3ref/IC3 -v -f xxx.cnf < xxx.aig
+
+**For modified abc:**
+
+clone modified abc to utils - https://github.com/zhanghongce/abc
+
+> usage: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/abc/abc -c "&r xxx.aig; &put; fold ; pdr -v"
+
 
 ### For scripts
 * `build_data.py` : build data from aag+inv to graph
