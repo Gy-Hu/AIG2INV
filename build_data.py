@@ -379,7 +379,7 @@ if __name__ == '__main__':
         #'--dataset-folder-prefix', 'dataset_hwmcc20_small_abc_slight_1', \
         '--simplification-label', 'slight', \
         '--benchmark', 'hwmcc2020_small', \
-        '--ground_truth_folder_prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result',\
+        '--ground_truth_folder_prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result',\
         '--subset_range', '1'
         ])
     
