@@ -49,30 +49,6 @@ def json2graph_pickle(filename,ground_truth_path, pickle_file_name_prefix):
         edge_list
     )
 
-    # Print the graph by networkx api
-    # nx.draw(
-    #     G,
-    #     with_labels=True
-    # )
-
-    # Print the graph by matplotlib
-    # pos = nx.random_layout(G)
-    # nx.draw_networkx_nodes(G, pos, node_color = 'r', node_size = 100, alpha = 1)
-    # ax = plt.gca()
-    # for e in G.edges:
-    #     ax.annotate("",
-    #                 xy=pos[e[0]], xycoords='data',
-    #                 xytext=pos[e[1]], textcoords='data',
-    #                 arrowprops=dict(arrowstyle="->", color="0.5",
-    #                                 shrinkA=5, shrinkB=5,
-    #                                 patchA=None, patchB=None,
-    #                                 connectionstyle="arc3,rad=rrr".replace('rrr',str(0.3*e[2])
-    #                                 ),
-    #                                 ),
-    #                 )
-    # plt.axis('off')
-    # plt.show()
-
     # Convert graph to numpy matrix
     A=np.array(nx.to_numpy_matrix(G))
 
@@ -113,34 +89,36 @@ def json2graph_pickle(filename,ground_truth_path, pickle_file_name_prefix):
 # and convert it to a networkx graph
 # only load .json file
 
-# parse the input arguments
-parser = argparse.ArgumentParser()
-parser.add_argument('--json_file_path', type=str, default=None, help='the path of the json file')
-parser.add_argument('--ground_truth_path', type=str, default=None, help='the path of the ground truth table')
-parser.add_argument('--pickle_file_name_prefix', type=str, default=None, help='the prefix of the pickle file name')
-args = parser.parse_args()
+# add main
+if __name__ == '__main__':
+    # parse the input arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--json_file_path', type=str, default=None, help='the path of the json file')
+    parser.add_argument('--ground_truth_path', type=str, default=None, help='the path of the ground truth table')
+    parser.add_argument('--pickle_file_name_prefix', type=str, default=None, help='the prefix of the pickle file name')
+    args = parser.parse_args()
 
-# assertion for the input arguments
-assert args.json_file_path is not None, "Please specify the path of the json file"
-assert args.ground_truth_path is not None, "Please specify the path of the ground truth table"
+    # assertion for the input arguments
+    assert args.json_file_path is not None, "Please specify the path of the json file"
+    assert args.ground_truth_path is not None, "Please specify the path of the ground truth table"
 
-#json_file_path = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B"
-#json_file_path = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C"
-json_file_path = args.json_file_path
-json_file_list = os.listdir(json_file_path)
-json_file_list = [x for x in json_file_list if x.endswith(".json")]
+    #json_file_path = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B"
+    #json_file_path = "../../dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.reactor^4.C"
+    json_file_path = args.json_file_path
+    json_file_list = os.listdir(json_file_path)
+    json_file_list = [x for x in json_file_list if x.endswith(".json")]
 
-#ground_truth_file_path = "../../dataset/bad_cube_cex2graph/ground_truth_table/nusmv.syncarb5^2.B"
-#ground_truth_file_path = "../../dataset/bad_cube_cex2graph/ground_truth_table/nusmv.reactor^4.C"
-ground_truth_file_path = args.ground_truth_path
-ground_truth_file_list = os.listdir(ground_truth_file_path)
-ground_truth_file_list = [x for x in ground_truth_file_list if x.endswith(".csv")]
+    #ground_truth_file_path = "../../dataset/bad_cube_cex2graph/ground_truth_table/nusmv.syncarb5^2.B"
+    #ground_truth_file_path = "../../dataset/bad_cube_cex2graph/ground_truth_table/nusmv.reactor^4.C"
+    ground_truth_file_path = args.ground_truth_path
+    ground_truth_file_list = os.listdir(ground_truth_file_path)
+    ground_truth_file_list = [x for x in ground_truth_file_list if x.endswith(".csv")]
 
-print("Total number of json files: ", len(json_file_list))
+    print("Total number of json files: ", len(json_file_list))
 
-for preprocess_cases in ground_truth_file_list:
-    # filter the json file list by the ground truth file list
-    json_file_list = [x for x in json_file_list if x.startswith(preprocess_cases.split('.')[0])]
-    for json_file in json_file_list:
-        print("Processing file: ", json_file)
-        json2graph_pickle(os.path.join(json_file_path, json_file),ground_truth_file_path, pickle_file_name_prefix=args.pickle_file_name_prefix)
+    for preprocess_cases in ground_truth_file_list:
+        # filter the json file list by the ground truth file list
+        json_file_list = [x for x in json_file_list if x.startswith(preprocess_cases.split('.')[0])]
+        for json_file in json_file_list:
+            print("Processing file: ", json_file)
+            json2graph_pickle(os.path.join(json_file_path, json_file),ground_truth_file_path, pickle_file_name_prefix=args.pickle_file_name_prefix)
