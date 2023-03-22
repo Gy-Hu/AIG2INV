@@ -269,17 +269,18 @@ def walkFile():
     assert len(files) > 0, f"No files found in {self}"
     return files
 
-def subset_preproces(all_aig_folder=f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/{BENCHMARK}_all",\
-    folder_for_prediction_result_store=f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/{SELECTED_DATASET}_comp",\
-    aig_with_preprocess_data = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{SELECTED_DATASET}/bad_cube_cex2graph/json_to_graph_pickle/"):
+def subset_preproces():
     '''
     This program will copy all the aig files from {all_aig_folder} to {folder_for_prediction_result_store}
     if the aig file has generated graph (which can be used for prediction) in {aig_with_preprocess_data} 
     
-    @param all_aig_folder: the folder that contains all the aig files (will be filtered, only the aiger that has graph will be copied)
-    @param folder_for_prediction_result_store: used for comparision with original model checker
-    @param aig_with_preprocess_data: the folder that contains all the aig files that has been preprocessed (has graph)
+    all_aig_folder: the folder that contains all the aig files (will be filtered, only the aiger that has graph will be copied)
+    folder_for_prediction_result_store: used for comparision with original model checker
+    aig_with_preprocess_data: the folder that contains all the aig files that has been preprocessed (has graph)
     '''
+    all_aig_folder=f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/{BENCHMARK}"
+    folder_for_prediction_result_store=f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4comp/{SELECTED_DATASET}_comp"
+    aig_with_preprocess_data = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{SELECTED_DATASET}/bad_cube_cex2graph/json_to_graph_pickle/"
     if not os.path.exists(folder_for_prediction_result_store):
         os.makedirs(folder_for_prediction_result_store)
     else:
@@ -319,30 +320,13 @@ def subset_preproces(all_aig_folder=f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_
             shutil.copy(all_aig_folder, f'{folder_for_prediction_result_store}/{all_aig_folder.split("/")[-1].split(".aag")[0]}')
     print('Finish copying all the aig files to the corresponding folders')
     
-def subset_preproces_all(all_aig_folder='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007',\
-    folder_for_prediction_result_store='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007_all_comp_for_prediction'):
-    aig_file_list = []
-    #get all file names from all the subfolders
-    for root, dirs, files in os.walk(all_aig_folder):
-        for file in files:
-            if file.endswith(".aag"):
-                all_aig_folder = os.path.join(root, file)
-                aig_file_list.append(all_aig_folder)
-    #print(aig_file_list)
-
-    #create a folder for each file
-    for all_aig_folder in aig_file_list :
-        os.mkdir(f'{folder_for_prediction_result_store}/{all_aig_folder.split("/")[-1].split(".aag")[0]}')
-        # copy the aig file to the folder
-        shutil.copy(all_aig_folder, f'{folder_for_prediction_result_store}/{all_aig_folder.split("/")[-1].split(".aag")[0]}')
-    print('Finish copying all the aig files to the corresponding folders')
 
 def get_dataset(selected_dataset):
     assert os.path.exists(f"./{selected_dataset}"), "The dataset path does not exist!"
     return selected_dataset
     
 def compare_abc(aig_original_location, selected_aig_case):
-    pass # WIP
+    #pass # WIP
     # compare with abc
     '''
     modified abc located in /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/abc/abc
@@ -677,8 +661,9 @@ def compare_inv_and_draw_table(threshold, NN_model, aig_with_predicted_location_
     pass
 
 
-
 if __name__ == "__main__":
+    global SELECTED_DATASET 
+    global BENCHMARK
     # input arguments to adjust the test case, thershold, and model
     parser = argparse.ArgumentParser()
     parser.add_argument('--threshold', type=float, default=0.8, help='threshold for the output of the NN model')
@@ -688,9 +673,9 @@ if __name__ == "__main__":
     parser.add_argument('--compare_with_ic3ref_basic_generalization', action='store_true', help='compare with ic3ref basic generalization')
     parser.add_argument('--compare_with_nnic3_basic_generalization', action='store_true', help='compare with nnic3 basic generalization')
     parser.add_argument('--aig-case-name', type=str, default=None, help='case name, use for test single case, for example: cmu.dme1.B')
-    #XXX: DOuble check before running the script
+    #XXX: Double check before running the script
     parser.add_argument('--NN-model', type=str, default='neuropdr_2023-01-06_07:56:57_last.pth.tar', help='model name')
-    parser.add_argument('--benchmark', type=str, default='hwmcc2007', help='all aig folder')
+    parser.add_argument('--benchmark', type=str, default='hwmcc2007_all', help='benchmark folder (used to filter the dataset)')
     parser.add_argument('--gpu-id', type=str, default='1', help='gpu id')
     parser.add_argument('--compare_with_ic3ref', action='store_true', help='compare with ic3ref')
     parser.add_argument('--compare_with_abc', action='store_true', help='compare with abc')
@@ -705,23 +690,27 @@ if __name__ == "__main__":
     #XXX: Double check before running the script
     args =  parser.parse_args([
         '--threshold', '0.5',
-        '--aig-case-name', 'eijk.S1423.S', #should has huge improvement
-        '--aig-case-name', 'nusmv.guidance^6.C',
+        #'--aig-case-name', 'eijk.S1423.S', #should has huge improvement
+        '--aig-case-name', 'miim',
+        #'--aig-case-name', 'nusmv.guidance^6.C',
         #'--aig-case-folder-prefix-for-prediction', 'benchmark_folder/hwmcc2007_big_comp_for_prediction',
         '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
         '--gpu-id', '1',
-        '--compare_with_ic3ref',
-        '--selected-built-dataset', 'dataset_hwmcc20_small_abc_slight_1'
-        '--benchmark', 'hwmcc2020',
+        #'--compare_with_ic3ref',
+        '--compare_with_abc',
+        #'--selected-built-dataset', 'dataset_hwmcc2007_all_no_simplification_23',
+        '--selected-built-dataset', 'dataset_hwmcc2020_small_abc_slight_1',
+        #'--benchmark', 'hwmcc2007_all'
+        '--benchmark', 'hwmcc2020_all'
     ])
     
     args.compare_with_ic3ref_basic_generalization = "-b" if args.compare_with_ic3ref_basic_generalization else ""
     args.compare_with_nnic3_basic_generalization = "-b" if args.compare_with_nnic3_basic_generalization else ""
-    global SELECTED_DATASET 
-    global BENCHMARK
+    
+    
     BENCHMARK = args.benchmark
     SELECTED_DATASET = args.selected_built_dataset
-    aig_case_folder_prefix_for_prediction = f'benchmark_folder/{SELECTED_DATASET}_comp'
+    aig_case_folder_prefix_for_prediction = f"case4comp/{SELECTED_DATASET}_comp"
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 

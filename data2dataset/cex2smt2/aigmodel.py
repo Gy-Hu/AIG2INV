@@ -16,7 +16,7 @@ def get_literal(vartable, lid):
     return expr # even
 
 class AAGmodel():
-    def __init__(self,_):
+    def __init__(self,_=None):
         global SIMPLIFICATION_LEVEL
         SIMPLIFICATION_LEVEL = _
         self.inputs = []  # I

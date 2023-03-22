@@ -37,3 +37,5 @@ yosys/
 aiger_tool_util/
 pre-dataset/
 hwmcc20-ic3ref_7200-result/
+benchmark_folder/
+case4comp/

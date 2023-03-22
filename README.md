@@ -64,6 +64,9 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 * `benchmark_folder/hwmcc2020_small`: part of hwmcc20 safety cases (all aiger1.0 format), only contains 50 simple cases
 * `benchmark_folder/hwmcc2020_all_without_sat_unknown`: hwmcc20 safety cases without SAT and UNKNOWN cases (all aiger1.0 format)
 
+### For validate result
+* `case4comp/xxx`: contains the aiger and its predicted clauses
+
 ### Simplification Level
 * `thorough`: use sympy in transition relation simplification + aig operator simplification during transition relation construction + z3 simplification + counterexample cube simplification
 * `deep`: use sympy in transition relation simplification + aig operator simplification during transition relation construction + z3 simplification

@@ -366,8 +366,8 @@ if __name__ == '__main__':
     parser.add_argument('--error_handle_with_ic3ref_basic_generalization', action='store_true', help='error handle with ic3ref basic generalization')
     parser.add_argument('--run-mode', type=str, default="normal", help='run mode, normal or debug. Debug is for testing invariants correctness only')
     parser.add_argument('--model-checker', type=str, default="ic3ref", help='model checker, ic3ref or abc')
-    parser.add_argument('--dataset-folder-prefix', type=str, default="dataset", help='dataset folder prefix, the final aim generated folder, in the root folder')
-    parser.add_argument('--simplification-label', type=str, default=None, help='simplification label')
+    #parser.add_argument('--dataset-folder-prefix', type=str, default="dataset", help='dataset folder prefix, the final aim generated folder, in the root folder')
+    parser.add_argument('--simplification-label', type=str, default="no_simplification", help='simplification label')
     parser.add_argument('--benchmark', type=str, default=None, help='benchmark, which is used to generate the training dataset, in benchmark')
     parser.add_argument('--ground_truth_folder_prefix', type=str, default=None, help='ground truth folder prefix, the final aim generated folder, in the root folder')
     parser.add_argument('--subset_range', type=int, default=1, help='subset range, the number of subset')
@@ -376,7 +376,7 @@ if __name__ == '__main__':
     '''
     '''
     args = parser.parse_args(['--model-checker', 'abc', \
-        '--dataset-folder-prefix', 'dataset_hwmcc20_small_abc_slight_1', \
+        #'--dataset-folder-prefix', 'dataset_hwmcc20_small_abc_slight_1', \
         '--simplification-label', 'slight', \
         '--benchmark', 'hwmcc2020_small', \
         '--ground_truth_folder_prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result',\
@@ -391,7 +391,7 @@ if __name__ == '__main__':
     global BENCHMARK
     global GROUND_TRUTH_FOLDER_PREFIX
     global SUBSET_RANGE
-    DATASET_FOLDER_PREFIX = args.dataset_folder_prefix
+    DATASET_FOLDER_PREFIX = f"dataset_{args.benchmark}_{args.model_checker}_{args.simplification_label}_{args.subset_range}"
     SIMPLIFICATION_LABEL = "--thorough-simplification T" if args.simplification_label == "thorough" \
         else "--deep-simplification T" if args.simplification_label == "deep" \
         else "--moderate-simplification T" if args.simplification_label == "moderate"\
