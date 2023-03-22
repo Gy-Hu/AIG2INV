@@ -17,7 +17,7 @@ Accelerating IC3 by inducive clauses prediction
 * abc hwmcc07: `/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/`
 * abc hwmcc20: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result/`
 * ic3ref hwmcc07: `/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`
-* ic3ref hwmcc20: `/data/hongcezh/clause-learning/data-collect/hwmcc20-7200-result/output/aig`
+* ic3ref hwmcc20: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20-ic3ref_7200-result/`
 
 ### For deps
 
@@ -54,15 +54,15 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 ### For dataset
 * `dataset_hwmcc07_toy_no_simplification` : contains only one aiger's cex
 * `dataset_hwmcc07_small_no_simplification`: contains 5 simplest aigers from hwmcc07
-* `dataset_{HWMCC_YEAR}_{DATASET_LEVEL}_{MODEL_CHECKER}_{SIMPLIFICATION_LEVEL}_{SUBSET_RANGE}`: contains `{DATASET_LEVEL}` aiger of `{SUBSET_RANGE}` from `hwmcc{YEAR}` with `{SIMPLIFICATION_LEVEL}` simplification, and ground truth from `{MODEL_CHECKER}` model checker
+* `dataset_{BENCHMARK}_{MODEL_CHECKER}_{SIMPLIFICATION_LEVEL}_{SUBSET_RANGE}`: contains aigers of `{BENCHMARK}` with `{SIMPLIFICATION_LEVEL}` simplification, and ground truth from `{MODEL_CHECKER}` model checker
 
 ### For converted aiger
 * `cnt1` , `cnt2` and `cnt-zeros` : For toy experiments
-* `case4test/hwmcc2007_all`: hwmcc07 tip all safety cases, including both UNSAT and SAT cases (all aiger1.0 format)
-* `case4test/hwmcc2007_all_comp_for_prediction_ic3ref`: hwmcc07 tip safety cases (only UNSAT cases) all aiger1.0 format, only use to dump predicted clauses, for ic3ref prediction
-* `case4test/hwmcc2020_all`: hwmcc20 safety cases (all aiger1.0 format)
-* `case4test/hwmcc2020_small`: part of hwmcc20 safety cases (all aiger1.0 format), only contains 50 simple cases
-* `case4test/hwmcc2020_all_without_sat_unknown`: hwmcc20 safety cases without SAT and UNKNOWN cases (all aiger1.0 format)
+* `benchmark_folder/hwmcc2007_all`: hwmcc07 tip all safety cases, including both UNSAT and SAT cases (all aiger1.0 format)
+* `benchmark_folder/hwmcc2007_all_comp_for_prediction_ic3ref`: hwmcc07 tip safety cases (only UNSAT cases) all aiger1.0 format, only use to dump predicted clauses, for ic3ref prediction
+* `benchmark_folder/hwmcc2020_all`: hwmcc20 safety cases (all aiger1.0 format)
+* `benchmark_folder/hwmcc2020_small`: part of hwmcc20 safety cases (all aiger1.0 format), only contains 50 simple cases
+* `benchmark_folder/hwmcc2020_all_without_sat_unknown`: hwmcc20 safety cases without SAT and UNKNOWN cases (all aiger1.0 format)
 
 ### Simplification Level
 * `thorough`: use sympy in transition relation simplification + aig operator simplification during transition relation construction + z3 simplification + counterexample cube simplification

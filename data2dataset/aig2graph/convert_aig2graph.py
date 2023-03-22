@@ -26,8 +26,8 @@ def convert_aag(aag_fname, inv_cnf):
 
 
 def test():
-  #graph = convert_aag(aag_fname="../../case4test/hwmcc_simple/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B.aag", inv_cnf="../../case4test/hwmcc_simple/nusmv.syncarb5^2.B/inv.cnf")
-  graph = convert_aag(aag_fname="../../case4test/cnt1/cnt.aag", inv_cnf="../../case4test/cnt1/inv.cnf")
+  #graph = convert_aag(aag_fname="../../benchmark_folder/hwmcc_simple/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B.aag", inv_cnf="../../benchmark_folder/hwmcc_simple/nusmv.syncarb5^2.B/inv.cnf")
+  graph = convert_aag(aag_fname="../../benchmark_folder/cnt1/cnt.aag", inv_cnf="../../benchmark_folder/cnt1/inv.cnf")
   # export the png for testing only
   import networkx as nx
   from torch_geometric.utils.convert import to_networkx

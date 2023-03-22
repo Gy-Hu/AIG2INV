@@ -4,7 +4,7 @@
 ----------------- Usage of this tool to generate graph for training and testing -----------------
 
 1. Run in the root project directory
-2. The dataset in /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/ (e.g. /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007)
+2. The dataset in /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/ (e.g. /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007)
 3. It should be divided into multiple subsets according to the graph size of counterexample (e.g. .../hwmcc2007/subset_0, .../hwmcc2007/subset_1)
 
 
@@ -124,7 +124,7 @@ def walkFile(dir):
 def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
     #generate smt2 file for prediction -> SAT model/conterexample
     print("Start to find the cases with inductive invariants!")
-    subset_dir = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/{BENCHMARK}/subset_"
+    subset_dir = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/{BENCHMARK}/subset_"
     subset_dir_lst = [subset_dir+str(i) for i in range(SUBSET_RANGE)] # 10 is the number for test subset
     
     # get all the generated inductive invariants cases' name
@@ -368,7 +368,7 @@ if __name__ == '__main__':
     parser.add_argument('--model-checker', type=str, default="ic3ref", help='model checker, ic3ref or abc')
     parser.add_argument('--dataset-folder-prefix', type=str, default="dataset", help='dataset folder prefix, the final aim generated folder, in the root folder')
     parser.add_argument('--simplification-label', type=str, default=None, help='simplification label')
-    parser.add_argument('--benchmark', type=str, default=None, help='benchmark, which is used to generate the training dataset, in case4test')
+    parser.add_argument('--benchmark', type=str, default=None, help='benchmark, which is used to generate the training dataset, in benchmark')
     parser.add_argument('--ground_truth_folder_prefix', type=str, default=None, help='ground truth folder prefix, the final aim generated folder, in the root folder')
     parser.add_argument('--subset_range', type=int, default=1, help='subset range, the number of subset')
     

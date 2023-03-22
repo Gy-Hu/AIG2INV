@@ -96,7 +96,7 @@ def check_extractor_eq(aag_name, cnf_name, model_name, generalize_predecessor, g
 def test():
     #case = "nusmv.syncarb5^2.B"
     case = "nusmv.reactor^4.C"
-    convert_one_aag(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc_simple/{case}/{case}.aag", f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case) 
+    convert_one_aag(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc_simple/{case}/{case}.aag", f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case) 
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -139,22 +139,22 @@ if __name__ == "__main__":
     for testing only
     
     args = parser.parse_args(['--aag',
-        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2020_all/subset_0/simple_alu.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_4/nusmv.brp.B.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_0/nusmv.syncarb5^2.B.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_0/eijk.S208c.S.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_2/eijk.S386.S.aag', # encountered a bug in addModel(generalize predecessor)
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_17/vis.prodcell^03.E.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_7/eijk.S953.S.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_3/vis.arbiter.E.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_20/texas.PI_main^01.E.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_21/texas.PI_main^05.E.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_15/eijk.S5378.S.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_15/eijk.bs3330.S.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_15/eijk.bs3271.S.aag', # Solve sat solving when verify the invariants correctness
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_6/eijk.S838.S.aag', # Solving time of PDR is very long
-        #"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_17/vis.prodcell^03.E.aag", # cannot pass inv correctness check by any methods
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4test/hwmcc2007/subset_9/nusmv.reactor^5.C.aag', # z3 convert to dimacs has problem
+        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2020_all/subset_0/simple_alu.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_4/nusmv.brp.B.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_0/nusmv.syncarb5^2.B.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_0/eijk.S208c.S.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_2/eijk.S386.S.aag', # encountered a bug in addModel(generalize predecessor)
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_17/vis.prodcell^03.E.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_7/eijk.S953.S.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_3/vis.arbiter.E.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_20/texas.PI_main^01.E.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_21/texas.PI_main^05.E.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_15/eijk.S5378.S.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_15/eijk.bs3330.S.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_15/eijk.bs3271.S.aag', # Solve sat solving when verify the invariants correctness
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_6/eijk.S838.S.aag', # Solving time of PDR is very long
+        #"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_17/vis.prodcell^03.E.aag", # cannot pass inv correctness check by any methods
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_9/nusmv.reactor^5.C.aag', # z3 convert to dimacs has problem
         '--generalize', 'T',
         #'--cnf',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv/nusmv.brp.B/inv.cnf',
