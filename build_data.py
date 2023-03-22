@@ -376,7 +376,7 @@ if __name__ == '__main__':
     '''
     '''
     args = parser.parse_args(['--model-checker', 'abc', \
-        '--dataset-folder-prefix', 'dataset_hwmcc20_small_abc_slight', \
+        '--dataset-folder-prefix', 'dataset_hwmcc20_small_abc_slight_1', \
         '--simplification-label', 'slight', \
         '--benchmark', 'hwmcc2020_small', \
         '--ground_truth_folder_prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result',\

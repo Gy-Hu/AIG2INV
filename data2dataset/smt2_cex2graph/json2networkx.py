@@ -117,6 +117,7 @@ def json2graph_pickle(filename,ground_truth_path, pickle_file_name_prefix):
 parser = argparse.ArgumentParser()
 parser.add_argument('--json_file_path', type=str, default=None, help='the path of the json file')
 parser.add_argument('--ground_truth_path', type=str, default=None, help='the path of the ground truth table')
+parser.add_argument('--pickle_file_name_prefix', type=str, default=None, help='the prefix of the pickle file name')
 args = parser.parse_args()
 
 # assertion for the input arguments
@@ -142,4 +143,4 @@ for preprocess_cases in ground_truth_file_list:
     json_file_list = [x for x in json_file_list if x.startswith(preprocess_cases.split('.')[0])]
     for json_file in json_file_list:
         print("Processing file: ", json_file)
-        json2graph_pickle(os.path.join(json_file_path, json_file),ground_truth_file_path)
+        json2graph_pickle(os.path.join(json_file_path, json_file),ground_truth_file_path, pickle_file_name_prefix=args.pickle_file_name_prefix)

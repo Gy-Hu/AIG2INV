@@ -45,15 +45,16 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 ### Usage
 **build dataset**
 * Example command to construct hwmcc20 abc training data:
-    * `python build_data.py --model-checker abc --dataset-folder-prefix dataset_hwmcc20_big --simplification-label slight --benchmark hwmcc2020_all --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result`
-    * `python build_data.py --model-checker abc --dataset-folder-prefix dataset_hwmcc20_small --simplification-label slight --benchmark hwmcc2020_small --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result`
+    * `python build_data.py --model-checker abc --dataset-folder-prefix dataset_hwmcc20_big_abc_1 --simplification-label slight --benchmark hwmcc2020_all --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result --subset_range 1`
+    * `python build_data.py --model-checker abc --dataset-folder-prefix dataset_hwmcc20_small_abc_1 --simplification-label slight --benchmark hwmcc2020_small --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result --subset_range 1`
 * Example command to construct hwmcc07 ic3ref training data:
-    * `python build_data.py --model-checker ic3ref --dataset-folder-prefix dataset_hwmcc07_big --simplification-label slight --benchmark hwmcc2007 --ground_truth_folder_prefix /data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`
-    * `python build_data.py --model-checker ic3ref --dataset-folder-prefix dataset_hwmcc07_small --simplification-label slight --benchmark hwmcc2007_small --ground_truth_folder_prefix /data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`
+    * `python build_data.py --model-checker ic3ref --dataset-folder-prefix dataset_hwmcc07_big_ic3ref_1 --simplification-label slight --benchmark hwmcc2007 --ground_truth_folder_prefix /data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/ --subset_range 1`
+    * `python build_data.py --model-checker ic3ref --dataset-folder-prefix dataset_hwmcc07_small_ic3ref_1 --simplification-label slight --benchmark hwmcc2007_small --ground_truth_folder_prefix /data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/ --subset_range 1`
 
 ### For dataset
 * `dataset_hwmcc07_toy_no_simplification` : contains only one aiger's cex
 * `dataset_hwmcc07_small_no_simplification`: contains 5 simplest aigers from hwmcc07
+* `dataset_{HWMCC_YEAR}_{DATASET_LEVEL}_{MODEL_CHECKER}_{SIMPLIFICATION_LEVEL}_{SUBSET_RANGE}`: contains `{DATASET_LEVEL}` aiger of `{SUBSET_RANGE}` from `hwmcc{YEAR}` with `{SIMPLIFICATION_LEVEL}` simplification, and ground truth from `{MODEL_CHECKER}` model checker
 
 ### For converted aiger
 * `cnt1` , `cnt2` and `cnt-zeros` : For toy experiments
