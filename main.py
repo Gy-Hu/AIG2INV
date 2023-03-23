@@ -689,6 +689,7 @@ if __name__ == "__main__":
     parser.add_argument('--compare_with_ic3ref', action='store_true', help='compare with ic3ref')
     parser.add_argument('--compare_with_abc', action='store_true', help='compare with abc')
     parser.add_argument('--selected-built-dataset', type=str, default='big', help='selected dataset to predict the clauses (dataset has been built from build_data.py)')
+    parser.add_argument('--re-predict', action='store_true', help='re-predict the clauses')
     args = parser.parse_args()
 
     
@@ -714,10 +715,16 @@ if __name__ == "__main__":
     ])
     '''
     
-    
+    '''
+    '''
     args = parser.parse_args([
         '--threshold', '0.5',
-        '--selected-built-dataset', 'dataset_hwmcc2020_small_abc_slight_1'])
+        '--selected-built-dataset', 'dataset_hwmcc2020_small_abc_slight_1',
+        '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
+        '--gpu-id', '1',
+        '--compare_with_abc',
+        '--re-predict'])
+    
     
     
     args.compare_with_ic3ref_basic_generalization = "-b" if args.compare_with_ic3ref_basic_generalization else ""
@@ -758,7 +765,7 @@ if __name__ == "__main__":
             if (
                 os.path.exists(
                     f'{aig_case_folder_prefix_for_prediction}/{args.aig_case_name}/{args.aig_case_name}_predicted_clauses_after_filtering.cnf'
-                )
+                ) and not args.re_predict
             )
             else generate_predicted_inv(
                 threshold=args.threshold,
@@ -784,7 +791,7 @@ if __name__ == "__main__":
                 if (
                     os.path.exists(
                         f'{aig_case_folder_prefix_for_prediction}/{aig_case.split("/")[-1]}/{aig_case.split("/")[-1]}_predicted_clauses_after_filtering.cnf'
-                    )
+                    ) and not args.re_predict
                 )
                 else generate_predicted_inv(
                     threshold=args.threshold,
@@ -796,7 +803,7 @@ if __name__ == "__main__":
                 
             # begin to compare the inv with ic3ref or abc
             if generate_predicted_inv_success and args.compare_with_abc:
-                compare_abc(f"{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.compare_with_abc_basic_generalization)
+                compare_abc(f"{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}")
             elif generate_predicted_inv_success and args.compare_with_ic3ref: 
                 compare_ic3ref(f"{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization)
 

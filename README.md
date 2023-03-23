@@ -45,11 +45,14 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 ### Usage
 **build dataset**
 * Example command to construct hwmcc20 abc training data:
-    * `python build_data.py --model-checker abc --dataset-folder-prefix dataset_hwmcc20_big_abc_1 --simplification-label slight --benchmark hwmcc2020_all --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result --subset_range 1`
-    * `python build_data.py --model-checker abc --dataset-folder-prefix dataset_hwmcc20_small_abc_1 --simplification-label slight --benchmark hwmcc2020_small --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result --subset_range 1`
+    * `python build_data.py --model-checker abc --simplification-label slight --benchmark hwmcc2020_all --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result --subset_range 1`
+    * `python build_data.py --model-checker abc --simplification-label slight --benchmark hwmcc2020_small --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result --subset_range 1`
 * Example command to construct hwmcc07 ic3ref training data:
-    * `python build_data.py --model-checker ic3ref --dataset-folder-prefix dataset_hwmcc07_big_ic3ref_1 --simplification-label slight --benchmark hwmcc2007 --ground_truth_folder_prefix /data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/ --subset_range 1`
-    * `python build_data.py --model-checker ic3ref --dataset-folder-prefix dataset_hwmcc07_small_ic3ref_1 --simplification-label slight --benchmark hwmcc2007_small --ground_truth_folder_prefix /data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/ --subset_range 1`
+    * `python build_data.py --model-checker ic3ref --simplification-label slight --benchmark hwmcc2007_all --ground_truth_folder_prefix /data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/ --subset_range 1`
+    * `python build_data.py --model-checker ic3ref --simplification-label slight --benchmark hwmcc2007_small --ground_truth_folder_prefix /data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/ --subset_range 1`
+
+**validate the prediction**
+    * `python main.py --threshold 0.5 --selected-built-dataset dataset_hwmcc2020_small_abc_slight_1 --NN-model neuropdr_2023-01-06_07:56:51_last.pth.tar --gpu-id 1 --compare_with_abc --re-predict`
 
 ### For dataset
 * `dataset_hwmcc07_toy_no_simplification` : contains only one aiger's cex

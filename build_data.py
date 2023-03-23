@@ -374,7 +374,6 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     '''
-    '''
     args = parser.parse_args(['--model-checker', 'abc', \
         #'--dataset-folder-prefix', 'dataset_hwmcc20_small_abc_slight_1', \
         '--simplification-label', 'deep', \
@@ -382,7 +381,7 @@ if __name__ == '__main__':
         '--ground_truth_folder_prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result',\
         '--subset_range', '1'
         ])
-    
+    '''
     
     
     # Global variable assignment
@@ -398,7 +397,7 @@ if __name__ == '__main__':
         else "--slight-simplification T" if args.simplification_label == "slight"\
         else "--naive-simplification T" if args.simplification_label == "naive"\
         else ""
-    assert SIMPLIFICATION_LABEL != "", "simplification label is not correct"
+    #assert SIMPLIFICATION_LABEL != "", "simplification label is not correct"
     BENCHMARK = args.benchmark
     GROUND_TRUTH_FOLDER_PREFIX = args.ground_truth_folder_prefix
     SUBSET_RANGE = args.subset_range
