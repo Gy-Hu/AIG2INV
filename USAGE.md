@@ -1,4 +1,4 @@
-# How to use the script
+# How to use the scripts
 
 ## Generate Benchmark (Simple preprocessing)
 
@@ -13,7 +13,7 @@
             * `--model-checker` : The model checker to use (e.g. `abc`, `ic3ref`)
             * `--simplification-level` : The simplification level to use (e.g. `thorough`, `deep`, `moderate`, `slight` , `naive`)
             * `--benchmark` : The benchmark to use in benchmark_folder (e.g. `hwmcc2007_all`, `hwmcc2020_all`, `hwmcc2020_all_only_unsat`, `hwmcc2020_small`)
-            * `--ground_truth_folder_prefix` : The prefix of the ground truth folder (e.g. `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result`, `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result`, `/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`, `/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`)
+            * `--ground_truth_folder_prefix` : The prefix of the ground truth folder (e.g. `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result`, `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result`, `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`, `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`)
             * `--subset_range` : The range of data in benchmark to generate (e.g. `1`, `23`)
 
 ## Train

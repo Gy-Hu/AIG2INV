@@ -3,7 +3,7 @@ Fetch aiger from Zhang's csv file, and convert it to aag
 '''
 
 
-# Fetch small aiger from /data/hongcezh/clause-learning/data-collect/stat/
+# Fetch small aiger from /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/stat/
 
 from distutils.dir_util import remove_tree
 import pandas as pd
@@ -62,7 +62,7 @@ def fetch_aig_from_csv(csv_file):
 
     # Add file path to the aag_list
     for i in range(len(aag_list)):
-        aag_list[i] = "/data/hongcezh/clause-learning/data-collect/hwmcc20/" + aag_list[i] + ".aig"
+        aag_list[i] = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc20/" + aag_list[i] + ".aig"
 
     return aag_list
 
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     # make aag_dir if it does not exist
     if not os.path.isdir(aag_dir): 
         os.makedirs(aag_dir)
-    csv_file = "/data/hongcezh/clause-learning/data-collect/stat/size20.csv"
+    csv_file = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/stat/size20.csv"
     aig_list = fetch_aig_from_csv(csv_file)
 
     for file in aig_list:

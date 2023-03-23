@@ -71,7 +71,7 @@ def unsat_test(cex_lines, inv_lines):
 
 # main function
 if __name__ == '__main__':
-    file_path_prefix = "/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/"
+    file_path_prefix = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/"
     #file_suffix = "cmu.dme1.B"
     #file_suffix = "eijk.S208o.S"
     #file_suffix = "nusmv.syncarb10^2.B"

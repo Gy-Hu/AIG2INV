@@ -128,7 +128,7 @@ def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
     subset_dir_lst = [subset_dir+str(i) for i in range(SUBSET_RANGE)] # 10 is the number for test subset
     
     # get all the generated inductive invariants cases' name
-    # store all folder name in '/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip'
+    # store all folder name in '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip'
     
     #XXX: Double check before running the script
     cases_with_inductive_invariants = os.listdir(f"{GROUND_TRUTH_FOLDER_PREFIX}")

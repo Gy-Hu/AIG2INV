@@ -96,7 +96,7 @@ def check_extractor_eq(aag_name, cnf_name, model_name, generalize_predecessor, g
 def test():
     #case = "nusmv.syncarb5^2.B"
     case = "nusmv.reactor^4.C"
-    convert_one_aag(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc_simple/{case}/{case}.aag", f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case) 
+    convert_one_aag(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc_simple/{case}/{case}.aag", f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/{case}/inv.cnf", case) 
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     parser.add_argument('--moderate-simplification', type=str2bool, default=False, help='aig operator simplification during tr construction + z3 simplification')
     parser.add_argument('--slight-simplification', type=str2bool, default=False, help='z3 simplification + ternary simulation')
     parser.add_argument('--naive-simplification', type=str2bool, default=False, help='only use sympy to simplify the counterexample cube')
-    parser.add_argument('--ground-truth-folder-prefix', type=str, default='/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/', help='the prefix of the ground truth folder')
+    parser.add_argument('--ground-truth-folder-prefix', type=str, default='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/', help='the prefix of the ground truth folder')
     parser.add_argument('--dump-folder-prefix', type=str, default='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset', help='the prefix of the dump folder')
     
     # parse the arguments to test()
@@ -158,7 +158,7 @@ if __name__ == "__main__":
         '--generalize', 'T',
         #'--cnf',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv/nusmv.brp.B/inv.cnf',
-        #'/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/nusmv.syncarb5^2.B/inv.cnf',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/nusmv.syncarb5^2.B/inv.cnf',
         '--generate_smt2', 
         'T', #XXX: Double check before running scripts
         '--run-mode',
@@ -188,7 +188,7 @@ if __name__ == "__main__":
         # check which model checker is used, and use the corresponding output folder
         if args.model_checker == 'ic3ref':
             convert_one_aag(args.aag, f"{args.ground_truth_folder_prefix}/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker)
-            #convert_one_aag(args.aag, f"/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output-wrong-result/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
+            #convert_one_aag(args.aag, f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output-wrong-result/tip/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode)
         elif args.model_checker == 'abc':
             convert_one_aag(args.aag, f"{args.ground_truth_folder_prefix}/{case}/inv.cnf", case, args.generalize, args.generate_smt2, args.inv_correctness_check, args.run_mode, args.model_checker)
     else:

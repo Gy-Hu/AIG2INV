@@ -5,9 +5,9 @@ Accelerating IC3 by inducive clauses prediction
 ### For important dir
 
 **for ground truth**
-* abc hwmcc07: `/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/`
+* abc hwmcc07: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/`
 * abc hwmcc20: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result/`
-* ic3ref hwmcc07: `/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`
+* ic3ref hwmcc07: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`
 * ic3ref hwmcc20: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20-ic3ref_7200-result/`
 
 ### For deps
@@ -39,8 +39,8 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
     * `python build_data.py --model-checker abc --simplification-label slight --benchmark hwmcc2020_all --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result --subset_range 1`
     * `python build_data.py --model-checker abc --simplification-label slight --benchmark hwmcc2020_small --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result --subset_range 1`
 * Example command to construct hwmcc07 ic3ref training data:
-    * `python build_data.py --model-checker ic3ref --simplification-label slight --benchmark hwmcc2007_all --ground_truth_folder_prefix /data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/ --subset_range 1`
-    * `python build_data.py --model-checker ic3ref --simplification-label slight --benchmark hwmcc2007_small --ground_truth_folder_prefix /data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/ --subset_range 1`
+    * `python build_data.py --model-checker ic3ref --simplification-label slight --benchmark hwmcc2007_all --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/ --subset_range 1`
+    * `python build_data.py --model-checker ic3ref --simplification-label slight --benchmark hwmcc2007_small --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/ --subset_range 1`
 
 **validate the prediction**
 * `python main.py --threshold 0.5 --selected-built-dataset dataset_hwmcc2020_small_abc_slight_1 --NN-model neuropdr_2023-01-06_07:56:51_last.pth.tar --gpu-id 1 --compare_with_abc --re-predict`

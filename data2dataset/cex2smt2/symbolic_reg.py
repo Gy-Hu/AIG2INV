@@ -1,4 +1,4 @@
-# /data/hongcezh/clause-learning/data-collect/stat/size20.csv
+# /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/stat/size20.csv
 from pysr import PySRRegressor
 import pandas as pd
 import numpy as np
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     --------------------Get the aig list (and their path)-------------------
     '''
     # read table at first    
-    df = parse_table("/data/hongcezh/clause-learning/data-collect/stat/size20.csv")
+    df = parse_table("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/stat/size20.csv")
     # prepare data
     #X = 2 * np.random.randn(100, 5)
     
