@@ -164,8 +164,8 @@ def generate_smt2(run_mode='normal', model_checker='ic3ref'):
     If the `run_mode` set to 'debug', collect.py will exit after checking the inv.cnf without smt2 generation.
     Then, this `main.py` will also exit after printing the bad_inv.log
     '''
-    #pool = ThreadPool(multiprocessing.cpu_count())
-    pool = multiprocessing.Pool(64)
+    pool = ThreadPool(multiprocessing.cpu_count()/4)
+    #pool = multiprocessing.Pool(64)
     '''
     First, go to the select dataset, check whether the case has inductive invariants generated in advance,
     if yes, then generate smt2 file for the case, otherwise, skip it.
@@ -236,7 +236,7 @@ def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False, ic3ref
                 # if the inv.cnf and the folder does not exist, then we create the folder
                 os.mkdir(f"{DATASET_FOLDER_PREFIX}/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}")
         # call IC3 to re-generate the inv.cnf for the cases that has mismatched inductive invariants
-        pool = ThreadPool(multiprocessing.cpu_count())
+        pool = ThreadPool(multiprocessing.cpu_count()/4)
         results = []
         results.extend(
             pool.apply_async(
@@ -260,7 +260,7 @@ def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False, ic3ref
     
     
     if only_re_generate_inv==False:
-        pool = ThreadPool(multiprocessing.cpu_count())
+        pool = ThreadPool(multiprocessing.cpu_count()/4)
         # begin to generate the smt2 file for the cases that has mismatched inductive invariants
         results = []
         assert cases4re_generate_inv != [], "BUG: cases4re_generate_inv should not be empty! Check the copy operation!"
@@ -294,7 +294,7 @@ def generate_pre_graph():
     # get all the subfolder name under smt2_dir
     data4json_conversion = os.listdir(smt2_dir)
 
-    pool = ThreadPool(multiprocessing.cpu_count())
+    pool = ThreadPool(multiprocessing.cpu_count()/4)
     results = []
     results.extend(
         pool.apply_async(
@@ -324,7 +324,7 @@ def generate_post_graph():
     # get all the subfolder name under expr_to_build_graph (expression to build graph)
     data4pickle_conversion = os.listdir(json_dir)
 
-    pool = ThreadPool(multiprocessing.cpu_count())
+    pool = ThreadPool(multiprocessing.cpu_count()/4)
     results = []
     results.extend(
         pool.apply_async(
