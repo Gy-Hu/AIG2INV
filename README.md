@@ -45,8 +45,8 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 ### Usage
 **build dataset**
 * Example command to construct hwmcc20 abc training data:
-    * `python build_data.py --model-checker abc --simplification-label slight --benchmark hwmcc2020_all --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result --subset_range 1`
-    * `python build_data.py --model-checker abc --simplification-label slight --benchmark hwmcc2020_small --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/hwmcc20_abc_7200_result --subset_range 1`
+    * `python build_data.py --model-checker abc --simplification-label slight --benchmark hwmcc2020_all --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result --subset_range 1`
+    * `python build_data.py --model-checker abc --simplification-label slight --benchmark hwmcc2020_small --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result --subset_range 1`
 * Example command to construct hwmcc07 ic3ref training data:
     * `python build_data.py --model-checker ic3ref --simplification-label slight --benchmark hwmcc2007_all --ground_truth_folder_prefix /data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/ --subset_range 1`
     * `python build_data.py --model-checker ic3ref --simplification-label slight --benchmark hwmcc2007_small --ground_truth_folder_prefix /data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/ --subset_range 1`
