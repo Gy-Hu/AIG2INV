@@ -169,7 +169,8 @@ if __name__ == "__main__":
         #'--moderate-simplification', 'T',
         '--ground-truth-folder-prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result'
         #'--deep-simplification',
-        #'T' #XXX: Double check before running scripts -> want to use sympy rather than ternary simulation?
+        #'T' #XXX: Double check before running scripts -> want to use sympy rather than ternary simulation?,
+        --dump-folder-prefix,
         ])
     '''
     

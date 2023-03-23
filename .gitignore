@@ -42,6 +42,7 @@ case4comp/
 original_main/
 train_circuitsat/
 utils/toolbox.py
-utils/pyPDR
+utils/pyPDR/
 data2dataset/cex2smt2/aig2graph.py
-data2dataset/aig2graph
+data2dataset/aig2graph/
+utils/picosat/

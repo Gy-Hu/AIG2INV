@@ -3,7 +3,7 @@ from numpy import var
 import z3
 import pandas as pd
 import os
-import ternary_sim
+import ternary_sim_updated as ternary_sim
 import sys
 from tCube import tCube
 from natsort import natsorted
@@ -100,7 +100,7 @@ class ExtractCnf(object):
         self.ternary_simulator = ternary_sim.AIGBuffer()
         
         # check validation of using the ternary simulator
-        self.ternary_simulator_valid = True if SIMPLIFICATION_LEVEL in ["slight"] else False
+        self.ternary_simulator_valid = True
         for _, updatefun in self.vprime2nxt: 
             if self.ternary_simulator.check_validation(updatefun) == False:
                 self.ternary_simulator_valid = False

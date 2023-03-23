@@ -302,15 +302,15 @@ def subset_preproces():
     output_array = [regex.match(element)[1] for element in files]
     # Remove duplicate elements from the output array
     output_array = list(set(output_array))
-    aig_big_case_list = [ _.split('/')[-1] for _ in output_array]
+    aig_with_processed_graph = [ _.split('/')[-1] for _ in output_array]
     
 
     #create a folder for each file
-    for all_aig_folder in aig_file_list :
-        if list(filter(lambda x: all_aig_folder.split('/')[-1].split('.aag')[0] in x, aig_big_case_list)) !=[] :
-            os.mkdir(f'{folder_for_prediction_result_store}/{all_aig_folder.split("/")[-1].split(".aag")[0]}')
+    for aig_path_in_benchmark in aig_file_list :
+        if list(filter(lambda x: aig_path_in_benchmark.split('/')[-1].split('.aag')[0] in x, aig_with_processed_graph)) !=[] :
+            os.mkdir(f'{folder_for_prediction_result_store}/{aig_path_in_benchmark.split("/")[-1].split(".aag")[0]}')
             # copy the aig file to the folder
-            shutil.copy(all_aig_folder, f'{folder_for_prediction_result_store}/{all_aig_folder.split("/")[-1].split(".aag")[0]}')
+            shutil.copy(aig_path_in_benchmark, f'{folder_for_prediction_result_store}/{aig_path_in_benchmark.split("/")[-1].split(".aag")[0]}')
     print('Finish copying all the aig files to the corresponding folders')
     
 
@@ -326,8 +326,17 @@ def compare_abc(aig_original_location, selected_aig_case):
     '''
     # initialize a shell command
     predicted_clauses_cnf = (f'{aig_original_location}/'+ f'{selected_aig_case}_predicted_clauses_after_filtering.cnf')
+    # copy the cnf file to current folder and rename to "inv.cnf"
+    shutil.copy(predicted_clauses_cnf, f'{aig_original_location}/inv.cnf')
     originial_aiger_file = (f'{aig_original_location}/'+ f'{selected_aig_case}.aag')
-    cmd = f"cd {aig_original_location}/{selected_aig_case} && /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/abc/abc -c \"&r {originial_aiger_file}; &put; &fold; pdr\""
+    # if .aig not exist, excute /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/aiger_tool_util/aigtoaig {selected_aig_case}.aag {selected_aig_case}.aig
+    if not os.path.exists(f'{aig_original_location}/{selected_aig_case}.aig'):
+        cmd = f"cd {aig_original_location} && /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/aiger_tool_util/aigtoaig {selected_aig_case}.aag {selected_aig_case}.aig"
+        # run the shell command without checking the output
+        subprocess.run(cmd,shell=True,stderr=subprocess.STDOUT)
+        
+    cmd = f"cd /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{aig_original_location} && \
+    /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/abc/abc -c \"&r {selected_aig_case}.aig; &put; fold; pdr\""
     # run the shell command, and store stream data in terminal output to a variable
     start_time = time.monotonic()
     try:
@@ -335,24 +344,27 @@ def compare_abc(aig_original_location, selected_aig_case):
     except subprocess.CalledProcessError as e: # normally we will arrive here
         output = f"command '{e.cmd}' return with error (code {e.returncode}): {e.output}"
     end_time = time.monotonic()
-    elapsed_time_for_nn_ic3 = end_time - start_time
+    elapsed_time_for_nn_abc = end_time - start_time
 
     # read output, and split it into lines by "\\n"
-    output = output.split('\\n')
+    output = str(output).split('\\n')
     # Find the last Level x line, and extract the x
-    last_level = ''
+    last_level_nn_abc = ''
     for line in output:
-        if 'Level' in line:
-            last_level = line
-    assert last_level != '', 'No Level x line found'
-    last_level = last_level.split(' ')
-    last_level = last_level[1]
+        if 'unsat' in line:
+            last_level_nn_abc = line
+    assert last_level_nn_abc != '', 'No Level x line found'
+    last_level_nn_abc = last_level_nn_abc.split(' ')
+    last_level_nn_abc = last_level_nn_abc[2]
 
     '''
-    original ic3ref located in /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/abc/abc
+    original abc located in /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/abc/abc
     '''
+    # trash the inv.cnf
+    os.remove(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{aig_original_location}/inv.cnf")
     # initialize a shell command
-    cmd = f'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/abc/abc -c \"&r {originial_aiger_file}; &put; &fold; pdr\"'
+    cmd = f"cd /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{aig_original_location} && \
+    /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/abc/abc -c \"&r {selected_aig_case}.aig; &put; fold; pdr\""
     start_time = time.monotonic()
     # run the shell command, and store stream data in terminal output to a variable
     try:
@@ -360,48 +372,48 @@ def compare_abc(aig_original_location, selected_aig_case):
     except subprocess.CalledProcessError as e: # normally we will arrive here
         output = f"command '{e.cmd}' return with error (code {e.returncode}): {e.output}"
     end_time = time.monotonic()
-    elapsed_time_for_ic3ref = end_time - start_time
+    elapsed_time_for_abc = end_time - start_time
 
     # read output, and split it into lines by "\\n"
-    output = output.split('\\n')
+    output = str(output).split('\\n')
     # Find the last Level x line, and extract the x
-    last_level_ic3_abc = ''
+    last_level_abc = ''
     for line in output:
-        if 'Level' in line:
-            last_level_ic3_abc = line
-    assert last_level_ic3_abc != '', 'ic3ref has not found a solution'
-    last_level_ic3_abc = last_level_ic3_abc.split(' ')
-    last_level_ic3_abc = last_level_ic3_abc[1]
+        if 'unsat' in line:
+            last_level_abc = line
+    assert last_level_abc != '', 'abc has not found a solution'
+    last_level_abc = last_level_abc.split(' ')
+    last_level_abc = last_level_abc[2]
 
     # compare the last level
-    print('NN-IC3_abc finished solving ',originial_aiger_file.split('/')[-1])
-    if last_level == last_level_ic3_abc or not(last_level_ic3_abc.isnumeric()): #true if last_level_ic3ref is a string
-        print('NN-IC3ref has not improved the result')
-    elif int(last_level_ic3_abc) - int(last_level) > 0 and elapsed_time_for_ic3ref > elapsed_time_for_nn_ic3:
+    print('NN-abc finished solving ',originial_aiger_file.split('/')[-1])
+    if int(last_level_nn_abc) - int(last_level_abc) == 0:
+        print('NN-abc has not improved the result')
+    elif int(last_level_abc) - int(last_level_nn_abc) > 0 and elapsed_time_for_abc > elapsed_time_for_nn_abc:
         print(
-            'NN-IC3_abc has been improved with  ',
-            int(last_level_ic3_abc) - int(last_level),
+            'NN-abc has been improved with  ',
+            int(last_level_abc) - int(last_level_nn_abc),
             ' frames, and has converged ',
-            elapsed_time_for_ic3ref - elapsed_time_for_nn_ic3,
+            elapsed_time_for_abc - elapsed_time_for_nn_abc,
             ' seconds earlier',
         )
-    elif int(last_level_ic3_abc) - int(last_level) < 0 and elapsed_time_for_ic3ref > elapsed_time_for_nn_ic3:
+    elif int(last_level_abc) - int(last_level_nn_abc) < 0 and elapsed_time_for_abc > elapsed_time_for_nn_abc:
         print(
-            'NN-IC3_abc has not reduced frames, but has converged ',
-            elapsed_time_for_ic3ref - elapsed_time_for_nn_ic3,
+            'NN-abc has not reduced frames, but has converged ',
+            elapsed_time_for_abc - elapsed_time_for_nn_abc,
             ' seconds earlier',
         )
-    elif int(last_level_ic3_abc) - int(last_level) > 0 and elapsed_time_for_ic3ref < elapsed_time_for_nn_ic3:
+    elif int(last_level_abc) - int(last_level_nn_abc) > 0 and elapsed_time_for_abc < elapsed_time_for_nn_abc:
         print(
-            'NN-IC3_abc has been improved with  ',
-            int(last_level_ic3_abc) - int(last_level),
+            'NN-abc has been improved with  ',
+            int(last_level_abc) - int(elapsed_time_for_nn_abc),
             ' frames',
         )
     else:
-        assert int(last_level_ic3_abc) - int(last_level) < 0 and elapsed_time_for_ic3ref < elapsed_time_for_nn_ic3, "something wrong"
+        assert int(last_level_abc) - int(last_level_nn_abc) < 0 and elapsed_time_for_abc < elapsed_time_for_nn_abc, 'Something is wrong'
         print(
-            'NN-IC3_abc is worse than abc. Increased ',
-            int(last_level) - int(last_level_ic3_abc),
+            'NN-abc is worse than abc. Increased ',
+            int(last_level_nn_abc) - int(last_level_abc),
             ' frames',
         )
 
@@ -410,18 +422,15 @@ def compare_abc(aig_original_location, selected_aig_case):
     # if the file does not exist, create it
     if not os.path.exists('log/compare_with_ic3_abc.csv'):
         with open('log/compare_with_ic3_abc.csv', 'w') as f:
-            f.write('case name, NN-IC3 Frame, IC3-ABC Frame, NN-IC3 Time, IC3-ABC Time\n')
+            f.write('case name, NN-ABC Frame, ABC Frame, NN-ABC Time, ABC Time\n')
             
     
     with open('log/compare_with_ic3_abc.csv', 'a+') as f:
-        # convert ic3ref_basic_generalization to 0 or 1
-        ic3ref_basic_generalization = 0 if ic3ref_basic_generalization=="" else 1
-        nnic3_basic_generalization = 0 if nnic3_basic_generalization=="" else 1
             
         if (
-            last_level_ic3_abc.isnumeric()
+            last_level_abc.isnumeric()
         ):
-            f.write(f'{originial_aiger_file.split("/")[-1].split(".aag")[0]}, {last_level}, {last_level_ic3_abc}, {elapsed_time_for_nn_ic3}, {elapsed_time_for_ic3ref}, {nnic3_basic_generalization},{ic3ref_basic_generalization} \n')
+            f.write(f'{originial_aiger_file.split("/")[-1].split(".aag")[0]}, {last_level_nn_abc}, {last_level_abc}, {elapsed_time_for_nn_abc}, {elapsed_time_for_abc}\n')
 
     print('compare with abc done')
     
@@ -653,6 +662,13 @@ def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_locat
 def compare_inv_and_draw_table(threshold, NN_model, aig_with_predicted_location_prefix, aig_without_predicted_location_prefix):
     pass
 
+def extract_benchmark(s):
+    pattern = r'dataset_((?:(?!_abc|_ic3ref).)+)'
+    match = re.search(pattern, s)
+    if match:
+        return match.group(1)
+    else:
+        return None
 
 if __name__ == "__main__":
     global SELECTED_DATASET 
@@ -668,7 +684,7 @@ if __name__ == "__main__":
     parser.add_argument('--aig-case-name', type=str, default=None, help='case name, use for test single case, for example: cmu.dme1.B')
     #XXX: Double check before running the script
     parser.add_argument('--NN-model', type=str, default='neuropdr_2023-01-06_07:56:57_last.pth.tar', help='model name')
-    parser.add_argument('--benchmark', type=str, default='hwmcc2007_all', help='benchmark folder (used to filter the dataset)')
+    #parser.add_argument('--benchmark', type=str, default='2007', help='benchmark folder (used to filter the dataset), will convert to hwmcc{benchmark}_all')
     parser.add_argument('--gpu-id', type=str, default='1', help='gpu id')
     parser.add_argument('--compare_with_ic3ref', action='store_true', help='compare with ic3ref')
     parser.add_argument('--compare_with_abc', action='store_true', help='compare with abc')
@@ -679,7 +695,7 @@ if __name__ == "__main__":
 
     # for test only
     '''
-    '''
+    
     #XXX: Double check before running the script
     args =  parser.parse_args([
         '--threshold', '0.5',
@@ -693,15 +709,22 @@ if __name__ == "__main__":
         '--compare_with_abc',
         #'--selected-built-dataset', 'dataset_hwmcc2007_all_no_simplification_23',
         '--selected-built-dataset', 'dataset_hwmcc2020_small_abc_slight_1',
-        #'--benchmark', 'hwmcc2007_all'
-        '--benchmark', 'hwmcc2020_all'
+        #'--benchmark', '2007'
+        #'--benchmark', '2020'
     ])
+    '''
+    
+    
+    args = parser.parse_args([
+        '--threshold', '0.5',
+        '--selected-built-dataset', 'dataset_hwmcc2020_small_abc_slight_1'])
+    
     
     args.compare_with_ic3ref_basic_generalization = "-b" if args.compare_with_ic3ref_basic_generalization else ""
     args.compare_with_nnic3_basic_generalization = "-b" if args.compare_with_nnic3_basic_generalization else ""
     
     
-    BENCHMARK = args.benchmark
+    BENCHMARK = extract_benchmark(args.selected_built_dataset)
     SELECTED_DATASET = args.selected_built_dataset
     aig_case_folder_prefix_for_prediction = f"case4comp/{SELECTED_DATASET}_comp"
 

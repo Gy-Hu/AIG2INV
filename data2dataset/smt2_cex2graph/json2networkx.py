@@ -20,6 +20,8 @@ def json2graph_pickle(filename,ground_truth_path, pickle_file_name_prefix):
         if elem['data']['type'] == 'variable'
     ), 'Constant boolean value should be changed to "constant_true" or "constant_false"! Which should be ranked before input variable and latch variable!'
 
+    # if json_data only have one node (it is abnormal graph), we stop the process
+    if len(json_data) == 1: return
     # change the node in json_data if it is a constant value like true, false -> can be done as double check
     '''
     for elem in json_data:
@@ -69,18 +71,7 @@ def json2graph_pickle(filename,ground_truth_path, pickle_file_name_prefix):
     # only keep the particular case
     ground_truth_table = ground_truth_table[ground_truth_table['inductive_check']==filename.split('/')[-1].replace('.json', '.smt2')]
     label = ground_truth_table
-
-    #ground_truth_table.drop("Unnamed: 0", axis=1, inplace=True)
-    #ground_truth_table = ground_truth_table.reindex(natsorted(ground_truth_table.columns), axis=1)
-    #label = (ground_truth_table.values.tolist())[:] 
-
-    # get the exact label of the graph by the name of the graph
-    # lambda_get_index = lambda x: x[0]==filename.split('/')[-1].replace('.json', '.smt2')
-    # for i in range(len(label)):
-    #     if lambda_get_index(label[i]):
-    #         label = label[i]
-    #         break
-
+    
     with open(pickle_file_name, 'wb') as f:
         pickle.dump([G, json_data, edge_df, label,filename.split('/')[-1].replace('.json', '')], f)
 
