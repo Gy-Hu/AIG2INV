@@ -368,7 +368,7 @@ if __name__ == '__main__':
     parser.add_argument('--model-checker', type=str, default="ic3ref", help='model checker, ic3ref or abc')
     #parser.add_argument('--dataset-folder-prefix', type=str, default="dataset", help='dataset folder prefix, the final aim generated folder, in the root folder')
     parser.add_argument('--simplification-label', type=str, default="no_simplification", help='simplification label')
-    parser.add_argument('--benchmark', type=str, default=None, help='benchmark, which is used to generate the training dataset, in benchmark')
+    parser.add_argument('--benchmark', type=str, default=None, help='benchmark, which is used to generate the training dataset, in benchmark_folder')
     parser.add_argument('--ground_truth_folder_prefix', type=str, default=None, help='ground truth folder prefix, the final aim generated folder, in the root folder')
     parser.add_argument('--subset_range', type=int, default=1, help='subset range, the number of subset')
     

@@ -261,13 +261,6 @@ class CNF_Filter(ExtractCnf):
 Global Used Functions  
 -----------------------
 '''
-def walkFile():
-    files = []
-    for root, _, files in os.walk(self):
-        files = natsorted(files)
-        files = [os.path.join(root,f) for f in files]
-    assert len(files) > 0, f"No files found in {self}"
-    return files
 
 def subset_preproces():
     '''
