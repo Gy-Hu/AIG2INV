@@ -62,10 +62,9 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 ### For converted aiger
 * `cnt1` , `cnt2` and `cnt-zeros` : For toy experiments
 * `benchmark_folder/hwmcc2007_all`: hwmcc07 tip all safety cases, including both UNSAT and SAT cases (all aiger1.0 format)
-* `benchmark_folder/hwmcc2007_all_comp_for_prediction_ic3ref`: hwmcc07 tip safety cases (only UNSAT cases) all aiger1.0 format, only use to dump predicted clauses, for ic3ref prediction
 * `benchmark_folder/hwmcc2020_all`: hwmcc20 safety cases (all aiger1.0 format)
 * `benchmark_folder/hwmcc2020_small`: part of hwmcc20 safety cases (all aiger1.0 format), only contains 50 simple cases
-* `benchmark_folder/hwmcc2020_all_without_sat_unknown`: hwmcc20 safety cases without SAT and UNKNOWN cases (all aiger1.0 format)
+* `benchmark_folder/hwmcc2020_all_only_unsat`: hwmcc20 safety cases without SAT and UNKNOWN cases (all aiger1.0 format)
 
 ### For validate result
 * `case4comp/xxx`: contains the aiger and its predicted clauses
