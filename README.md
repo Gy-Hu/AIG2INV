@@ -3,15 +3,6 @@
 Accelerating IC3 by inducive clauses prediction
 
 ### For important dir
-**aag2graph (directly convert from aag):**
-* `/data/hongcezh/clause-learning/data-collect/data2dataset`
-
-**aag+inv to cnf**
-* `/data/hongcezh/clause-learning/data-collect/aig2cexcnfmap`
-
-**script to run ic3ref in collecting hwmcc07 dataset**
-* `/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/run_single.sh`
-* `/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/collect.sh`
 
 **for ground truth**
 * abc hwmcc07: `/data/hongcezh/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/`
