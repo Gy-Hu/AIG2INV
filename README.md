@@ -52,7 +52,7 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
     * `python build_data.py --model-checker ic3ref --simplification-label slight --benchmark hwmcc2007_small --ground_truth_folder_prefix /data/hongcezh/clause-learning/data-collect/hwmcc07-7200-result/output/tip/ --subset_range 1`
 
 **validate the prediction**
-    * `python main.py --threshold 0.5 --selected-built-dataset dataset_hwmcc2020_small_abc_slight_1 --NN-model neuropdr_2023-01-06_07:56:51_last.pth.tar --gpu-id 1 --compare_with_abc --re-predict`
+* `python main.py --threshold 0.5 --selected-built-dataset dataset_hwmcc2020_small_abc_slight_1 --NN-model neuropdr_2023-01-06_07:56:51_last.pth.tar --gpu-id 1 --compare_with_abc --re-predict`
 
 ### For dataset
 * `dataset_hwmcc07_toy_no_simplification` : contains only one aiger's cex
