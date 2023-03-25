@@ -9,12 +9,12 @@
 
 * `build_dataset.py` : Build the dataset from the benchmark
     * **usage:** `python build_dataset.py --model-checker <model-checker> --simplification-level <simplification-level> --benchmark <benchmark> --ground_truth_folder_prefix <ground_truth_folder_prefix> --subset_range <subset_range>`
-        * **parameters:**
-            * `--model-checker` : The model checker to use (e.g. `abc`, `ic3ref`)
-            * `--simplification-level` : The simplification level to use (e.g. `thorough`, `deep`, `moderate`, `slight` , `naive`)
-            * `--benchmark` : The benchmark to use in benchmark_folder (e.g. `hwmcc2007_all`, `hwmcc2020_all`, `hwmcc2020_all_only_unsat`, `hwmcc2020_small`)
-            * `--ground_truth_folder_prefix` : The prefix of the ground truth folder (e.g. `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result`, `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result`, `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`, `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`)
-            * `--subset_range` : The range of data in benchmark to generate (e.g. `1`, `23`)
+    * **parameters:**
+        * `--model-checker` : The model checker to use (e.g. `abc`, `ic3ref`)
+        * `--simplification-level` : The simplification level to use (e.g. `thorough`, `deep`, `moderate`, `slight` , `naive`)
+        * `--benchmark` : The benchmark to use in benchmark_folder (e.g. `hwmcc2007_all`, `hwmcc2020_all`, `hwmcc2020_all_only_unsat`, `hwmcc2020_small`)
+        * `--ground_truth_folder_prefix` : The prefix of the ground truth folder (e.g. `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result`, `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result`, `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`, `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`)
+        * `--subset_range` : The range of data in benchmark to generate (e.g. `1`, `23`)
 
 ## Train the Model
 
@@ -22,40 +22,40 @@ select which model to use (currently only `neurograph` is available)
 
 * `train_neurograph/train.py`: Train the model
     * **usage:** `python train.py --task-name <task-name> --local_rank <local_rank> --dim <dim> --n_rounds <n_rounds> --epochs <epochs> --inf_dev <inf_dev> --gen_log <gen_log> --log-dir <log-dir> --model-dir <model-dir> --data-dir <data-dir> --restore <restore> --train-file <train-file> --val-file <val-file> --mode <mode> --gpu-id <gpu-id> --batch-size <batch-size> --pos-weight <pos-weight> --lr <lr>`
-        * **parameters:**
-            * `--task-name` : The task name (e.g. `neuropdr`)
-            * `--local_rank` : The local rank for dpp (e.g. `-1`)
-            * `--dim` : The dimension of variable and clause embeddings (e.g. `128`)
-            * `--n_rounds` : The number of rounds of message passing (e.g. `26`)
-            * `--epochs` : The number of epochs (e.g. `10`)
-            * `--inf_dev` : The device to use (e.g. `gpu`)
-            * `--gen_log` : The log file to use (e.g. `log/data_maker.log`)
-            * `--log-dir` : The log folder dir (e.g. `log/`)
-            * `--model-dir` : The model folder dir (e.g. `neurograph_model/`)
-            * `--data-dir` : The data folder dir (e.g. `dataset/`)
-            * `--restore` : The model to continue training (e.g. `neuropdr_2021-01-06_07:56:51_last.pth.tar`)
-            * `--train-file` : The train file dir (e.g. `dataset_hwmcc2020_small_abc_slight_1`)
-            * `--val-file` : The validation file dir (e.g. `dataset_hwmcc2020_small_abc_slight_1`)
-            * `--mode` : The mode to use (e.g. `train`, `debug`)
-            * `--gpu-id` : The gpu id to use (e.g. `0`,`1`)
-            * `--batch-size` : The batch size to use (e.g. `2`)
-            * `--pos-weight` : The positive weight in BCEWithLogitsLoss (e.g. `1.0`)
-            * `--lr` : The learning rate to use (e.g. `0.00001`)
+    * **parameters:**
+        * `--task-name` : The task name (e.g. `neuropdr`)
+        * `--local_rank` : The local rank for dpp (e.g. `-1`)
+        * `--dim` : The dimension of variable and clause embeddings (e.g. `128`)
+        * `--n_rounds` : The number of rounds of message passing (e.g. `26`)
+        * `--epochs` : The number of epochs (e.g. `10`)
+        * `--inf_dev` : The device to use (e.g. `gpu`)
+        * `--gen_log` : The log file to use (e.g. `log/data_maker.log`)
+        * `--log-dir` : The log folder dir (e.g. `log/`)
+        * `--model-dir` : The model folder dir (e.g. `neurograph_model/`)
+        * `--data-dir` : The data folder dir (e.g. `dataset/`)
+        * `--restore` : The model to continue training (e.g. `neuropdr_2021-01-06_07:56:51_last.pth.tar`)
+        * `--train-file` : The train file dir (e.g. `dataset_hwmcc2020_small_abc_slight_1`)
+        * `--val-file` : The validation file dir (e.g. `dataset_hwmcc2020_small_abc_slight_1`)
+        * `--mode` : The mode to use (e.g. `train`, `debug`)
+        * `--gpu-id` : The gpu id to use (e.g. `0`,`1`)
+        * `--batch-size` : The batch size to use (e.g. `2`)
+        * `--pos-weight` : The positive weight in BCEWithLogitsLoss (e.g. `1.0`)
+        * `--lr` : The learning rate to use (e.g. `0.00001`)
 
 ## Validate the Model
 
 * `main.py` : Validate the model
     * **usage:** `python main.py --threshold <threshold> --selected-built-dataset <selected-built-dataset> --NN-model <NN-model> --gpu-id <gpu-id> (optional: --compare_with_abc, --re-predict, etc.)`
-        * **parameters:** 
-            * `--threshold` : The threshold to use (e.g. `0.5`)
-            * `--selected-built-dataset` : The built dataset with graph generated to use (e.g. `dataset_hwmcc2020_small_abc_slight_1`)
-            * `--NN-model` : The NN model to use (e.g. `neuropdr_2023-01-06_07:56:51_last.pth.tar`)
-            * `--gpu-id` : The gpu id to use (e.g. `0`,`1`)
-            * `--compare_with_abc` : Compare the result with abc (optional)
-            * `--re-predict` : Re-predict the data (optional)
-            * `--compare_with_ic3ref_basic_generalization`: Compare the result with ic3ref basic generalization (optional)
-            * `--compare_with_nnic3_basic_generalization'`: Compare the result with nnic3 basic generalization (optional)
-            * `--aig-case-name`: Test the single aiger (optional)
+    * **parameters:** 
+        * `--threshold` : The threshold to use (e.g. `0.5`)
+        * `--selected-built-dataset` : The built dataset with graph generated to use (e.g. `dataset_hwmcc2020_small_abc_slight_1`)
+        * `--NN-model` : The NN model to use (e.g. `neuropdr_2023-01-06_07:56:51_last.pth.tar`)
+        * `--gpu-id` : The gpu id to use (e.g. `0`,`1`)
+        * `--compare_with_abc` : Compare the result with abc (optional)
+        * `--re-predict` : Re-predict the data (optional)
+        * `--compare_with_ic3ref_basic_generalization`: Compare the result with ic3ref basic generalization (optional)
+        * `--compare_with_nnic3_basic_generalization'`: Compare the result with nnic3 basic generalization (optional)
+        * `--aig-case-name`: Test the single aiger (optional)
     * **note:**
         * delete the duplicate data in case4comp/ folder before runing the script (if this script has been run before with the same arguments)
 
