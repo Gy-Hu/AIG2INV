@@ -15,7 +15,7 @@ import sys
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from config import parser
+#from config import parser
 # for simple graph (exclude false and true node)
 # from neurograph_old import NeuroInductiveGeneralization
 
@@ -80,13 +80,14 @@ class BCEFocalLoss(nn.Module):
 
 
 class GraphDataset(Dataset):
-    def __init__(self,data_root,mode='train',case_name=None,device=None,dataset_type=None):
+    def __init__(self,data_root,mode='train',case_name=None,device=None,dataset_type=None, dataset_name=None):
         self.data_root = data_root
         self.mode = mode
         self.samples = []
         self.aig_name = case_name
         self.device = device
         self.dataset_type = dataset_type
+        self.dataset_name = dataset_name
         self.__init_dataset()
 
     def __len__(self):
@@ -208,7 +209,26 @@ if __name__ == "__main__":
     #device = 'cuda'
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     datetime_str = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--task-name', type=str, default='neuropdr', help='task name')
+    parser.add_argument('--local_rank', type=int, default=-1, help='local rank for dpp')
+    parser.add_argument('--dim', type=int, default=128, help='Dimension of variable and clause embeddings')
+    parser.add_argument('--n_rounds', type=int, default=26, help='Number of rounds of message passing')
+    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--inf_dev', type=str, default='gpu')
+    parser.add_argument('--gen_log', type=str, default=('/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/data_maker.log'))
+    parser.add_argument('--log-dir', type=str, default=('/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/'), help='log folder dir')
+    parser.add_argument('--model-dir', type=str, default=('/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/neurograph_model/'), help='model folder dir')
+    parser.add_argument('--data-dir', type=str, default=('/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/'), help='data folder dir')
+    parser.add_argument('--restore', type=str, default=None, help='continue train from model')
+    parser.add_argument('--train-file', type=str, default=None, help='train file dir')
+    parser.add_argument('--val-file', type=str, default=None, help='val file dir')
+    parser.add_argument('--mode', type=str, default=None, help='mode to train or debug')
+    parser.add_argument('--gpu-id', type=int, default=0, help='gpu id to use')
+    parser.add_argument('--batch-size', type=int, default=2, help='batch size')
+    parser.add_argument('--dataset-type', type=str, default=None, help='dataset type, determine to use all data or toy data')
+    parser.add_argument('--pos-weight', type=float, default=1.0, help='positive weight in BCEWithLogitsLoss')
+    parser.add_argument('--lr', type=float, default=0.00001, help='learning rate')
     '''
     args = parser.parse_args(['--task-name', 'neuropdr_'+datetime_str.replace(' ', '_'), '--dim', '128', '--n_rounds', '512',
                               '--epochs', '512',
@@ -237,7 +257,7 @@ if __name__ == "__main__":
         torch.cuda.set_device(args.local_rank)
         dist.init_process_group(backend='nccl') 
 
-    all_graph = GraphDataset(args.train_file,args.mode,None,device,dataset_type=args.dataset_type)
+    all_graph = GraphDataset(args.train_file,args.mode,None,device,None,None)
 
     
     if args.mode == 'train' or args.mode == 'debug':

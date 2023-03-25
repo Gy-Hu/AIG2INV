@@ -25,10 +25,12 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 
 > usage: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/utils/abc/abc -c "&r xxx.aig; &put; fold ; pdr -v"
 
+**For construct benchmark and ground truth:**
+`clause-learning`: Contains tables that can be used to construct the benchmark. And it also contains the inv.cnf ground truth.
 
 ### For scripts
 * `build_data.py` : build data from aag+inv to graph
-* `train_data.py` : train data from graph
+* `train_neurograph/train.py` : train data from graph
 * `main.py` : predict the induction invariant from SAT models
 * `tool_box.py` : some useful functions (e.g. clean trivial log, counterexample cube visualization)
 * `utils/fetch_aiger.py` : fetch aiger, this script must be ran in the same dir as `utils`
@@ -37,10 +39,6 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 **build dataset**
 * Example command to construct hwmcc20 abc training data:
     * `python build_data.py --model-checker abc --simplification-label slight --benchmark hwmcc2020_all --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result --subset_range 1`
-    * `python build_data.py --model-checker abc --simplification-label slight --benchmark hwmcc2020_small --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result --subset_range 1`
-* Example command to construct hwmcc07 ic3ref training data:
-    * `python build_data.py --model-checker ic3ref --simplification-label slight --benchmark hwmcc2007_all --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/ --subset_range 1`
-    * `python build_data.py --model-checker ic3ref --simplification-label slight --benchmark hwmcc2007_small --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/ --subset_range 1`
 
 **validate the prediction**
 * `python main.py --threshold 0.5 --selected-built-dataset dataset_hwmcc2020_small_abc_slight_1 --NN-model neuropdr_2023-01-06_07:56:51_last.pth.tar --gpu-id 1 --compare_with_abc --re-predict`
