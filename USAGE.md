@@ -83,3 +83,5 @@ select which model to use (currently only `neurograph` is available)
 ### Test Data Collection Script
 
 ### Symbolic Regression
+
+### SAT Model Uniform Distribution Sampling

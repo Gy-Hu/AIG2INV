@@ -35,7 +35,7 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 * `tool_box.py` : some useful functions (e.g. clean trivial log, counterexample cube visualization)
 * `utils/fetch_aiger.py` : fetch aiger, this script must be ran in the same dir as `utils`
 
-### Example Usage (Details in USAGE.md)
+### Example Usage (Details in (USAGE.md)[USAGE.md]])
 **build dataset**
 * Example command to construct hwmcc20 abc training data:
     * `python build_data.py --model-checker abc --simplification-label slight --benchmark hwmcc2020_all --ground_truth_folder_prefix /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result --subset_range 1`
