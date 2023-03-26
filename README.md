@@ -56,7 +56,7 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 * `benchmark_folder/hwmcc2020_all_only_unsat`: hwmcc20 safety cases without SAT and UNKNOWN cases (all aiger1.0 format)
 
 ### For validate result
-* `case4comp/xxx`: contains the aiger and its predicted clauses
+* `case4comp/xxx_comp`: contains the aiger and its predicted clauses (`xxx` normally is the corresponding dataset name)
 
 ### Simplification Level
 * `thorough`: use sympy in transition relation simplification + aig operator simplification during transition relation construction + z3 simplification + counterexample cube simplification
@@ -66,4 +66,7 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 * `naive`: only use sympy to simplify the counterexample cube
 
 ### For Log
-* `log/`: contains all the log files
+* `log/error_handle/abnormal_header.log.xxx`: contains the aiger that has abnormal header (e.g. `SAT`)
+* `log/error_handle/bad_model.log`: contains the aiger that has bad model (e.g. `v2==T, false, v4==F`, SAT model contains `false`)
+* `log/graph_pickle_incomplete.log`: contains the aiger that has incomplete graph pickle (e.g. number of CTI is not equal to number of graph generated)
+* `log/mismatched_inv.log.xxx`: contains the aiger that has mismatched inv (e.g. could not find a inductive clause in the inv to block the counterexample)
