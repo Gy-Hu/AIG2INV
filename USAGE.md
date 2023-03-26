@@ -106,4 +106,7 @@ select which model to use (currently only `neurograph` is available)
         * `--validate` : Determin whether to validate the model (e.g. `True`)
         * `--model` : Determin which model to use (e.g. `1`)
 ### SAT Model Uniform Distribution Sampling
-* `data2dataset/cex2smt2/ModelSampler.py`:
+* `data2dataset/cex2smt2/ModelSampler.py`: SAT model uniform distribution sampling
+    * **usage:** `python ModelSampler.py --smt2-file <smt2-file>`
+    * **parameters:**
+        * `--smt2-file` : The path to the smt2 file (e.g. `tip2_2.smt2`)

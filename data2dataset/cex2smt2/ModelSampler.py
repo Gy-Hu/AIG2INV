@@ -77,7 +77,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Randomly generate uniform distribution of models")
     #parse smt2 file
     parser.add_argument('--smt2-file', type=str, default=None, help='The path to the smt2 file')
-    args = parser.parse_args(['--smt2-file', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/test_model_sampler/test.smt2'])
+    args = parser.parse_args()
     
     start_time = time.time()
     
