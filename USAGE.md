@@ -110,3 +110,5 @@ select which model to use (currently only `neurograph` is available)
     * **usage:** `python ModelSampler.py --smt2-file <smt2-file>`
     * **parameters:**
         * `--smt2-file` : The path to the smt2 file (e.g. `tip2_2.smt2`)
+* `data2dataset/cex2smt2/ModelSample_real_ud` : Using crytominisat to perform real uniform distribution sampling
+    * **note:** This script is under development. It is not used in the paper.
