@@ -45,7 +45,7 @@ select which model to use (currently only `neurograph` is available)
 ## Validate the Model
 
 * `main.py` : Validate the model
-    * **usage:** `python main.py --threshold <threshold> --selected-built-dataset <selected-built-dataset> --NN-model <NN-model> --gpu-id <gpu-id> (optional: --compare_with_abc, --re-predict, etc.)`
+    * **usage:** `python main.py --threshold <threshold> --selected-built-dataset <selected-built-dataset> --NN-model <NN-model> --gpu-id <gpu-id>` (optional: `--compare_with_abc`, `--re-predict`, etc.)
     * **parameters:** 
         * `--threshold` : The threshold to use (e.g. `0.5`)
         * `--selected-built-dataset` : The built dataset with graph generated to use (e.g. `dataset_hwmcc2020_small_abc_slight_1`)
@@ -61,27 +61,49 @@ select which model to use (currently only `neurograph` is available)
 
 
 ## Analyze the Result
-
 * `result_analyzer` : analyze the result
-    * **usage:** 
-        * **parameters:**
+    * **usage:** `python result_analyzer.py --log-file <log-file>`
+    * **parameters:**
+        * `--log-file` : The log file to use (e.g. `compare_with_ic3ref.csv`)
 
 ## Debug
 
 ### Debug the collect.py
-
-### Debug train_data.py
-
-### Debug main.py
+* `data2dataset/cex2smt2/collect.py`: Convert aig+inv to graph
+    * **usage:** `python collect.py --aag <aag> --generalize <generalize> --cnf <cnf> --generate_smt2 <generate_smt2> --inv-correctness-check <inv-correctness-check> --run-mode <run-mode> --model-checker <model-checker> --thorough-simplification <thorough-simplification> --deep-simplification <deep-simplification> --moderate-simplification <moderate-simplification> --slight-simplification <slight-simplification> --naive-simplification <naive-simplification> --ground-truth-folder-prefix <ground-truth-folder-prefix> --dump-folder-prefix <dump-folder-prefix>`
+    * **parameters:**
+        * `--aag` : The aag file to use (e.g. `tip2_2.aag`)
+        * `--generalize` : Generalize the predesessor (e.g. `True`)
+        * `--cnf` : The cnf file to use (e.g. `tip2_2.cnf`)
+        * `--generate_smt2` : Generate smt2 file (e.g. `True`)
+        * `--inv-correctness-check` : Check the correctness of the invariant (e.g. `True`)
+        * `--run-mode` : Normal or debug. Debug model will exit after inv correctness check (e.g. `debug`)
+        * `--model-checker` : The model checker to use (e.g. `ic3ref`)
+        * `--thorough-simplification` : Use sympy in tr simplification + aig operator simplification during tr construction + z3 simplification + counterexample cube simplification (e.g. `False`)
+        * `--deep-simplification` : Use sympy in tr simplification + aig operator simplification during tr construction + z3 simplification (e.g. `False`)
+        * `--moderate-simplification` : Aig operator simplification during tr construction + z3 simplification (e.g. `False`)
+        * `--slight-simplification` : Z3 simplification + ternary simulation (e.g. `False`)
+        * `--naive-simplification` : Only use sympy to simplify the counterexample cube (e.g. `False`)
+        * `--ground-truth-folder-prefix` : The prefix of the ground truth folder (e.g. `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`)
+        * `--dump-folder-prefix` : The prefix of the dump folder (e.g. `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset`)
 
 ## Others
 
-### Visualize the Result
-
-### Clean Log
-
-### Test Data Collection Script
+### Visualize the Result/Clean Log
+* `tool_box.py`: Visualize the result/clean log
+    * **usage:** `python tool_box.py --clean_trivial_log <clean_trivial_log> --calculate_pickle_number <calculate_pickle_number> --json2mermaid <json2mermaid> --file_path <file_path>`
+    * **parameters:**
+        * `--clean_trivial_log` : Clean trivial log (e.g. `True`)
+        * `--calculate_pickle_number` : Calculate the number of pickle files (e.g. `True`)
+        * `--json2mermaid` : Convert json to mermaid (e.g. `True`)
+        * `--file_path` : The file path to use (e.g. `dataset_hwmcc2020_small_abc_slight_1`)
 
 ### Symbolic Regression
-
+* `data2dataset/cex2smt2/symbolic_reg_model.py`: Symbolic regression model
+    * **usage:** `python symbolic_reg_model.py --model-file <model-file> --validate <validate> --model <model>`
+    * **parameters:**
+        * `--model-file` : The path to the model file (e.g. `symbolic_reg_model_2021-01-06_07:56:51_last.pth.tar`)
+        * `--validate` : Determin whether to validate the model (e.g. `True`)
+        * `--model` : Determin which model to use (e.g. `1`)
 ### SAT Model Uniform Distribution Sampling
+* `data2dataset/cex2smt2/ModelSampler.py`:

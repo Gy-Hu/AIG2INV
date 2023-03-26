@@ -137,7 +137,7 @@ if __name__ == "__main__":
     '''
     #XXX: Double check before running the script
     for testing only
-    
+    '''
     args = parser.parse_args(['--aag',
         '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2020_all/subset_0/simple_alu.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_4/nusmv.brp.B.aag',
@@ -167,12 +167,12 @@ if __name__ == "__main__":
         'abc', #XXX: Double check before running scripts
         '--deep-simplification', 'T',
         #'--moderate-simplification', 'T',
-        '--ground-truth-folder-prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result'
+        '--ground-truth-folder-prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result',
         #'--deep-simplification',
         #'T' #XXX: Double check before running scripts -> want to use sympy rather than ternary simulation?,
-        --dump-folder-prefix,
+        '--dump-folder-prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_small_abc_slight_1'
         ])
-    '''
+    
     
     # set global variables
     global SIMPLIFICATION_LEVEL

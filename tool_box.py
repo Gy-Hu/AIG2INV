@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import requests
 import io
 import json
+import argparse
 
 from natsort import natsorted
 
@@ -38,9 +39,9 @@ def clean_trivial_log():
                 print(f"Delete {log_file} successfully!")
 
 
-def calculate_pickle_number():
+def calculate_pickle_number(file_path):
     #json_path = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc07_0_1_2_3_4/bad_cube_cex2graph/json_to_graph_pickle/"
-    json_path = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc07_almost_complete/bad_cube_cex2graph/json_to_graph_pickle/"
+    json_path = file_path
     # get all files in the json_path
     for root, _, files in os.walk(json_path):
         files = [os.path.join(root, f) for f in files]
@@ -129,8 +130,16 @@ def json2mermaid(json_path=None):
 
 
 if __name__ == "__main__":
-    # clean_trivial_log()
-    # walkFile()
-    # calculate_pickle_number()
-    #json2mermaid("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_20230106_014957_toy/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B_7.json")
-    json2mermaid("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B/nusmv.syncarb5^2.B_7.json")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--clean_trivial_log", action="store_true")
+    parser.add_argument("--calculate_pickle_number", action="store_true")
+    parser.add_argument("--json2mermaid", action="store_true")
+    parser.add_argument("--file_path", type=str, default=None)
+    args = parser.parse_args()
+
+    if args.clean_trivial_log:
+        clean_trivial_log()
+    if args.calculate_pickle_number:
+        calculate_pickle_number(args.file_path)
+    if args.json2mermaid:
+        json2mermaid(args.file_path)

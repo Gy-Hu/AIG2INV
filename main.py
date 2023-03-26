@@ -14,7 +14,6 @@ from train_neurograph.train import GraphDataset
 #from train_neurograph.neurograph_old import NeuroInductiveGeneralization
 # for new(complicated/large) cases
 from train_neurograph.neurograph import NeuroInductiveGeneralization
-
 from data2dataset.cex2smt2.clause import Clauses
 from data2dataset.cex2smt2.aigmodel import AAGmodel
 from data2dataset.cex2smt2.aig2graph import AigGraph
