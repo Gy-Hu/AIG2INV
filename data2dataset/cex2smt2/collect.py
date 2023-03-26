@@ -139,7 +139,7 @@ if __name__ == "__main__":
     for testing only
     '''
     args = parser.parse_args(['--aag',
-        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2020_all/subset_0/simple_alu.aag',
+        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2020_all/subset_0/paper_v3.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_4/nusmv.brp.B.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_0/nusmv.syncarb5^2.B.aag',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_0/eijk.S208c.S.aag',
