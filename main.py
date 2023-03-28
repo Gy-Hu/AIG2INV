@@ -542,6 +542,20 @@ def compare_ic3ref(aig_original_location, selected_aig_case, ic3ref_basic_genera
 
     print('compare with ic3ref done')
     
+def find_missing_pickles(json_folder, pickle_folder):
+    json_files = [f for f in os.listdir(json_folder) if f.endswith('.json')]
+    pickle_files = [f for f in os.listdir(pickle_folder) if f.endswith('.pkl')]
+    
+    missing_indices = []
+    for json_file in json_files:
+        base_name = json_file.split('.')[0]  # Remove the file extension
+        corresponding_pickle = f"{base_name}.pkl"
+        if corresponding_pickle not in pickle_files:
+            index = int(base_name.split('_')[-1])  # Extract the index from the file name
+            missing_indices.append(index)
+    
+    return missing_indices
+    
 def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_location_prefix):
     sigmoid = nn.Sigmoid()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -549,13 +563,14 @@ def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_locat
     extracted_bad_cube_prefix = get_dataset(selected_dataset=SELECTED_DATASET)
     # choose the case that you want to test
     selected_aig_case = aig_case_name
-    extracted_bad_cube_after_post_processing = GraphDataset(f'{extracted_bad_cube_prefix}/bad_cube_cex2graph/json_to_graph_pickle/',mode='predict',case_name=selected_aig_case,device=device)
+    extracted_bad_cube_after_post_processing = GraphDataset(f"{extracted_bad_cube_prefix}/bad_cube_cex2graph/json_to_graph_pickle/",mode='predict',case_name=selected_aig_case,device=device)
     if len(extracted_bad_cube_after_post_processing) == 0: # not a valid case, skip
         # print log 
         with open("log/error_handle/graph_pickle_incomplete.log", "a+") as fout: fout.write(f"Error: {aig_case_name} has no graph generation from json to pickle \n")
         fout.close()
         return False
     # Has error in json_to_graph_pickle
+    '''
     if len(extracted_bad_cube_after_post_processing)!= len(open(f'{extracted_bad_cube_prefix}/bad_cube_cex2graph/cti_for_inv_map_checking/{selected_aig_case}/{selected_aig_case}_inv_CTI.txt').readlines()):
         # print log 
         with open("log/error_handle/graph_pickle_incomplete.log", "a+") as fout: fout.write(f"Error: {aig_case_name} has incomplete graph generation from json to pickle \n")
@@ -563,7 +578,12 @@ def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_locat
         #XXX: Double check before running the script
         #sys.exit(0)
         return False
- 
+    '''
+    # missing_indices_of_graph -> constant false cex that has no need to generate graph
+    missing_indices_of_graph = find_missing_pickles(f"{extracted_bad_cube_prefix}/bad_cube_cex2graph/expr_to_build_graph/{aig_case_name}",f"{extracted_bad_cube_prefix}/bad_cube_cex2graph/json_to_graph_pickle/")
+    #print(missing_indices_of_graph)
+
+
     # load pytorch model
     net = NeuroInductiveGeneralization()
     # choose the NN model that you want to test
@@ -618,14 +638,18 @@ def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_locat
     # filter the original_CTI with final_predicted_clauses
     # first, convert final_predicted_clauses to a list that without 'v'
     final_predicted_clauses = [[literal.replace('v','') for literal in clause] for clause in final_predicted_clauses]
-    
+
     final_generate_res = [] # this will be side loaded to ic3ref
     print(f'{selected_aig_case} is generating predicted clauses...')
+    assert final_predicted_clauses, 'Final predicted clauses is empty!'
+    # insert the missing clause in the original_CTI to final_predicted_clauses
+    for i in missing_indices_of_graph: final_predicted_clauses.insert(i,original_CTI[i])
+
     for i in range(len(original_CTI)):
-        assert final_predicted_clauses, 'Final predicted clauses is empty!'
         # generalize the original_CTI[i] with final_predicted_clauses[i]
         # if the literal in original_CTI[i] is not in final_predicted_clauses[i], then remove it
         cls = [literal for literal in original_CTI[i] if literal in final_predicted_clauses[i] or str(int(literal)-1) in final_predicted_clauses[i]]
+        if not cls: cls = original_CTI[i]
         final_generate_res.append(cls)
 
     # remove the duplicate clause in final_generate_res
@@ -718,7 +742,7 @@ if __name__ == "__main__":
     '''
     args = parser.parse_args([
         '--threshold', '0.5',
-        '--selected-built-dataset', 'dataset_hwmcc2020_small_abc_slight_1',
+        '--selected-built-dataset', 'dataset_hwmcc2020_all_abc_slight_1',
         '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
         '--gpu-id', '1',
         '--compare_with_abc',

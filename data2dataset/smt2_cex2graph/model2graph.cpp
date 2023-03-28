@@ -9,7 +9,7 @@
 #include <vector>
 #include <bits/stdc++.h>
 //#include "prop_formula.h"
-
+#include <sstream>
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -156,7 +156,13 @@ int main(int argc, char ** argv) {
     // get the file name from argv
     string file_name = argv[1];
     string file_path = argv[2];
+    // read a argument from command line to decide whether to simplify the graph
+    std::stringstream ss(argv[3]);
+    bool is_simplify = false;
+    ss >> std::boolalpha >> is_simplify;
     cout<<"file name:"<<file_name<<endl;
+    //print if simplify the graph
+    cout<<"ready to simplify: "<<is_simplify<<endl;
 
     z3::context ctx;
     //auto&& opt = z3::optimize(ctx);
@@ -207,8 +213,7 @@ int main(int argc, char ** argv) {
         //XXX: Double check before running the script
         //HACK: This will ignore a "and" operation of k, but why?
         //cout<<"k: \n"<<k<<endl;
-
-        expr simplified_expr = k.simplify();
+        expr simplified_expr = is_simplify ? k.simplify() : k;
         
         //XXX: Double check before running the script
         //std::cout << "expr num. args (after simplify): " << simplified_expr.num_args() << "\n";

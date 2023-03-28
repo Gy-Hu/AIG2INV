@@ -121,11 +121,18 @@ def walkFile(dir):
     files = [file for file in files if file.endswith(".aag")]
     return files
 
+def generate_subset_dir_lst(subset_range, subset_dir):
+    if '-' not in subset_range:
+        return [subset_dir + subset_range]
+    start, end = map(int, subset_range.split('-'))
+    return [subset_dir + str(i) for i in range(start, end + 1)]
+
 def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
     #generate smt2 file for prediction -> SAT model/conterexample
     print("Start to find the cases with inductive invariants!")
     subset_dir = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/{BENCHMARK}/subset_"
-    subset_dir_lst = [subset_dir+str(i) for i in range(SUBSET_RANGE)] # 10 is the number for test subset
+    # if SUBSET_RANGE is a integer in string format, then convert it to integer, otherwise, it is a list
+    subset_dir_lst =  generate_subset_dir_lst(SUBSET_RANGE, subset_dir) # 10 is the number for test subset
     
     # get all the generated inductive invariants cases' name
     # store all folder name in '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip'
@@ -164,7 +171,7 @@ def generate_smt2(run_mode='normal', model_checker='ic3ref'):
     If the `run_mode` set to 'debug', collect.py will exit after checking the inv.cnf without smt2 generation.
     Then, this `main.py` will also exit after printing the bad_inv.log
     '''
-    pool = ThreadPool(multiprocessing.cpu_count()/4)
+    pool = ThreadPool(multiprocessing.cpu_count())
     #pool = multiprocessing.Pool(64)
     '''
     First, go to the select dataset, check whether the case has inductive invariants generated in advance,
@@ -236,7 +243,7 @@ def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False, ic3ref
                 # if the inv.cnf and the folder does not exist, then we create the folder
                 os.mkdir(f"{DATASET_FOLDER_PREFIX}/re-generate_inv/{case.split('/')[-1].split('.aag')[0]}")
         # call IC3 to re-generate the inv.cnf for the cases that has mismatched inductive invariants
-        pool = ThreadPool(multiprocessing.cpu_count()/4)
+        pool = ThreadPool(multiprocessing.cpu_count())
         results = []
         results.extend(
             pool.apply_async(
@@ -260,7 +267,7 @@ def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False, ic3ref
     
     
     if only_re_generate_inv==False:
-        pool = ThreadPool(multiprocessing.cpu_count()/4)
+        pool = ThreadPool(multiprocessing.cpu_count())
         # begin to generate the smt2 file for the cases that has mismatched inductive invariants
         results = []
         assert cases4re_generate_inv != [], "BUG: cases4re_generate_inv should not be empty! Check the copy operation!"
@@ -288,19 +295,20 @@ def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False, ic3ref
     shutil.move("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log", f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log.{time.time()}")
     
     
-def generate_pre_graph():
+def generate_pre_graph(simplification):
     # generate pre-graph, constructed as json
     smt2_dir = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DATASET_FOLDER_PREFIX}/bad_cube_cex2graph/expr_to_build_graph/"
     # get all the subfolder name under smt2_dir
     data4json_conversion = os.listdir(smt2_dir)
+    simplification = "true" if simplification in ["thorough", "deep", "moderate", "slight", "naive"] else "false"
 
-    pool = ThreadPool(multiprocessing.cpu_count()/4)
+    pool = ThreadPool(multiprocessing.cpu_count())
     results = []
     results.extend(
         pool.apply_async(
             call_proc,
             (#XXX: Double check before running the script -> did you recompile it and update it to the latest version?
-                f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/model2graph {case_name} {smt2_dir}",
+                f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/model2graph {case_name} {smt2_dir} {simplification}",
             ),
         )
         for case_name in data4json_conversion
@@ -324,7 +332,7 @@ def generate_post_graph():
     # get all the subfolder name under expr_to_build_graph (expression to build graph)
     data4pickle_conversion = os.listdir(json_dir)
 
-    pool = ThreadPool(multiprocessing.cpu_count()/4)
+    pool = ThreadPool(multiprocessing.cpu_count())
     results = []
     results.extend(
         pool.apply_async(
@@ -370,18 +378,18 @@ if __name__ == '__main__':
     parser.add_argument('--simplification-label', type=str, default="no_simplification", help='simplification label')
     parser.add_argument('--benchmark', type=str, default=None, help='benchmark, which is used to generate the training dataset, in benchmark_folder')
     parser.add_argument('--ground_truth_folder_prefix', type=str, default=None, help='ground truth folder prefix, the final aim generated folder, in the root folder')
-    parser.add_argument('--subset_range', type=int, default=1, help='subset range, the number of subset')
+    parser.add_argument('--subset_range', type=str, default=0, help='subset range, the number of subset')
     
     args = parser.parse_args()
     '''
-    args = parser.parse_args(['--model-checker', 'abc', \
-        #'--dataset-folder-prefix', 'dataset_hwmcc20_small_abc_slight_1', \
-        '--simplification-label', 'deep', \
-        '--benchmark', 'hwmcc2020_small', \
-        '--ground_truth_folder_prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result',\
-        '--subset_range', '1'
-        ])
     '''
+    args = parser.parse_args(['--model-checker', 'abc', \
+        #'--simplification-label', 'deep', \
+        '--benchmark', 'hwmcc2020_all_only_unsat', \
+        '--ground_truth_folder_prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result',\
+        '--subset_range', '0'
+        ])
+    
     
     
     # Global variable assignment
@@ -446,7 +454,7 @@ if __name__ == '__main__':
     '''
     # generate pre-graph (json format)
     # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/model2graph
-    generate_pre_graph()
+    generate_pre_graph(args.simplification_label)
 
     # generate post-graph (pickle format)
     # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/json2networkx.py

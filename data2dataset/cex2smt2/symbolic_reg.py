@@ -24,11 +24,12 @@ def validate_model(X, y, model_file):
     model = PySRRegressor.from_file(model_file)
     print(model)
     # predict y by feeding X to the model
-    y = model.predict(X)
+    pred_y = model.predict(X)
     # print y without scientific notation
     np.set_printoptions(suppress=True)
-    y = np.array([np.format_float_positional(i, trim='-') for i in y])
-    print(y)
+    pred_y = np.array([np.format_float_positional(i, trim='-') for i in pred_y])
+    print(pred_y[:10])
+    print(y[:10])
     #exit
     exit()
 

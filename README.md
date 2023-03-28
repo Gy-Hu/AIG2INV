@@ -44,8 +44,6 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 * `python main.py --threshold 0.5 --selected-built-dataset dataset_hwmcc2020_small_abc_slight_1 --NN-model neuropdr_2023-01-06_07:56:51_last.pth.tar --gpu-id 1 --compare_with_abc --re-predict`
 
 ### For dataset
-* `dataset_hwmcc07_toy_no_simplification` : contains only one aiger's cex
-* `dataset_hwmcc07_small_no_simplification`: contains 5 simplest aigers from hwmcc07
 * `dataset_{BENCHMARK}_{MODEL_CHECKER}_{SIMPLIFICATION_LEVEL}_{SUBSET_RANGE}`: contains aigers of `{BENCHMARK}` with `{SIMPLIFICATION_LEVEL}` simplification, and ground truth from `{MODEL_CHECKER}` model checker
 
 ### For converted aiger

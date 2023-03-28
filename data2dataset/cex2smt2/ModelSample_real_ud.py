@@ -1,7 +1,7 @@
 # Real uniform distribution implementation
 
 from z3 import *
-from pycryptosat import Solver
+#from pycryptosat import Solver
 import random
 
 # Read the SMT2 file

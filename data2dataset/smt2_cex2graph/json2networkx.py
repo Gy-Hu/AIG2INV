@@ -21,7 +21,25 @@ def json2graph_pickle(filename,ground_truth_path, pickle_file_name_prefix):
     ), 'Constant boolean value should be changed to "constant_true" or "constant_false"! Which should be ranked before input variable and latch variable!'
 
     # if json_data only have one node (it is abnormal graph), we stop the process
-    if len(json_data) == 1: return
+    if len(json_data) == 1: 
+        '''
+        Assert data is like this:
+        {
+        "data": {
+            "application": "constant_false",
+            "id": 0,
+            "type": "variable"
+        }
+        }
+        '''
+        assert all([
+            json_data[0]['data']['type'] == 'variable',
+            json_data[0]['data']['application'] in ['constant_true', 'constant_false'],
+            json_data[0]['data']['id'] == 0
+        ]), 'Abnormal graph! Check json file!'
+        #record_abnormal_graph(filename)
+        return
+        
     # change the node in json_data if it is a constant value like true, false -> can be done as double check
     '''
     for elem in json_data:

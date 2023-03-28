@@ -2,7 +2,7 @@
 
 ## Generate Benchmark (Simple preprocessing)
 
-* `utils/fetch_aiger.py` : Fetch the benchmark from the website (processed data should be in `benchmark_folder/` folder)
+* `utils/fetch_aiger.py` : Fetch the benchmark from the hwmcc, and simplly preprocess it (processed data should be in `benchmark_folder/` folder)
     * **usage:** `cd utils && python fetch_aiger.py`
 
 ## Build Dataset (Cex -> Graph)

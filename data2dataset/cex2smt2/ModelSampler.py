@@ -41,4 +41,4 @@ if __name__ == "__main__":
     for idx, model in enumerate(models):
         print(f"Model {idx + 1}:")
         for d in model.decls():
-            print(f"  {d.name()} = {model[d]}")
+            print(f"  {d.name()} = {model[d]}") #uniform distribution of models -> ludy's 
