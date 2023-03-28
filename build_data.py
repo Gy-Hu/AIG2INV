@@ -41,6 +41,7 @@ from multiprocessing.pool import ThreadPool
 from threading import Timer
 import shutil
 import time
+from tqdm import tqdm
 
 def initialization(dir_name, with_re_generate_inv=False):
     
@@ -164,7 +165,9 @@ def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
             all_cases_name_lst.extend(f"{subset}/{case}" for case in _)
 
     return all_cases_name_lst
-    
+
+def update_progress_bar(pbar):
+    pbar.update(1)
 
 def generate_smt2(run_mode='normal', model_checker='ic3ref'):
     '''
@@ -181,16 +184,19 @@ def generate_smt2(run_mode='normal', model_checker='ic3ref'):
 
     results = []
     print(f"Start to generate smt2 for {len(all_cases_name_lst)} aiger in all the subset!")
-    for _, aig_to_generate_smt2 in enumerate(all_cases_name_lst):
-        print(f"Start to generate smt2 for No.{_} aiger: {(aig_to_generate_smt2.split('/')[-1]).split('.aag')[0]}")
-        results.append(pool.apply_async(
-            call_proc,
-            (
-                f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2} --run-mode {run_mode} --model-checker {model_checker} {SIMPLIFICATION_LABEL} --ground-truth-folder-prefix {GROUND_TRUTH_FOLDER_PREFIX} --dump-folder-prefix {DATASET_FOLDER_PREFIX}",
-            ),
-        ))
-    pool.close()
-    pool.join()
+    with tqdm(total=len(all_cases_name_lst)) as pbar:
+        for _, aig_to_generate_smt2 in enumerate(all_cases_name_lst):
+            print(f"Start to generate smt2 for No.{_} aiger: {(aig_to_generate_smt2.split('/')[-1]).split('.aag')[0]}")
+            results.append(pool.apply_async(
+                call_proc,
+                (
+                    f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2} --run-mode {run_mode} --model-checker {model_checker} {SIMPLIFICATION_LABEL} --ground-truth-folder-prefix {GROUND_TRUTH_FOLDER_PREFIX} --dump-folder-prefix {DATASET_FOLDER_PREFIX}",
+                ),
+                callback=lambda _: update_progress_bar(pbar)
+            ))
+        pool.close()
+        pool.join()
+        
     for result in results:
         _, err = result.get()
         # if err is not None, print it 
@@ -304,17 +310,18 @@ def generate_pre_graph(simplification):
 
     pool = ThreadPool(multiprocessing.cpu_count())
     results = []
-    results.extend(
-        pool.apply_async(
-            call_proc,
-            (#XXX: Double check before running the script -> did you recompile it and update it to the latest version?
-                f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/model2graph {case_name} {smt2_dir} {simplification}",
-            ),
-        )
-        for case_name in data4json_conversion
-    )
-    pool.close()
-    pool.join()
+    with tqdm(total=len(data4json_conversion)) as pbar:
+        for case_name in data4json_conversion:
+            results.append(pool.apply_async(
+                call_proc,
+                (
+                    #XXX: Double check before running the script -> did you recompile it and update it to the latest version?
+                    f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/model2graph {case_name} {smt2_dir} {simplification}",
+                ),
+                callback=lambda _: update_progress_bar(pbar)
+            ))
+        pool.close()
+        pool.join()
     for result in results:
         _, err = result.get()
         # if err is not None, print it 
@@ -334,20 +341,21 @@ def generate_post_graph():
 
     pool = ThreadPool(multiprocessing.cpu_count())
     results = []
-    results.extend(
-        pool.apply_async(
-            call_proc,
-            (
-                f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/json2networkx.py \
-                --json_file_path   {json_dir}/{case_name} \
-                --ground_truth_path  {ground_truth_dir}/{case_name} \
-                --pickle_file_name_prefix {pickle_file_name_prefix}",
-            ),
-        )
-        for case_name in data4pickle_conversion
-    )
-    pool.close()
-    pool.join()
+    with tqdm(total=len(data4pickle_conversion)) as pbar:
+        for case_name in data4pickle_conversion:
+            results.append(pool.apply_async(
+                call_proc,
+                (
+                    f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/json2networkx.py \
+                    --json_file_path   {json_dir}/{case_name} \
+                    --ground_truth_path  {ground_truth_dir}/{case_name} \
+                    --pickle_file_name_prefix {pickle_file_name_prefix}",
+                ),
+                callback=lambda _: update_progress_bar(pbar)
+            ))
+        pool.close()
+        pool.join()
+        
     for result in results:
         _, err = result.get()
         # if err is not None, print it 
@@ -382,14 +390,13 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     '''
-    '''
     args = parser.parse_args(['--model-checker', 'abc', \
         '--simplification-label', 'naive', \
         '--benchmark', 'hwmcc2020_all_only_unsat', \
         '--ground_truth_folder_prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result',\
         '--subset_range', '0'
         ])
-    
+    '''
     
     
     # Global variable assignment
