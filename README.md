@@ -34,6 +34,7 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 * `main.py` : predict the induction invariant from SAT models
 * `tool_box.py` : some useful functions (e.g. clean trivial log, counterexample cube visualization)
 * `utils/fetch_aiger.py` : fetch aiger, this script must be ran in the same dir as `utils`
+* `utils/graph_size_comp.py` : compare the graph size of different simplification level
 
 ### Example Usage (Details in [USAGE.md](./USAGE.md))
 **build dataset**

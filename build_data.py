@@ -384,7 +384,7 @@ if __name__ == '__main__':
     '''
     '''
     args = parser.parse_args(['--model-checker', 'abc', \
-        #'--simplification-label', 'deep', \
+        '--simplification-label', 'naive', \
         '--benchmark', 'hwmcc2020_all_only_unsat', \
         '--ground_truth_folder_prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result',\
         '--subset_range', '0'

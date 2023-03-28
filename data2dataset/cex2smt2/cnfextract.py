@@ -65,8 +65,8 @@ class ExtractCnf(object):
             #     for i, (vprime, nxt) in enumerate(self.vprime2nxt):
             #         self.vprime2nxt[i] = (vprime, z3.simplify(SympyToZ3(sp_converter.to_sympy(nxt,vprime)).sympy2smt()))
             #         pbar.update(1)
-            self.vprime2nxt = [(vprime, z3.simplify(SympyToZ3(sp_converter.to_sympy(nxt,vprime)).sympy2smt())) for vprime, nxt in self.vprime2nxt]
-            
+            #self.vprime2nxt = [(vprime, z3.simplify(SympyToZ3(sp_converter.to_sympy(nxt,vprime)).sympy2smt())) for vprime, nxt in self.vprime2nxt]
+            self.vprime2nxt = [(vprime, z3.simplify(sp_converter.compile_to_z3(sp_converter.to_sympy(nxt)))) for vprime, nxt in self.vprime2nxt]
             #self.vprime2nxt = [(vprime, z3.simplify(sp_converter.compile_to_z3(sp_converter.to_sympy_parallel(nxt)))) for vprime, nxt in self.vprime2nxt]
             #self.vprime2nxt = [(vprime, z3.simplify(sp_converter.to_z3(sp.simplify(sp_converter.to_sympy(nxt))))) for vprime, nxt in self.vprime2nxt]
             
@@ -369,7 +369,8 @@ class ExtractCnf(object):
         # maybe make it too simple...
         # sp_converter.to_sympy(Cube)
         if SIMPLIFICATION_LEVEL in ["naive","thorough"]:
-            Cube = z3.simplify(SympyToZ3(sp_converter.to_sympy(Cube)).sympy2smt())
+            Cube = z3.simplify(sp_converter.compile_to_z3(sp_converter.to_sympy(Cube)))
+            #Cube = z3.simplify(SympyToZ3(sp_converter.to_sympy(Cube)).sympy2smt())
         
         
         '''

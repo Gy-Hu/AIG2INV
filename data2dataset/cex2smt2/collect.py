@@ -165,12 +165,13 @@ if __name__ == "__main__":
         'normal',
         '--model-checker', 
         'abc', #XXX: Double check before running scripts
-        '--deep-simplification', 'T',
+        '--thorough-simplification', 'T',
+        #'--deep-simplification', 'T',
         #'--moderate-simplification', 'T',
         '--ground-truth-folder-prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result',
         #'--deep-simplification',
         #'T' #XXX: Double check before running scripts -> want to use sympy rather than ternary simulation?,
-        '--dump-folder-prefix', 'dataset_hwmcc2020_all_abc_slight_1'
+        '--dump-folder-prefix', 'dataset_hwmcc2020_all_only_unsat_abc_thorough_0'
         ])
     '''
     

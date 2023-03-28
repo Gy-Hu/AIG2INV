@@ -191,9 +191,9 @@ def to_z3_parallel(sp_expr):
     return res
 
 '''
----------
-No Bugs |
----------
+-----------------
+No Bugs? Maybe? |
+-----------------
 '''
 #@lru_cache(maxsize=None)
 def to_sympy_parallel(expr, t=None):
@@ -359,6 +359,7 @@ No Bugs |
 ---------
 '''
 def compile_to_z3(exp, memo={}):
+    exp = sp.simplify(exp)
     # Sympy vs Z3. Add more correspondences as necessary!
     table = { sp.logic.boolalg.And    : z3.And
             , sp.logic.boolalg.Or     : z3.Or
@@ -415,4 +416,4 @@ if __name__ == '__main__':
     c = z3.Not(z3.And(z3.Not(a), z3.Not(b)))
     #print(z3.simplify(compile_to_z3(to_sympy_parallel(c))))
     #print(sympy2pysmt((to_sympy_parallel(c))))
-    print(z3.simplify(compile_to_z3_parallel_2(to_sympy_parallel(c))))
+    print(z3.simplify(compile_to_z3(to_sympy(c))))
