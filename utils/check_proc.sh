@@ -1,0 +1,2 @@
+aag_files_and_count=$(ps -ef | grep collect | awk -F ' ' '{for(i=1; i<=NF; i++) if($i ~ /\.aag$/) {split($i, a, "/"); print "'"'"'" a[length(a)] "'"'"',"}}' | tee >(wc -l))
+count=$(echo "$aag_files_and_count" | tail -n 1)

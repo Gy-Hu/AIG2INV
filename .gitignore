@@ -47,3 +47,4 @@ data2dataset/cex2smt2/aig2graph.py
 data2dataset/aig2graph/
 utils/picosat/
 clause-learning/
+!check_proc.sh
