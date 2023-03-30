@@ -149,7 +149,39 @@ def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
 
     # initialize the list to store all the abnormal cases
     AigCaseBlackList = [
-        #'eijk.bs3271.S',\
+        #benchmark 2007
+        #'eijk.bs3271.S',
+        #benchmark 2020
+        'vcegar_QF_BV_itc99_b13_p10',
+        'zipcpu-busdelay-p00',
+        'zipcpu-busdelay-p30',
+        'qspiflash_qflexpress_divfive-p137',
+        'qspiflash_dualflexpress_divthree-p046',
+        'qspiflash_dualflexpress_divfive-p007',
+        'qspiflash_dualflexpress_divfive-p154',
+        'qspiflash_dualflexpress_divfive-p009',
+        'qspiflash_dualflexpress_divfive-p116',
+        'qspiflash_dualflexpress_divthree-p111',
+        'elevator.4.prop1-func-interl',
+        'h_RCU',
+        'vgasim_imgfifo-p105',
+        'cal87',
+        'cal90',
+        'picorv32-check-p05',
+        'cal142',
+        'picorv32-check-p20',
+        'cal118',
+        'cal97',
+        'cal143',
+        'cal102',
+        'cal107',
+        'cal112',
+        'dspfilters_fastfir_second-p09',
+        'dspfilters_fastfir_second-p26',
+        'dspfilters_fastfir_second-p11',
+        'cal161',
+        'rushhour.4.prop1-func-interl',
+        'cal176'
     ]
 
     all_cases_name_lst = [] # put into multi-threading pool
@@ -390,11 +422,12 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     '''
+    
     args = parser.parse_args(['--model-checker', 'abc', \
-        '--simplification-label', 'naive', \
-        '--benchmark', 'hwmcc2020_all_only_unsat', \
-        '--ground_truth_folder_prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result',\
-        '--subset_range', '0'
+        #'--simplification-label', 'naive', \
+        '--benchmark', 'hwmcc2007_tip', \
+        '--ground_truth_folder_prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/',\
+        '--subset_range', '0-22'
         ])
     '''
     

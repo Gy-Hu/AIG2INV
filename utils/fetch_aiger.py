@@ -62,12 +62,13 @@ def fetch_aig_from_csv(csv_file):
 
     # Add file path to the aag_list
     for i in range(len(aag_list)):
-        aag_list[i] = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc20/" + aag_list[i] + ".aig"
+        aag_list[i] = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07/" + aag_list[i] + ".aig"
+        #aag_list[i] = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc20/" + aag_list[i] + ".aig"
 
     return aag_list
 
 if __name__ == '__main__':
-    aag_dir = './pre-dataset/aag4train_hwmcc20_all/'
+    aag_dir = './pre-dataset/aag4train_hwmcc07_only_unsat/'
     parser = argparse.ArgumentParser(description="Convert aig to aag automatically")
     parser.add_argument('-outdir', type=str, default=aag_dir, help='Export the converted aag to the directory')
     parser.add_argument('-d', type=int, default=1, help='Determin whether to divide files into subset')
@@ -79,7 +80,7 @@ if __name__ == '__main__':
     # make aag_dir if it does not exist
     if not os.path.isdir(aag_dir): 
         os.makedirs(aag_dir)
-    csv_file = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/stat/size20.csv"
+    csv_file = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/stat/size07.csv"
     aig_list = fetch_aig_from_csv(csv_file)
 
     for file in aig_list:
@@ -98,15 +99,15 @@ if __name__ == '__main__':
     -------------------sort the file by size and split into chunks-------------------
     '''
     if args.d != 0:
-        sp = subprocess.Popen("du -b ./pre-dataset/aag4train_hwmcc20_all/* | sort -n", stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
+        sp = subprocess.Popen(f"du -b {aag_dir}/* | sort -n", stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
         lst = [line.decode("utf-8").strip('\n').split('\t') for line in sp.stdout.readlines()]
         list_removed_empty = remove_empty_file(lst)
         list_removed_empty = delete_redundant_line(lst)
         list_removed_trivial_unsat = remove_trivially_unsat_aiger(list_removed_empty)
         list_chunks = list(chunk(list_removed_trivial_unsat, args.n))
         for i_tuple in range(len(list_chunks)):
-            if not os.path.isdir(f"./pre-dataset/aag4train_hwmcc20_all/subset_{str(i_tuple)}"): 
-                os.makedirs(f"./pre-dataset/aag4train_hwmcc20_all/subset_{str(i_tuple)}")
+            if not os.path.isdir(f"{aag_dir}/subset_{str(i_tuple)}"): 
+                os.makedirs(f"{aag_dir}/subset_{str(i_tuple)}")
             for i_file in range(len(list_chunks[i_tuple])): 
-                shutil.copy(list_chunks[i_tuple][i_file][1], f"./pre-dataset/aag4train_hwmcc20_all/subset_{str(i_tuple)}")
+                shutil.copy(list_chunks[i_tuple][i_file][1], f"{aag_dir}/subset_{str(i_tuple)}")
 

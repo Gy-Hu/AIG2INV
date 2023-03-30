@@ -4,6 +4,7 @@
 
 * `utils/fetch_aiger.py` : Fetch the benchmark from the hwmcc, and simplly preprocess it (processed data should be in `benchmark_folder/` folder)
     * **usage:** `cd utils && python fetch_aiger.py`
+    * **note:** change `aag_dir` (dump folder), `csv_file` (running info and aiger location prefix) and `aag_list[i]` (aiger files location) in the script to fetch different benchmarks. Modify `fetch_aig_from_csv` to ajust the preprocessing methods (only unsat? only sat?).
 
 ## Build Dataset (Cex -> Graph)
 
@@ -15,6 +16,8 @@
         * `--benchmark` : The benchmark to use in benchmark_folder (e.g. `hwmcc2007_all`, `hwmcc2020_all`, `hwmcc2020_all_only_unsat`, `hwmcc2020_small`)
         * `--ground_truth_folder_prefix` : The prefix of the ground truth folder (e.g. `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result`, `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result`, `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`, `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`)
         * `--subset_range` : The range of data in benchmark to generate (e.g. `1`, `23`)
+    * **note:**
+        * There exists a list named `AigCaseBlackList`, which can exclude some cases from the benchmark (e.g. using `utils/check_proc.sh` to find those `hard-extraction` cases, and add them to the list. `echo "$count"` or `echo "$aag_files_and_count"` after sourcing)
 
 ## Train the Model
 
@@ -57,7 +60,7 @@ select which model to use (currently only `neurograph` is available)
         * `--compare_with_nnic3_basic_generalization'`: Compare the result with nnic3 basic generalization (optional)
         * `--aig-case-name`: Test the single aiger (optional)
     * **note:**
-        * delete the duplicate data in case4comp/ folder before runing the script (if this script has been run before with the same arguments)
+        * delete the duplicate data in `case4comp/` folder before runing the script (if this script has been run before with the same arguments)
 
 
 ## Analyze the Result
@@ -112,3 +115,7 @@ select which model to use (currently only `neurograph` is available)
         * `--smt2-file` : The path to the smt2 file (e.g. `tip2_2.smt2`)
 * `data2dataset/cex2smt2/ModelSample_real_ud` : Using crytominisat to perform real uniform distribution sampling
     * **note:** This script is under development. It is not used in the paper.
+
+### Find complex case (not used in the paper)
+* `utils/check_proc.sh`: check the process (normally used to find complex case if `build_data.py` has been run for a long time)
+    * **usage:** `source ./check_proc.sh && echo "$count"` or `source ./check_proc.sh && echo "$aag_files_and_count"`

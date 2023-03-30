@@ -2,6 +2,13 @@
 
 Accelerating IC3 by inducive clauses prediction
 
+### WIP
+* [x] `dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22` test
+* [ ] `dataset_hwmcc2007_tip_abc_no_simplification_0-22` test
+* [ ] `dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0-38` test
+* [ ] `dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38` test
+
+
 ### For important dir
 
 **for ground truth**

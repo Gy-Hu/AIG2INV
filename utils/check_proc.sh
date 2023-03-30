@@ -1,2 +1,6 @@
-aag_files_and_count=$(ps -ef | grep collect | awk -F ' ' '{for(i=1; i<=NF; i++) if($i ~ /\.aag$/) {split($i, a, "/"); print "'"'"'" a[length(a)] "'"'"',"}}' | tee >(wc -l))
-count=$(echo "$aag_files_and_count" | tail -n 1)
+# aag_files_and_count=$(ps -ef | grep collect.py | grep 2007 | awk -F ' ' '{for(i=1; i<=NF; i++) if($i ~ /\.aag$/) {split($i, a, "/"); gsub(".aag", "", a[length(a)]); print "'"'"'" a[length(a)] "'"'"',"}}' | tee >(wc -l))
+#count=$(echo "$aag_files_and_count" | tail -n 1)
+aag_files_and_count_2007=$(ps -ef | grep collect.py | grep 2007 | awk -F ' ' '{for(i=1; i<=NF; i++) if($i ~ /\.aag$/) {split($i, a, "/"); gsub(".aag", "", a[length(a)]); print "'"'"'" a[length(a)] "'"'"',"}}' | tee >(wc -l))
+aag_files_and_count_2020=$(ps -ef | grep collect.py | grep 2020 | awk -F ' ' '{for(i=1; i<=NF; i++) if($i ~ /\.aag$/) {split($i, a, "/"); gsub(".aag", "", a[length(a)]); print "'"'"'" a[length(a)] "'"'"',"}}' | tee >(wc -l))
+kill_2007=$(ps -ef | grep collect.py | grep 2007 | grep debug | awk '{print $2}' | xargs kill)
+kill_2020=$(ps -ef | grep collect.py | grep 2020 | grep debug | awk '{print $2}' | xargs kill)
