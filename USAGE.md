@@ -109,6 +109,11 @@ select which model to use (currently only `neurograph` is available)
         * `--model-file` : The path to the model file (e.g. `symbolic_reg_model_2021-01-06_07:56:51_last.pth.tar`)
         * `--validate` : Determin whether to validate the model (e.g. `True`)
         * `--model` : Determin which model to use (e.g. `1`)
+
+### AutoRegressor
+* `data2dataset/cex2smt2/pytorch_auto_regression.py`: Auto-pytorch regression model
+* `data2dataset/cex2smt2/sklearn_auto_regression.py`: Auto-sklearn regression model
+
 ### SAT Model Uniform Distribution Sampling
 * `data2dataset/cex2smt2/ModelSampler.py`: SAT model uniform distribution sampling
     * **usage:** `python ModelSampler.py --smt2-file <smt2-file>`
