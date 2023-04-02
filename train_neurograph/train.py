@@ -257,12 +257,12 @@ if __name__ == "__main__":
     '''
     
     '''
-    
+    '''
     args = parser.parse_args(['--task-name', 'neuropdr_'+ datetime_str.replace(' ', '_'), 
                               '--dim', '128', '--n_rounds', '128',
                               '--epochs', '512',
-                              '--train-file', 'dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/json_to_graph_pickle/',  
-                              '--val-file', 'dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/json_to_graph_pickle/',
+                              '--train-file', 'dataset_hwmcc2020_all_only_unsat_abc_naive_0/bad_cube_cex2graph/json_to_graph_pickle/',  
+                              '--val-file', 'dataset_hwmcc2020_all_only_unsat_abc_naive_0/bad_cube_cex2graph/json_to_graph_pickle/',
                               '--mode', 'train',
                               '--gpu-id', '1',
                               '--batch-size', '1',
@@ -270,8 +270,8 @@ if __name__ == "__main__":
                               '--lr', '0.00001',
                               #'--local_rank', '2',
                               ])
-    '''
-    args = parser.parse_args()
+    
+    #args = parser.parse_args()
     args.task_name = args.task_name+'-'+datetime_str.replace(' ', '_')
     print(args)
     

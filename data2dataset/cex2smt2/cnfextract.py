@@ -86,7 +86,7 @@ class ExtractCnf(object):
                     self.vprime2nxt[self.vprime2nxt.index((vprime, nxt))] = (vprime, nxt2replace)
             
             #XXX: Double Check before running the script
-            self._check_tr_correctness_after_simplification(self.vprime2nxt_without_simplification, self.vprime2nxt)
+            # self._check_tr_correctness_after_simplification(self.vprime2nxt_without_simplification, self.vprime2nxt)
             
 
         self.init = aagmodel.init

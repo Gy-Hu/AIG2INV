@@ -154,10 +154,18 @@ int main(int argc, char ** argv) {
     //XXX: Double check before running the script
     //TestSimplify();
     // get the file name from argv
-    string file_name = argv[1];
-    string file_path = argv[2];
+
+    // Define arguments
+    string file_name = argv[1]; // such as "simple_alu"
+    string file_path = argv[2]; // such as "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_naive_0/bad_cube_cex2graph/expr_to_build_graph/"
     // read a argument from command line to decide whether to simplify the graph
-    std::stringstream ss(argv[3]);
+    std::stringstream ss(argv[3]); // such as "true"
+    
+    // pre-defined file_name, file_path, is_simplify
+    // string file_name = "simple_alu";
+    // string file_path = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_naive_0/bad_cube_cex2graph/expr_to_build_graph/";
+    // std::stringstream ss("true");
+
     bool is_simplify = false;
     ss >> std::boolalpha >> is_simplify;
     cout<<"file name:"<<file_name<<endl;

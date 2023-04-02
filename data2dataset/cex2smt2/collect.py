@@ -1,7 +1,7 @@
 from cnfextract import ExtractCnf
 from clause import Clauses
 from aigmodel import AAGmodel
-from aig2graph import AigGraph
+#from aig2graph import AigGraph
 import z3
 import os
 import argparse
@@ -133,29 +133,12 @@ if __name__ == "__main__":
     # parse the arguments to test()
     args = parser.parse_args()
     
-    
-    
     '''
     #XXX: Double check before running the script
     for testing only
     
     args = parser.parse_args(['--aag',
         '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2020_all/subset_0/simple_alu.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_4/nusmv.brp.B.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_0/nusmv.syncarb5^2.B.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_0/eijk.S208c.S.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_2/eijk.S386.S.aag', # encountered a bug in addModel(generalize predecessor)
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_17/vis.prodcell^03.E.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_7/eijk.S953.S.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_3/vis.arbiter.E.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_20/texas.PI_main^01.E.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_21/texas.PI_main^05.E.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_15/eijk.S5378.S.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_15/eijk.bs3330.S.aag',
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_15/eijk.bs3271.S.aag', # Solve sat solving when verify the invariants correctness
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_6/eijk.S838.S.aag', # Solving time of PDR is very long
-        #"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_17/vis.prodcell^03.E.aag", # cannot pass inv correctness check by any methods
-        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2007/subset_9/nusmv.reactor^5.C.aag', # z3 convert to dimacs has problem
         '--generalize', 'T',
         #'--cnf',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv/nusmv.brp.B/inv.cnf',
@@ -166,13 +149,14 @@ if __name__ == "__main__":
         'normal',
         '--model-checker', 
         'abc', #XXX: Double check before running scripts
-        '--thorough-simplification', 'T',
+        #'--thorough-simplification', 'T',
         #'--deep-simplification', 'T',
         #'--moderate-simplification', 'T',
+        '--naive-simplification', 'T',
         '--ground-truth-folder-prefix', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result',
         #'--deep-simplification',
         #'T' #XXX: Double check before running scripts -> want to use sympy rather than ternary simulation?,
-        '--dump-folder-prefix', 'dataset_hwmcc2020_all_only_unsat_abc_thorough_0'
+        '--dump-folder-prefix', 'dataset_hwmcc2020_all_only_unsat_abc_naive_0'
         ])
     '''
     

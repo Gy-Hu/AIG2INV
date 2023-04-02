@@ -90,6 +90,8 @@ select which model to use (currently only `neurograph` is available)
         * `--naive-simplification` : Only use sympy to simplify the counterexample cube (e.g. `False`)
         * `--ground-truth-folder-prefix` : The prefix of the ground truth folder (e.g. `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`)
         * `--dump-folder-prefix` : The prefix of the dump folder (e.g. `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset`)
+    * **note:**
+        * `_check_tr_correctness_after_simplification()` should be called if the simplification is turned on or debug 
 
 ## Others
 

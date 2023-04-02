@@ -139,10 +139,15 @@ def to_sympy(expr,t=None):
         return expr
     
     if z3.is_const(expr):
-        if z3.is_bool(expr):
+        # if expr is boolean variable and is not uninterpreted
+        if z3.is_bool(expr) and expr.decl().kind() == z3.Z3_OP_UNINTERPRETED:
             res = sp.Symbol(str(expr))
+        elif z3.is_bool(expr) and expr.decl().kind() == z3.Z3_OP_TRUE:
+            res = sp.true
+        elif z3.is_bool(expr) and expr.decl().kind() == z3.Z3_OP_FALSE:
+            res = sp.false
         else:
-            res = sp.Symbol(str(expr), integer=True)
+            assert False, 'conversion for type "%s" is not implemented: %s' % (type(expr), expr)
     elif z3.is_app_of(expr, z3.Z3_OP_NOT):
         res = sp.Not(to_sympy(expr.arg(0)))
     elif z3.is_app_of(expr, z3.Z3_OP_AND) or z3.is_app_of(expr, z3.Z3_OP_OR):

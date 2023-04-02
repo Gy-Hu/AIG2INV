@@ -115,13 +115,13 @@ if __name__ == '__main__':
     parser.add_argument('--json_file_path', type=str, default=None, help='the path of the json file')
     parser.add_argument('--ground_truth_path', type=str, default=None, help='the path of the ground truth table')
     parser.add_argument('--pickle_file_name_prefix', type=str, default=None, help='the prefix of the pickle file name')
-    args = parser.parse_args(['--json_file_path', 
-            '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/expr_to_build_graph/vis_arrays_am2910_p2',
-            '--ground_truth_path', 
-            '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/ground_truth_table/vis_arrays_am2910_p2',
-            '--pickle_file_name_prefix',
-            '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/json_to_graph_pickle/'])
-    #args = parser.parse_args()
+    # args = parser.parse_args(['--json_file_path', 
+    #         '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/expr_to_build_graph/vis_arrays_am2910_p2',
+    #         '--ground_truth_path', 
+    #         '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/ground_truth_table/vis_arrays_am2910_p2',
+    #         '--pickle_file_name_prefix',
+    #         '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/json_to_graph_pickle/'])
+    args = parser.parse_args()
 
     # assertion for the input arguments
     assert args.json_file_path is not None, "Please specify the path of the json file"
