@@ -257,7 +257,7 @@ if __name__ == "__main__":
     '''
     
     '''
-    '''
+    
     args = parser.parse_args(['--task-name', 'neuropdr_'+ datetime_str.replace(' ', '_'), 
                               '--dim', '128', '--n_rounds', '128',
                               '--epochs', '512',
@@ -270,8 +270,8 @@ if __name__ == "__main__":
                               '--lr', '0.00001',
                               #'--local_rank', '2',
                               ])
-    
-    #args = parser.parse_args()
+    '''
+    args = parser.parse_args()
     args.task_name = args.task_name+'-'+datetime_str.replace(' ', '_')
     print(args)
     

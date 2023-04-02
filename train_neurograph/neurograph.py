@@ -139,6 +139,7 @@ class NeuroInductiveGeneralization(nn.Module):
             par_to_child_msg = torch.matmul(problem['unpack'].t(), node_pre_msg)
             _, var_state = self.node_update(par_to_child_msg.unsqueeze(0), var_state)
             # the state variable is updated -> if not, assertion error
+            
             if torch.all(torch.eq((var_state[0].squeeze(0))[problem['n_nodes']:,:][-1], (var_state[0].squeeze(0))[problem['n_nodes']:,:][-2])):
                 invalid_passing.append(True)
             # if the last three logits are the same, then the model is not learning

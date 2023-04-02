@@ -11,6 +11,7 @@ import tempfile as tmp
 import warnings
 import pandas as pd
 import argparse
+import numpy as np
 
 import sklearn.datasets
 import sklearn.model_selection
@@ -133,8 +134,13 @@ if __name__ == '__main__':
     ############################################################################
     # Print the predictions of the final ensemble and the true values
     # ===============================================================
-    print(api.predict(X_test))
-    print(y_test)
+    np.set_printoptions(suppress=True)
+    y_test = np.array([np.format_float_positional(i, trim='-') for i in y_test])
+    #tuple y_test and api.predict(X_test) to string
+    for t in list(zip(y_test, api.predict(X_test))):
+        print(t)
+    #print(api.predict(X_test))
+    #print(y_test)
 
     # Print the final ensemble built by AutoPyTorch
     print(api.show_models())
