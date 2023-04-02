@@ -168,6 +168,10 @@ int main(int argc, char ** argv) {
 
     bool is_simplify = false;
     ss >> std::boolalpha >> is_simplify;
+    // if `is_simplify` is true, then print this information
+    if(is_simplify){
+        cout<<"simplification of graph is on"<<endl;
+    }
     cout<<"file name:"<<file_name<<endl;
     //print if simplify the graph
     cout<<"ready to simplify: "<<is_simplify<<endl;

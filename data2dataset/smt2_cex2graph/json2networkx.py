@@ -58,6 +58,13 @@ def json2graph_pickle(filename,ground_truth_path, pickle_file_name_prefix):
     if count_variable == 1: # skip the graph construction
         return
     
+    # assert there is no node with type 'variable' and application 'True' or 'False'
+    assert all(
+        elem['data']['application'] not in ['True', 'False']
+        for elem in json_data
+        if elem['data']['type'] == 'variable'
+    ), 'There is a node with type "variable" and application "True" or "False"! Something wrong in graph simplification! (sympy and z3 conversion)'
+    
     # rank json_data by 'type' and 'id', node - input_var - variable -> sequence like this
     json_data = natsorted(json_data, key=lambda x: (x['data']['type'], x['data']['application']))
 
@@ -116,9 +123,9 @@ if __name__ == '__main__':
     parser.add_argument('--ground_truth_path', type=str, default=None, help='the path of the ground truth table')
     parser.add_argument('--pickle_file_name_prefix', type=str, default=None, help='the prefix of the pickle file name')
     # args = parser.parse_args(['--json_file_path', 
-    #         '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/expr_to_build_graph/vis_arrays_am2910_p2',
+    #         '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_naive_0/bad_cube_cex2graph/expr_to_build_graph/simple_alu',
     #         '--ground_truth_path', 
-    #         '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/ground_truth_table/vis_arrays_am2910_p2',
+    #         '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_naive_0/bad_cube_cex2graph/ground_truth_table/simple_alu',
     #         '--pickle_file_name_prefix',
     #         '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/json_to_graph_pickle/'])
     args = parser.parse_args()
