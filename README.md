@@ -74,5 +74,5 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 ### For Log
 * `log/error_handle/abnormal_header.log.xxx`: contains the aiger that has abnormal header (e.g. `SAT`)
 * `log/error_handle/bad_model.log`: contains the aiger that has bad model (e.g. `v2==T, false, v4==F`, SAT model contains `false`)
-* `log/graph_pickle_incomplete.log`: contains the aiger that has incomplete graph pickle (e.g. number of CTI is not equal to number of graph generated)
-* `log/mismatched_inv.log.xxx`: contains the aiger that has mismatched inv (e.g. could not find a inductive clause in the inv to block the counterexample)
+* `log/error_handle/graph_pickle_incomplete.log`: contains the aiger that has incomplete graph pickle (e.g. number of CTI is not equal to number of graph generated)
+* `log/error_handle/mismatched_inv.log.xxx`: contains the aiger that has mismatched inv (e.g. could not find a inductive clause in the inv to block the counterexample)

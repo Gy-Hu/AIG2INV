@@ -44,6 +44,7 @@ class CNF_Filter(ExtractCnf):
        self.perform_ig = False
        # record the original aig location
        self.aig_location = aig_location
+       self.check_and_reduce_res = True
     
     def _solveRelative_upgrade(self, clauses_to_block):
         # sourcery skip: extract-duplicate-method, inline-immediately-returned-variable
@@ -196,10 +197,14 @@ class CNF_Filter(ExtractCnf):
         # copy the line in Predict_Clauses_Before_Filtering to Predict_Clauses_After_Filtering according to passed_clauses
         with open(Predict_Clauses_Before_Filtering, 'r') as f:
             lines = f.readlines()
-        with open(Predict_Clauses_After_Filtering, 'w') as f:
-            f.write(f'unsat {len(passed_clauses)}' + '\n')
-            passed_and_sorted_clauses =  self._sort_passed_clauses(lines, passed_clauses) # finish filtering the clauses, and sort the clauses
-            for clause in passed_and_sorted_clauses: f.write(clause)
+
+        if passed_clauses: #!=0
+            with open(Predict_Clauses_After_Filtering, 'w') as f:
+                f.write(f'unsat {len(passed_clauses)}' + '\n')
+                passed_and_sorted_clauses =  self._sort_passed_clauses(lines, passed_clauses) # finish filtering the clauses, and sort the clauses
+                for clause in passed_and_sorted_clauses: f.write(clause)
+        else:
+            self.check_and_reduce_res = False
         
     def check_and_generalize(self):
         '''
@@ -245,14 +250,15 @@ class CNF_Filter(ExtractCnf):
                                 # if x is v2, v4, v6 ... rather than Not(v2), Not(v4), Not(v6) ...
                                 if x.children() == []
                                 else str(int(str(x.children()[0]).replace('v',''))+1),cube_literals))
-
-        with open(Predict_Clauses_After_Filtering_and_Generalization,'w') as f:
-            # write the first line with basic info
-            f.write(f'unsat {len(pass_and_generalized_clauses)}' + '\n')
-            for clause in pass_and_generalized_clauses:
-                #FIXME: why every time the clauses are not the same? -> set is disordered
-                f.write((cubeliteral_to_str(clause.cubeLiterals)))
-                f.write('\n')
+        
+        if len(pass_and_generalized_clauses)!=0:
+            with open(Predict_Clauses_After_Filtering_and_Generalization,'w') as f:
+                # write the first line with basic info
+                f.write(f'unsat {len(pass_and_generalized_clauses)}' + '\n')
+                for clause in pass_and_generalized_clauses:
+                    #FIXME: why every time the clauses are not the same? -> set is disordered
+                    f.write((cubeliteral_to_str(clause.cubeLiterals)))
+                    f.write('\n')
 
 
 '''
@@ -317,7 +323,7 @@ def get_dataset(selected_dataset):
     assert os.path.exists(f"./{selected_dataset}"), "The dataset path does not exist!"
     return selected_dataset
     
-def compare_abc(aig_original_location, selected_aig_case):
+def compare_abc(aig_original_location, selected_aig_case, log_location=None):
     #pass # WIP
     # compare with abc
     '''
@@ -419,12 +425,12 @@ def compare_abc(aig_original_location, selected_aig_case):
     # open a file to store the result as table, column contains the following information:
     # aig_case_name, last_level, last_level_ic3ref, elapsed_time_for_nn_ic3, elapsed_time_for_ic3ref
     # if the file does not exist, create it
-    if not os.path.exists('log/compare_with_ic3_abc.csv'):
-        with open('log/compare_with_ic3_abc.csv', 'w') as f:
+    if not os.path.exists(log_location):
+        with open(log_location, 'w') as f:
             f.write('case name, NN-ABC Frame, ABC Frame, NN-ABC Time, ABC Time\n')
             
     
-    with open('log/compare_with_ic3_abc.csv', 'a+') as f:
+    with open(log_location, 'a+') as f:
             
         if (
             last_level_abc.isnumeric()
@@ -434,7 +440,7 @@ def compare_abc(aig_original_location, selected_aig_case):
     print('compare with abc done')
     
 
-def compare_ic3ref(aig_original_location, selected_aig_case, ic3ref_basic_generalization="", nnic3_basic_generalization=""):
+def compare_ic3ref(aig_original_location, selected_aig_case, ic3ref_basic_generalization="", nnic3_basic_generalization="", log_location=None):
     # compare with ic3ref
 
     '''
@@ -525,12 +531,12 @@ def compare_ic3ref(aig_original_location, selected_aig_case, ic3ref_basic_genera
     # open a file to store the result as table, column contains the following information:
     # aig_case_name, last_level, last_level_ic3ref, elapsed_time_for_nn_ic3, elapsed_time_for_ic3ref
     # if the file does not exist, create it
-    if not os.path.exists('log/compare_with_ic3ref.csv'):
-        with open('log/compare_with_ic3ref.csv', 'w') as f:
+    if not os.path.exists(log_location):
+        with open(log_location, 'w') as f:
             f.write('case name, NN-IC3 Frame, IC3ref Frame, NN-IC3 Time, IC3ref Time, NN-IC3-bg, IC3ref-bg\n')
             
     
-    with open('log/compare_with_ic3ref.csv', 'a+') as f:
+    with open(log_location, 'a+') as f:
         # convert ic3ref_basic_generalization to 0 or 1
         ic3ref_basic_generalization = 0 if ic3ref_basic_generalization=="" else 1
         nnic3_basic_generalization = 0 if nnic3_basic_generalization=="" else 1
@@ -548,7 +554,7 @@ def find_missing_pickles(json_folder, pickle_folder):
     
     missing_indices = []
     for json_file in json_files:
-        base_name = json_file.split('.')[0]  # Remove the file extension
+        base_name = json_file.split('.json')[0]  # Remove the file extension
         corresponding_pickle = f"{base_name}.pkl"
         if corresponding_pickle not in pickle_files:
             index = int(base_name.split('_')[-1])  # Extract the index from the file name
@@ -677,7 +683,10 @@ def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_locat
     predicted_clauses_filter = CNF_Filter(aagmodel = m, clause = predicted_clauses ,name = model_name, aig_location=aig_original_location)
     predicted_clauses_filter.check_and_reduce()
     #predicted_clauses_filter.check_and_generalize()#FIXME: Encounter error, the cnf file will become empty
-    return True
+    if predicted_clauses_filter.check_and_reduce_res: 
+        return True 
+    else: 
+        return False
     #return aig_original_location, selected_aig_case
 
     #compare_ic3ref(aig_original_location=aig_original_location,selected_aig_case=selected_aig_case)
@@ -713,43 +722,44 @@ if __name__ == "__main__":
     parser.add_argument('--compare_with_abc', action='store_true', help='compare with abc')
     parser.add_argument('--selected-built-dataset', type=str, default='big', help='selected dataset to predict the clauses (dataset has been built from build_data.py)')
     parser.add_argument('--re-predict', action='store_true', help='re-predict the clauses')
+    parser.add_argument('--log-location', type=str, default=None, help='log location, in ./log/')
     args = parser.parse_args()
 
+    
     
 
     # for test only
     '''
-    
     #XXX: Double check before running the script
     args =  parser.parse_args([
         '--threshold', '0.5',
         #'--aig-case-name', 'eijk.S1423.S', #should has huge improvement
-        '--aig-case-name', 'miim',
+        '--aig-case-name', 'vgasim_imgfifo-p089',
         #'--aig-case-name', 'nusmv.guidance^6.C',
         #'--aig-case-folder-prefix-for-prediction', 'benchmark_folder/hwmcc2007_big_comp_for_prediction',
         '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
         '--gpu-id', '1',
-        #'--compare_with_ic3ref',
-        '--compare_with_abc',
+        '--compare_with_ic3ref',
+        #'--compare_with_abc',
         #'--selected-built-dataset', 'dataset_hwmcc2007_all_no_simplification_23',
-        '--selected-built-dataset', 'dataset_hwmcc2020_small_abc_slight_1',
-        #'--benchmark', '2007'
-        #'--benchmark', '2020'
+        '--selected-built-dataset', 'dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38',
+        '--log-location', 'log/compare_with_ic3ref_hwmcc2020.csv'
+        '--re-predict'
     ])
     '''
     
     '''
-    '''
+    
     args = parser.parse_args([
         '--threshold', '0.5',
-        '--selected-built-dataset', 'dataset_hwmcc2020_all_abc_slight_1',
+        '--selected-built-dataset', 'dataset_hwmcc2007_tip_abc_no_simplification_0-22',
         '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
         '--gpu-id', '1',
         '--compare_with_abc',
         '--re-predict'])
+    '''
     
-    
-    
+    assert args.log_location is not None, 'log location is required'
     args.compare_with_ic3ref_basic_generalization = "-b" if args.compare_with_ic3ref_basic_generalization else ""
     args.compare_with_nnic3_basic_generalization = "-b" if args.compare_with_nnic3_basic_generalization else ""
     
@@ -799,9 +809,9 @@ if __name__ == "__main__":
         )
         # if the inv is generated, then compare it with ic3ref or abc, if fail, we skip it
         if generate_predicted_inv_success and args.compare_with_abc:
-            compare_abc(f'{aig_case_folder_prefix_for_prediction}/{args.aig_case_name}', f'{args.aig_case_name}')
+            compare_abc(f'{aig_case_folder_prefix_for_prediction}/{args.aig_case_name}', f'{args.aig_case_name}',args.log_location)
         elif generate_predicted_inv_success and args.compare_with_ic3ref:
-            compare_ic3ref(f'{aig_case_folder_prefix_for_prediction}/{args.aig_case_name}', f'{args.aig_case_name}',args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization)
+            compare_ic3ref(f'{aig_case_folder_prefix_for_prediction}/{args.aig_case_name}', f'{args.aig_case_name}',args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization,args.log_location)
     else: # test all cases in specified folder
         # only give aig case folder, not define the aig case name, then test all cases in the folder
         # get all the folder name in the aig_case_folder
@@ -826,9 +836,9 @@ if __name__ == "__main__":
                 
             # begin to compare the inv with ic3ref or abc
             if generate_predicted_inv_success and args.compare_with_abc:
-                compare_abc(f"{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}")
+                compare_abc(f"{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.log_location)
             elif generate_predicted_inv_success and args.compare_with_ic3ref: 
-                compare_ic3ref(f"{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization)
+                compare_ic3ref(f"{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization,args.log_location)
 
     '''
     ------------------ check the error log -----------------

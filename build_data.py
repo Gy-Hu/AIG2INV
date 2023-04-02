@@ -42,6 +42,8 @@ from threading import Timer
 import shutil
 import time
 from tqdm import tqdm
+import sys
+sys.setrecursionlimit(1000000)
 
 def initialization(dir_name, with_re_generate_inv=False):
     
@@ -149,9 +151,14 @@ def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
 
     # initialize the list to store all the abnormal cases
     AigCaseBlackList = [
-        #benchmark 2007
-        #'eijk.bs3271.S',
-        #benchmark 2020
+        #-------- benchmark 2007 stuck in generate smt2-----------
+        'eijk.bs3271.S',
+        #--------- benchmark 2020 stuck in generate smt2------------
+        'vcegar_QF_BV_ar',
+        'rast-p00',
+        'vis_arrays_bufferAlloc',
+        'zipversa_composecrc_prf-p10',
+        'qspiflash_dualflexpress_divthree-p010',
         'vcegar_QF_BV_itc99_b13_p10',
         'zipcpu-busdelay-p00',
         'zipcpu-busdelay-p30',
@@ -181,7 +188,22 @@ def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
         'dspfilters_fastfir_second-p11',
         'cal161',
         'rushhour.4.prop1-func-interl',
-        'cal176'
+        'cal176',
+        #--------- benchmark 2020 stuck in model2graph------------
+        'dspfilters_fastfir_second-p25',
+        'dspfilters_fastfir_second-p05',
+        'dspfilters_fastfir_second-p43',
+        'dspfilters_fastfir_second-p14',
+        'dspfilters_fastfir_second-p07',
+        'dspfilters_fastfir_second-p16',
+        'dspfilters_fastfir_second-p21',
+        #--------- benchmark 2020 stuck in json2networkx------------
+        'dspfilters_fastfir_second-p10',
+        'dspfilters_fastfir_second-p45',
+        'dspfilters_fastfir_second-p42',
+        'dspfilters_fastfir_second-p04',
+        'pgm_protocol.7.prop1-back-serstep',
+        'dspfilters_fastfir_second-p2'
     ]
 
     all_cases_name_lst = [] # put into multi-threading pool
@@ -343,15 +365,17 @@ def generate_pre_graph(simplification):
     pool = ThreadPool(multiprocessing.cpu_count())
     results = []
     with tqdm(total=len(data4json_conversion)) as pbar:
-        for case_name in data4json_conversion:
-            results.append(pool.apply_async(
+        results.extend(
+            pool.apply_async(
                 call_proc,
                 (
-                    #XXX: Double check before running the script -> did you recompile it and update it to the latest version?
+                    # XXX: Double check before running the script -> did you recompile it and update it to the latest version?
                     f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/model2graph {case_name} {smt2_dir} {simplification}",
                 ),
-                callback=lambda _: update_progress_bar(pbar)
-            ))
+                callback=lambda _: update_progress_bar(pbar),
+            )
+            for case_name in data4json_conversion
+        )
         pool.close()
         pool.join()
     for result in results:
@@ -371,11 +395,11 @@ def generate_post_graph():
     # get all the subfolder name under expr_to_build_graph (expression to build graph)
     data4pickle_conversion = os.listdir(json_dir)
 
-    pool = ThreadPool(multiprocessing.cpu_count())
+    pool = ThreadPool(2)
     results = []
     with tqdm(total=len(data4pickle_conversion)) as pbar:
-        for case_name in data4pickle_conversion:
-            results.append(pool.apply_async(
+        results.extend(
+            pool.apply_async(
                 call_proc,
                 (
                     f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/json2networkx.py \
@@ -383,11 +407,13 @@ def generate_post_graph():
                     --ground_truth_path  {ground_truth_dir}/{case_name} \
                     --pickle_file_name_prefix {pickle_file_name_prefix}",
                 ),
-                callback=lambda _: update_progress_bar(pbar)
-            ))
+                callback=lambda _: update_progress_bar(pbar),
+            )
+            for case_name in data4pickle_conversion
+        )
         pool.close()
         pool.join()
-        
+
     for result in results:
         _, err = result.get()
         # if err is not None, print it 

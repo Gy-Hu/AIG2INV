@@ -210,7 +210,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     datetime_str = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task-name', type=str, default='neuropdr', help='task name')
+    parser.add_argument('--task-name', type=str, default=f'neuropdr_{datetime_str}', help='task name')
     parser.add_argument('--local_rank', type=int, default=-1, help='local rank for dpp')
     parser.add_argument('--dim', type=int, default=128, help='Dimension of variable and clause embeddings')
     parser.add_argument('--n_rounds', type=int, default=26, help='Number of rounds of message passing')
@@ -229,17 +229,53 @@ if __name__ == "__main__":
     parser.add_argument('--dataset-type', type=str, default=None, help='dataset type, determine to use all data or toy data')
     parser.add_argument('--pos-weight', type=float, default=1.0, help='positive weight in BCEWithLogitsLoss')
     parser.add_argument('--lr', type=float, default=0.00001, help='learning rate')
+    
     '''
-    args = parser.parse_args(['--task-name', 'neuropdr_'+datetime_str.replace(' ', '_'), '--dim', '128', '--n_rounds', '512',
+    example:
+    task_name = 'neuropdr_'+datetime_str.replace(' ', '_') 
+    model_name = 'neurograph'
+    dataset = 'dataset'
+    dimension_of_embedding = 128
+    number_of_rounds = 128
+    number_of_epochs = 512
+    train_file = f'{dataset}/bad_cube_cex2graph/json_to_graph_pickle/'
+    val_file = f'{dataset}/bad_cube_cex2graph/json_to_graph_pickle/'
+    train_mode = 'train' # or 'debug'
+    gpu_id = 1
+    batch_size = 1
+    possitive_weight_for_loss_fun = 4
+    learning_rate = 0.00001
+        
+    f'python train_{model_name}/train.py ' \
+    f'--task-name {task_name} --dim {dimension_of_embedding} --n_rounds {number_of_rounds} ' \
+    f'--epochs {number_of_epochs} --train-file {train_file} --val-file {val_file} ' \
+    f'--mode {train_mode} --gpu-id {gpu_id} ' \
+    f'--batch-size {batch_size} ' \
+    f'--pos-weight {possitive_weight_for_loss_fun} ' \
+    f'--lr {learning_rate} ' \
+    f'--dataset-name  {dataset_name}'
+    '''
+    
+    '''
+    '''
+    args = parser.parse_args(['--task-name', 'neuropdr_'+ datetime_str.replace(' ', '_'), 
+                              '--dim', '128', '--n_rounds', '128',
                               '--epochs', '512',
-                              #'--log-dir', str(Path(__file__).parent.parent /'log/tmp/'), \
-                              '--train-file', '../dataset/bad_cube_cex2graph/json_to_graph_pickle/',  
-                              '--val-file', '../dataset/bad_cube_cex2graph/json_to_graph_pickle/',
-                              '--mode', 'debug',
+                              '--train-file', 'dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/json_to_graph_pickle/',  
+                              '--val-file', 'dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/json_to_graph_pickle/',
+                              '--mode', 'train',
+                              '--gpu-id', '1',
+                              '--batch-size', '1',
+                              '--pos-weight', '4',
+                              '--lr', '0.00001',
                               #'--local_rank', '2',
                               ])
-    '''
-    args = parser.parse_args()
+    
+    #args = parser.parse_args()
+    args.task_name = args.task_name+'-'+datetime_str.replace(' ', '_')
+    print(args)
+    
+    
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id)
 
     if args.mode == 'debug':

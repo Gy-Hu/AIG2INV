@@ -4,7 +4,7 @@
 
 * `utils/fetch_aiger.py` : Fetch the benchmark from the hwmcc, and simplly preprocess it (processed data should be in `benchmark_folder/` folder)
     * **usage:** `cd utils && python fetch_aiger.py`
-    * **note:** change `aag_dir` (dump folder), `csv_file` (running info and aiger location prefix) and `aag_list[i]` (aiger files location) in the script to fetch different benchmarks. Modify `fetch_aig_from_csv` to ajust the preprocessing methods (only unsat? only sat?).
+    * **note:** change `aag_dir` (dump folder), `csv_file` (running info and aiger location prefix) and `aag_list[i]` (aiger files location) in the script to fetch different benchmarks. Modify `fetch_aig_from_csv` to ajust the preprocessing methods (only unsat? only sat? Only hard cases?). Modify `simplify` to determine whether convert `aig` to `aag`
 
 ## Build Dataset (Cex -> Graph)
 
@@ -18,6 +18,7 @@
         * `--subset_range` : The range of data in benchmark to generate (e.g. `1`, `23`)
     * **note:**
         * There exists a list named `AigCaseBlackList`, which can exclude some cases from the benchmark (e.g. using `utils/check_proc.sh` to find those `hard-extraction` cases, and add them to the list. `echo "$count"` or `echo "$aag_files_and_count"` after sourcing)
+        * Delete the existing `dataset_xxxx/` folder before running the script
 
 ## Train the Model
 

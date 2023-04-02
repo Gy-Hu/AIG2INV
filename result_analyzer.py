@@ -8,7 +8,13 @@ def inv_analyzer():
     
 
 def log_analyzer(log_file):
+    # Set display options to avoid truncation
+    pd.set_option("display.max_columns", None)
+    pd.set_option("display.expand_frame_repr", False)
+    pd.set_option("max_colwidth", None)
+    pd.set_option("display.max_rows", None)
     # read csv table from log/compare_with_ic3ref.csv
+    
     # convert to pandas dataframe
     df = pd.read_csv(f"log/{log_file}")
     if "ic3ref" in log_file:

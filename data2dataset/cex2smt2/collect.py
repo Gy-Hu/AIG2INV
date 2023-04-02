@@ -7,6 +7,7 @@ import os
 import argparse
 import sys
 import copy
+sys.setrecursionlimit(1000000)
 
 '''
 Some assumptions (Maybe useful for debugging):

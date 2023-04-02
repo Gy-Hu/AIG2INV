@@ -1,4 +1,6 @@
 import z3
+import sys
+sys.setrecursionlimit(1000000)
 
 OP_VAR = 0
 OP_NOT = 1
@@ -62,6 +64,7 @@ class AIGBuffer(object):
         return v, val
 
     def __init__(self):
+        
         self.expr_to_item = dict()   # expr -> item_no
         self.item_to_expr = dict()   # item_no -> expr
         self.item_use_list = dict()  # item_no -> [uses (the nodes that use it)]
@@ -90,6 +93,55 @@ class AIGBuffer(object):
             # which means expr is not a bool object -> 
             # Transition relation will encounter problem when in substition
             return False
+        
+    def register_expr_stack(self, expr):
+        stack = [(expr, None)]
+        while stack:
+            current_expr, parent_item_no = stack.pop()
+            
+            if current_expr in self.expr_to_item:
+                item_no = self.expr_to_item[current_expr]
+            else:
+                op = current_expr.decl().kind()
+                children = current_expr.children()
+                item_no = self._new_item_number()
+
+                if len(children) == 0:
+                    if str(current_expr) in ['True', 'False']:
+                        self.items[item_no] = (OP_CONST, [str(current_expr)])
+                    else:
+                        self.items[item_no] = (OP_VAR, [str(current_expr)])
+                        self.vname_to_vid[str(current_expr)] = item_no
+                elif op == z3.Z3_OP_NOT:
+                    assert len(children) == 1
+                    stack.append((children[0], item_no))
+                    self.items[item_no] = (OP_NOT, [None])
+                elif op == z3.Z3_OP_AND:
+                    assert len(children) >= 1
+                    self.items[item_no] = (OP_AND, [None] * len(children))
+                    for child in children:
+                        stack.append((child, item_no))
+                elif op == z3.Z3_OP_OR:
+                    assert len(children) >= 1
+                    self.items[item_no] = (OP_OR, [None] * len(children))
+                    for child in children:
+                        stack.append((child, item_no))
+                else:
+                    assert False
+
+                self.expr_to_item[current_expr] = item_no
+                self.item_to_expr[item_no] = current_expr
+
+            if parent_item_no is not None:
+                parent_op, parent_children = self.items[parent_item_no]
+                for i, child_item_no in enumerate(parent_children):
+                    if child_item_no is None:
+                        self.items[parent_item_no][1][i] = item_no
+                        self.item_use_list[item_no] = self.item_use_list.get(item_no, []) + [parent_item_no]
+                        break
+
+        return self.expr_to_item[expr]
+
 
     def register_expr(self, expr):  # --> modify expr_to_item, item_to_expr, item_use_list, items
         if expr in self.expr_to_item:
@@ -367,7 +419,7 @@ def test2():
     m = slv.model()
     print (m)
     aigbuf = AIGBuffer()        # new object
-    aigbuf.register_expr(expr)  # register the next cube
+    aigbuf.register_expr_stack(expr)  # register the next cube
     aigbuf.set_initial_var_assignment(m)  # set initial model
     assert aigbuf.get_val(expr) == _TRUE
     aigbuf._check_consistency()

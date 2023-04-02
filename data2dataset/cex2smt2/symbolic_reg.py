@@ -22,15 +22,23 @@ def parse_table(path):
     
 def validate_model(X, y, model_file):
     model = PySRRegressor.from_file(model_file)
-    print(model)
+    #print(model.latex())
+    #model.refresh()
+    #model = PySRRegressor.from_file(model_file)
+    #print(model)
     # predict y by feeding X to the model
     pred_y = model.predict(X)
     # print y without scientific notation
     np.set_printoptions(suppress=True)
     pred_y = np.array([np.format_float_positional(i, trim='-') for i in pred_y])
-    print(pred_y[:10])
-    print(y[:10])
+    #print(pred_y[:-20])
+    #print(y[:-20])
+    # print tuple of (y, pred_y)
+    #print(list(zip(y, pred_y)))
+    for t in list(zip(y, pred_y)):
+        print(t)
     #exit
+    #print(model.latex())
     exit()
 
 if __name__ == '__main__':
@@ -55,19 +63,19 @@ if __name__ == '__main__':
     scaler = StandardScaler()
     X = scaler.fit_transform(X)
     # y = [n_clauses]
-    y = df.iloc[:, -1].to_numpy()
+    y = df.iloc[:, -3].to_numpy() # -3 -> time, -1 -> n_clauses
     
     '''
     -------------------------------------Validation-------------------------------------
     '''
     if args.validate: validate_model(X, y,args.model_file)
-    
-    # Split data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # will exit if validation finished
 
     '''
-    -------------------------------------Model Selection-------------------------------------
+    -------------------------------------Model Selection and train-----------------------------
     '''
+    # Split data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     # select model 
     model = model1 if args.model == 1 else model2 if args.model == 2 else model3 if args.model == 3 else model4 if args.model == 4 else None
     model.fit(X_train, y_train)

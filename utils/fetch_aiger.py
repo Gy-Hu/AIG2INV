@@ -47,6 +47,8 @@ def simplify(aig_input_path, aag_output_path, verbose=False, abc_cmd='./yosys/yo
 
         subprocess.call(command) if verbose else subprocess.call(command, stdout=subprocess.PIPE)
         subprocess.call([aigtoaig_cmd, aig_path, aag_output_path+str(aig_name.replace('.aig','.aag'))])
+        # move from tmpdir to output dir without aigtoaig_cmd
+        #subprocess.call(['mv', aig_path, aag_output_path+str(aig_name)])
 
 def fetch_aig_from_csv(csv_file):
     # Read this csv file into dataframe
@@ -59,16 +61,73 @@ def fetch_aig_from_csv(csv_file):
     # Export the aag_name column to a list
     aag_list = df["aag_name"].tolist()
     
+    hard_aag_list = [
+        #--------- benchmark 2020 stuck in generate smt2------------
+        'vcegar_QF_BV_ar',
+        'rast-p00',
+        'vis_arrays_bufferAlloc',
+        'zipversa_composecrc_prf-p10',
+        'qspiflash_dualflexpress_divthree-p010',
+        'vcegar_QF_BV_itc99_b13_p10',
+        'zipcpu-busdelay-p00',
+        'zipcpu-busdelay-p30',
+        'qspiflash_qflexpress_divfive-p137',
+        'qspiflash_dualflexpress_divthree-p046',
+        'qspiflash_dualflexpress_divfive-p007',
+        'qspiflash_dualflexpress_divfive-p154',
+        'qspiflash_dualflexpress_divfive-p009',
+        'qspiflash_dualflexpress_divfive-p116',
+        'qspiflash_dualflexpress_divthree-p111',
+        'elevator.4.prop1-func-interl',
+        'h_RCU',
+        'vgasim_imgfifo-p105',
+        'cal87',
+        'cal90',
+        'picorv32-check-p05',
+        'cal142',
+        'picorv32-check-p20',
+        'cal118',
+        'cal97',
+        'cal143',
+        'cal102',
+        'cal107',
+        'cal112',
+        'dspfilters_fastfir_second-p09',
+        'dspfilters_fastfir_second-p26',
+        'dspfilters_fastfir_second-p11',
+        'cal161',
+        'rushhour.4.prop1-func-interl',
+        'cal176',
+        #--------- benchmark 2020 stuck in model2graph------------
+        'dspfilters_fastfir_second-p25',
+        'dspfilters_fastfir_second-p05',
+        'dspfilters_fastfir_second-p43',
+        'dspfilters_fastfir_second-p14',
+        'dspfilters_fastfir_second-p07',
+        'dspfilters_fastfir_second-p16',
+        'dspfilters_fastfir_second-p21',
+        #--------- benchmark 2020 stuck in json2networkx------------
+        'dspfilters_fastfir_second-p10',
+        'dspfilters_fastfir_second-p45',
+        'dspfilters_fastfir_second-p42',
+        'dspfilters_fastfir_second-p04',
+        'pgm_protocol.7.prop1-back-serstep',
+        'dspfilters_fastfir_second-p2'
+    ]
+    
+    # filter out the aag_list by hard_aag_list
+    # aag_list = [aag for aag in aag_list if aag.split('/')[-1] in hard_aag_list]
+    
 
     # Add file path to the aag_list
     for i in range(len(aag_list)):
-        aag_list[i] = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07/" + aag_list[i] + ".aig"
-        #aag_list[i] = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc20/" + aag_list[i] + ".aig"
+        #aag_list[i] = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07/" + aag_list[i] + ".aig"
+        aag_list[i] = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc20/" + aag_list[i] + ".aig"
 
     return aag_list
 
 if __name__ == '__main__':
-    aag_dir = './pre-dataset/aag4train_hwmcc07_only_unsat/'
+    aag_dir = './pre-dataset/aag4train_hwmcc20_only_unsat_hard/'
     parser = argparse.ArgumentParser(description="Convert aig to aag automatically")
     parser.add_argument('-outdir', type=str, default=aag_dir, help='Export the converted aag to the directory')
     parser.add_argument('-d', type=int, default=1, help='Determin whether to divide files into subset')
@@ -80,7 +139,7 @@ if __name__ == '__main__':
     # make aag_dir if it does not exist
     if not os.path.isdir(aag_dir): 
         os.makedirs(aag_dir)
-    csv_file = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/stat/size07.csv"
+    csv_file = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/stat/size20.csv"
     aig_list = fetch_aig_from_csv(csv_file)
 
     for file in aig_list:
