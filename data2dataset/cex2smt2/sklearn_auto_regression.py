@@ -36,7 +36,12 @@ if __name__ == '__main__':
     --------------------Get the aig list (and their path)-------------------
     '''
     # read table at first    
-    df = parse_table("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/stat/size20.csv")
+    df_2020 = parse_table("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/stat/size20.csv")
+    df_2007 = parse_table("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/stat/size07.csv")
+    
+    # merge two dataframe
+    df = pd.concat([df_2020, df_2007])
+    
     # prepare data
     #X = 2 * np.random.randn(100, 5)
     
@@ -80,9 +85,9 @@ if __name__ == '__main__':
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     # select model 
     automl = autosklearn.regression.AutoSklearnRegressor(
-    time_left_for_this_task=600,
-    per_run_time_limit=90,
-    ensemble_size=60,
+    time_left_for_this_task=6000,
+    per_run_time_limit=900,
+    ensemble_size=100,
     tmp_folder="/data/guangyuh/tmp/autosklearn_regression_example_tmp"
     # include={
     # 'feature_preprocessor': [

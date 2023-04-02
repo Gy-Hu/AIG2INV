@@ -29,6 +29,7 @@ import time
 import argparse
 import shutil
 import re
+import concurrent.futures
 
 '''
 ---------------------------------------------------------
@@ -703,7 +704,7 @@ def extract_benchmark(s):
         return None
 
 if __name__ == "__main__":
-    global SELECTED_DATASET 
+    global SELECTED_DATASET
     global BENCHMARK
     # input arguments to adjust the test case, thershold, and model
     parser = argparse.ArgumentParser()
@@ -725,8 +726,8 @@ if __name__ == "__main__":
     parser.add_argument('--log-location', type=str, default=None, help='log location, in ./log/')
     args = parser.parse_args()
 
-    
-    
+
+
 
     # for test only
     '''
@@ -747,7 +748,7 @@ if __name__ == "__main__":
         '--re-predict'
     ])
     '''
-    
+
     '''
     
     args = parser.parse_args([
@@ -758,12 +759,12 @@ if __name__ == "__main__":
         '--compare_with_abc',
         '--re-predict'])
     '''
-    
+
     assert args.log_location is not None, 'log location is required'
     args.compare_with_ic3ref_basic_generalization = "-b" if args.compare_with_ic3ref_basic_generalization else ""
     args.compare_with_nnic3_basic_generalization = "-b" if args.compare_with_nnic3_basic_generalization else ""
-    
-    
+
+
     BENCHMARK = extract_benchmark(args.selected_built_dataset)
     SELECTED_DATASET = args.selected_built_dataset
     aig_case_folder_prefix_for_prediction = f"case4comp/{SELECTED_DATASET}_comp"
@@ -816,6 +817,8 @@ if __name__ == "__main__":
         # only give aig case folder, not define the aig case name, then test all cases in the folder
         # get all the folder name in the aig_case_folder
         aig_case_list = [ f.path for f in os.scandir(aig_case_folder_prefix_for_prediction) if f.is_dir() ]
+        async_compare_ic3ref = []
+        async_compare_abc = []
         for aig_case in aig_case_list:
             print("Begin to test case: ", aig_case.split('/')[-1], "...")
             #if not(os.path.exists(f'{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}/{args.aig_case_name}_predicted_clauses_after_filtering.cnf')):
@@ -824,21 +827,36 @@ if __name__ == "__main__":
                 if (
                     os.path.exists(
                         f'{aig_case_folder_prefix_for_prediction}/{aig_case.split("/")[-1]}/{aig_case.split("/")[-1]}_predicted_clauses_after_filtering.cnf'
-                    ) and not args.re_predict
+                    ) and not args.re_predict # exist file and I don't want to re-genereate it
                 )
-                else generate_predicted_inv(
+                else generate_predicted_inv(# generate the inv again
                     threshold=args.threshold,
                     aig_case_name=aig_case.split('/')[-1],
                     NN_model=args.NN_model,
                     aig_original_location_prefix=aig_case_folder_prefix_for_prediction,
                 )
             )
-                
+
             # begin to compare the inv with ic3ref or abc
-            if generate_predicted_inv_success and args.compare_with_abc:
+            if generate_predicted_inv_success and args.compare_with_abc and args.re_predict:
                 compare_abc(f"{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.log_location)
-            elif generate_predicted_inv_success and args.compare_with_ic3ref: 
+            elif generate_predicted_inv_success and args.compare_with_ic3ref and args.re_predict: 
                 compare_ic3ref(f"{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization,args.log_location)
+            elif generate_predicted_inv_success and args.compare_with_abc:
+                async_compare_abc.append(aig_case)
+            elif generate_predicted_inv_success and args.compare_with_ic3ref:
+                async_compare_ic3ref.append(aig_case)
+
+        # async compare with ic3ref
+        if async_compare_ic3ref:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=64) as executor:
+                for aig_case in async_compare_ic3ref:
+                    executor.submit(compare_ic3ref,f"{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization,args.log_location)
+        # async compare with abc
+        if async_compare_abc:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=64) as executor:
+                for aig_case in async_compare_abc:
+                    executor.submit(compare_abc,f"{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.log_location)
 
     '''
     ------------------ check the error log -----------------

@@ -19,7 +19,7 @@ def log_analyzer(log_file):
     df = pd.read_csv(f"log/{log_file}")
     if "ic3ref" in log_file:
         # only keep the row that  NN-IC3-bg, IC3ref-bg are both 1
-        df = df[(df[" NN-IC3-bg"] == 1) & (df[" IC3ref-bg"] == 1) | (df[" NN-IC3-bg"] == 0) & (df[" IC3ref-bg"] == 0)]
+        #df = df[(df[" NN-IC3-bg"] == 1) & (df[" IC3ref-bg"] == 1) | (df[" NN-IC3-bg"] == 0) & (df[" IC3ref-bg"] == 0)]
         # sort the dataframe by case name and the "NN-IC3 Frame" column
         df = df.sort_values(by=["case name", " NN-IC3 Time"])
         # remove the duplicated rows
