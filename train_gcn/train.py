@@ -10,15 +10,33 @@ from dgl.nn import GraphConv
 from torch import nn
 from torch.optim import Adam
 import dgl.data
+import torch.nn as nn
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 from dgl.dataloading import GraphDataLoader
+from BWGNN import BWGNN_Hetero, BWGNN, PolyConv, PolyConvBatch
 
+#################################
+# WIP:
+# 1. generate predicted clauses from json (json -> graph -> model eval() -> predicted clauses)
+# 2. use better features (features engineering on the graph: transition relation, initial state, etc.)
+# 3. use better model (STGCN, GAT, BWGNN, etc.)
+# 4. use more graph (add more graphs to the dataset, hwmcc2007, etc.)
+# 5. solve the imbalanced data problem (class weights, moving thereshold, focal loss, etc.)
+# 6. weird loss <1
+# 7. calculate the perfect accuracy (all the clauses are correct)
+#################################
 
 JSON_FOLDER = '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B/'
 GROUND_TRUTH = os.path.join(JSON_FOLDER.replace('expr_to_build_graph', 'ground_truth_table'), JSON_FOLDER.split('/')[-2]+'.csv')
 json_files = [f for f in os.listdir(JSON_FOLDER) if f.endswith('.json')]
 graph_list = []
+
+def calculate_class_weights(train_labels):
+    class_counts = np.bincount(train_labels)
+    total_samples = len(train_labels)
+    return total_samples / (len(class_counts) * class_counts)
+
 for _ in json_files:
     # 1. Parse the JSON graph data and create the graph structure
     with open(os.path.join(JSON_FOLDER, _)) as f:
@@ -121,17 +139,40 @@ class CustomGraphDataset(dgl.data.DGLDataset):
     def __len__(self):
         return len(self.graph_list)
     
+# Focal loss
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=1, gamma=2, reduction='mean'):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, inputs, targets):
+        BCE_loss = nn.functional.cross_entropy(inputs, targets, reduction='none')
+        pt = torch.exp(-BCE_loss)
+        F_loss = self.alpha * (1 - pt)**self.gamma * BCE_loss
+
+        if self.reduction == 'mean':
+            return torch.mean(F_loss)
+        elif self.reduction == 'sum':
+            return torch.sum(F_loss)
+        else:
+            return F_loss
+
 dataset = CustomGraphDataset(graph_list)
-dataloader = GraphDataLoader(dataset, batch_size=16, shuffle=True, drop_last=False)
+dataloader = GraphDataLoader(dataset, batch_size=2, shuffle=True, drop_last=False)
 
 # 5. Train the model
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Get the input feature dimension
 input_feature_dim = embedding_dim
-model = GCNModel(input_feature_dim, 16, 2).to(device)
-loss_function = nn.CrossEntropyLoss()
+#model = GCNModel(input_feature_dim, 16, 2).to(device)
+model = BWGNN(input_feature_dim, 16, 2).to(device)
+#loss_function = nn.CrossEntropyLoss()
+loss_function = FocalLoss()
 optimizer = Adam(model.parameters(), lr=0.01)
+
 
 for epoch in range(50):
     model.train()
@@ -139,7 +180,15 @@ for epoch in range(50):
     for batched_dgl_G in dataloader:
         batched_dgl_G = batched_dgl_G.to(device)
         logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
+        # Compute the class weights for the current batch
+        train_labels = batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']].cpu().numpy()
+        class_weights = calculate_class_weights(train_labels)
+
+        # Update the loss function with the computed class weights
+        loss_function = nn.CrossEntropyLoss(weight=torch.FloatTensor(class_weights).to(device))
+
         loss = loss_function(logits[batched_dgl_G.ndata['train_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']])
+        #loss = loss_function(logits[batched_dgl_G.ndata['train_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']])
         
         optimizer.zero_grad()
         loss.backward()
