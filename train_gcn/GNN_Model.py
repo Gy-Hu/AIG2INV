@@ -1,3 +1,20 @@
+import json
+import torch
+import dgl
+import os
+import numpy as np
+import networkx as nx
+import numpy as np
+import pandas as pd
+from dgl.nn import GraphConv
+from torch import nn
+from torch.optim import Adam
+import dgl.data
+import torch.nn as nn
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from dgl.dataloading import GraphDataLoader
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,6 +28,9 @@ from torch import nn
 from torch.nn import init
 from dgl.nn.pytorch import GraphConv, EdgeWeightNorm, ChebConv, GATConv, HeteroGraphConv
 
+'''
+---------------------------------BWGNN---------------------------------
+'''
 
 class PolyConv(nn.Module):
     def __init__(self,
@@ -214,3 +234,20 @@ class BWGNN_Hetero(nn.Module):
         h_all = self.act(h_all)
         h_all = self.linear4(h_all)
         return h_all
+    
+'''
+-----------------------------------GCN-----------------------------------
+'''
+
+class GCNModel(nn.Module):
+    def __init__(self, in_feats, hidden_size, num_classes):
+        super(GCNModel, self).__init__()
+        self.conv1 = GraphConv(in_feats, hidden_size, allow_zero_in_degree=True)
+        self.conv2 = GraphConv(hidden_size, num_classes, allow_zero_in_degree=True)
+        self.relu = nn.ReLU()
+
+    def forward(self, g, in_feat):
+        h = self.conv1(g, in_feat)
+        h = self.relu(h)
+        h = self.conv2(g, h)
+        return h
