@@ -48,3 +48,4 @@ data2dataset/aig2graph/
 utils/picosat/
 clause-learning/
 !check_proc.sh
+.vector_cache/

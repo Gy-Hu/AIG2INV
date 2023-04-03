@@ -35,6 +35,7 @@ class ThresholdFinder:
     def find_best_threshold(self):
         thresholds = np.linspace(0, 1, 101)
         best_threshold = 0
+        best_confusion = None # (tn, fp, fn, tp)
         best_f1 = -1
 
         for threshold in thresholds:
@@ -57,8 +58,12 @@ class ThresholdFinder:
 
             f1 = f1_score(variable_true_labels, variable_pred)
 
+            # Calculate metrics
+            confusion = confusion_matrix(variable_true_labels, variable_pred)
+
             if f1 > best_f1:
                 best_f1 = f1
                 best_threshold = threshold
+                best_confusion = confusion
 
-        return best_threshold, best_f1
+        return best_threshold, best_f1, best_confusion
