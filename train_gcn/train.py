@@ -23,9 +23,11 @@ import argparse
 from sklearn.metrics import f1_score
 from ThersholdFinder import ThresholdFinder
 import warnings
-from node2vec import Node2Vec
+from Embedding import deepwalk, generate_node2vec_embedding, generate_node_features, generate_attribute_node_features
+from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from sklearn.decomposition import PCA
+import pickle
 
 # with warnings.catch_warnings():
 #     warnings.simplefilter("ignore")
@@ -47,6 +49,7 @@ from sklearn.decomposition import PCA
 # 11. train loss nan bug
 # 12. some cases may have no data -> check build_data.py
 # 13. solve the zero convergence bug in ic3ref
+# 14. dump all graph using random walk embedding to a pickle file
 #################################
 
 #JSON_FOLDER = '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B/'
@@ -57,6 +60,8 @@ EMBEDDING_DIM = 128 # 16 default
 EPOCH = 500 # 100 default
 LR = 0.005 # 0.01 default
 BATCH_SIZE = 16 # 2 default
+DATASET_SPLIT = None # None default, used for testing
+DUMP_MODE = True # False default, used for preprocessing graph data
 
 # Use to calculate the weighted in imbalanced data
 def calculate_class_weights(train_labels):
@@ -64,23 +69,9 @@ def calculate_class_weights(train_labels):
     total_samples = len(train_labels)
     return total_samples / (len(class_counts) * class_counts)
 
-def generate_node2vec_embedding(graph_data):
-    G, _, node_labels, train_mask = graph_data
-
-    # Run Node2Vec on the graph G and obtain the embeddings
-    node2vec = Node2Vec(G, dimensions=EMBEDDING_DIM, walk_length=10, num_walks=100, workers=4)
-    model = node2vec.fit(window=10, min_count=1, batch_words=4)
-
-    # Assign Node2Vec embeddings as node features
-    node_features = np.zeros((G.number_of_nodes(), EMBEDDING_DIM))
-    for i, node_id in enumerate(G.nodes()):
-        node_features[i] = model.wv[f"{node_id}"]
-
-    return (G, node_features, node_labels, train_mask)
-
 
 if __name__ == "__main__":
-    #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default=None, help='dataset name')
     args = parser.parse_args(['--dataset', 
@@ -89,12 +80,12 @@ if __name__ == "__main__":
     
     # Get all case folders under the input directory
     case_folders = glob.glob(os.path.join(args.dataset, '*'))
-    for case_folder in case_folders[:]:
+    graph_list = []
+    for case_folder in case_folders[:DATASET_SPLIT]:
         JSON_FOLDER = case_folder
         GROUND_TRUTH = os.path.join(JSON_FOLDER.replace('expr_to_build_graph', 'ground_truth_table'), JSON_FOLDER.split('/')[-1]+'.csv')
         if not os.path.exists(GROUND_TRUTH): continue
         json_files = [f for f in os.listdir(JSON_FOLDER) if f.endswith('.json')]
-        graph_list = []
         # For each aiger case, read all the JSON files
         for _ in json_files:
             # 1. Parse the JSON graph data and create the graph structure
@@ -163,52 +154,35 @@ if __name__ == "__main__":
 
     '''
     ----------------Simple Graph Feature Embedding----------------
+    
+    generate_node_features(graph_list, EMBEDDING_DIM)
     '''
-    pca = PCA(n_components=EMBEDDING_DIM)
-    # Compute the centrality measures for the nodes in the graph
-    for idx, (G, _, node_labels, train_mask) in enumerate(graph_list):
-        betweenness_centrality = nx.betweenness_centrality(G)
-        degree_centrality = nx.degree_centrality(G)
-
-        # Assign the centrality measures as node features
-        num_nodes = G.number_of_nodes()
-        node_features = np.zeros((num_nodes, 2))
-        for i, node_id in enumerate(G.nodes()):
-            node_features[i, 0] = betweenness_centrality[node_id]
-            node_features[i, 1] = degree_centrality[node_id]
-
-        # Apply PCA to increase the dimensionality of the node features
-        node_features_pca = pca.fit_transform(node_features)
-
-        graph_list[idx] = (G, node_features_pca, node_labels, train_mask)
     
+    '''
+    ----------------Deep walk Embedding----------------
+    '''
+    # Set the DeepWalk parameters
+    num_walks = 10
+    walk_length = 80
+    embedding_dim = EMBEDDING_DIM
+    window_size = 10
+
+    # Apply DeepWalk to each graph in the graph_list
+    for idx, (G, _, node_labels, train_mask) in tqdm(enumerate(graph_list), desc="Applying DeepWalk", total=len(graph_list)):
+        node_features_final = deepwalk(G, num_walks, walk_length, embedding_dim, window_size)
+        graph_list[idx] = (G, node_features_final, node_labels, train_mask)
     
+    # dump all the graph_list to a pickle file 
+    # Save the graph_list to a pickle file
+    if DUMP_MODE:
+        with open("graph_list.pickle", "wb") as f:
+            pickle.dump(graph_list, f)
+        exit(0)
+        
     '''
     ----------------Random Embedding----------------
-    # additional step: get the unique attributes
-
-    # extract unique attributes from all nodes across all graphs:
-    unique_attributes = set()
-    for G, _, _, _ in graph_list:
-        for _, node_data in G.nodes(data=True):
-            unique_attributes.add(node_data['type'])
-            unique_attributes.add(node_data['application'])
-            
-    # Create an embedding for each unique attribute and store them in a dictionary
-    embedding_dim = EMBEDDING_DIM
-    #node2vec = Node2Vec(G, dimensions=EMBEDDING_DIM, walk_length=10, num_walks=100, workers=4)
-    #model = node2vec.fit(window=10, min_count=1, batch_words=4)
-    #attribute_embedding = {node_id: model.wv[f"{node_id}"] for node_id in G.nodes}
-    attribute_embedding = {attr: np.random.rand(embedding_dim) for attr in unique_attributes}
-
-    # Modify the loop that assigns node features to use the attribute embeddings
-    for idx, (G, _, node_labels, train_mask) in enumerate(graph_list):
-        node_features = np.zeros((G.number_of_nodes(), embedding_dim))
-        
-        for i, (_, node_data) in enumerate(G.nodes(data=True)):
-            node_features[i] = attribute_embedding[node_data['type']] + attribute_embedding[node_data['application']]
-
-        graph_list[idx] = (G, node_features, node_labels, train_mask)
+    
+    generate_attribute_node_features(graph_list, EMBEDDING_DIM)
     '''
 
     # 4. Create a Graph Convolutional Network (GCN) model and custom dataset
@@ -220,10 +194,10 @@ if __name__ == "__main__":
     dataloader = GraphDataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=False)
 
     # 5. Train the model
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Get the input feature dimension
-    input_feature_dim = embedding_dim
+    input_feature_dim = EMBEDDING_DIM
     #model = GCNModel(input_feature_dim, HIDDEN_DIM, 2).to(device)
     model = BWGNN(input_feature_dim, HIDDEN_DIM, 2).to(device)
     #loss_function = nn.CrossEntropyLoss()
