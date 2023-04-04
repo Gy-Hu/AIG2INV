@@ -50,6 +50,7 @@ import pickle
 # 12. some cases may have no data -> check build_data.py
 # 13. solve the zero convergence bug in ic3ref
 # 14. dump all graph using random walk embedding to a pickle file
+# 15. CUDA utilization is low (only 1%, related to conda env?)
 #################################
 
 #JSON_FOLDER = '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B/'
@@ -58,10 +59,10 @@ import pickle
 HIDDEN_DIM = 128 # 32 default
 EMBEDDING_DIM = 128 # 16 default
 EPOCH = 500 # 100 default
-LR = 0.005 # 0.01 default
+LR = 0.005 # =learning rate 0.01 default
 BATCH_SIZE = 16 # 2 default
 DATASET_SPLIT = None # None default, used for testing
-DUMP_MODE = True # False default, used for preprocessing graph data
+DUMP_MODE = False # False default, used for preprocessing graph data
 
 # Use to calculate the weighted in imbalanced data
 def calculate_class_weights(train_labels):
@@ -69,15 +70,8 @@ def calculate_class_weights(train_labels):
     total_samples = len(train_labels)
     return total_samples / (len(class_counts) * class_counts)
 
-
-if __name__ == "__main__":
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default=None, help='dataset name')
-    args = parser.parse_args(['--dataset', 
-                              '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/'])
-    #args = parser.parse_args()
-    
+# Preprocess the data before training
+def data_preprocessing(args):
     # Get all case folders under the input directory
     case_folders = glob.glob(os.path.join(args.dataset, '*'))
     graph_list = []
@@ -185,8 +179,23 @@ if __name__ == "__main__":
     generate_attribute_node_features(graph_list, EMBEDDING_DIM)
     '''
 
+if __name__ == "__main__":
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dataset', type=str, default=None, help='dataset name')
+    parser.add_argument('--load-pickle', action='store_true', help='load pickle file')
+    #args = parser.parse_args(['--dataset',  '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/'])
+    args = parser.parse_args()
+
+    if args.load_pickle: #  First, load the pickle file if it exists
+        graph_list = pickle.load(open("graph_list.pickle", "rb"))
+    elif args.dataset is not None: # Second, do data preprocessing if the pickle file does not exist
+        graph_list = data_preprocessing(args)
+    else:
+        assert False, "Please specify the dataset path to do data preprocessing or load the pickle file."
+
     # 4. Create a Graph Convolutional Network (GCN) model and custom dataset
-        
+
     # Focal loss
 
 
@@ -220,7 +229,7 @@ if __name__ == "__main__":
 
             loss = loss_function(logits[batched_dgl_G.ndata['train_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']])
             #loss = loss_function(logits[batched_dgl_G.ndata['train_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']])
-            
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -230,7 +239,7 @@ if __name__ == "__main__":
 
 
     # Additional step: evaluate the model by using ThersholdFinder
-    
+
     # Instantiate the ThresholdFinder class
     model.eval()
     threshold_finder = ThresholdFinder(dataloader, model, device)
@@ -240,14 +249,14 @@ if __name__ == "__main__":
     print("Best threshold: ", best_threshold)
     print("Best F1-score: ", best_f1)
     print("Best confusion matrix:\n ", best_confusion)
-    
+
     # 6. Evaluate the model
-    
+
     pred_list = []
     true_labels_list = []
     variable_pred_list = []
     variable_true_labels_list = []
-    
+
     for batched_dgl_G in dataloader:
         batched_dgl_G = batched_dgl_G.to(device)
         logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])

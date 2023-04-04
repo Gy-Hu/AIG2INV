@@ -50,3 +50,4 @@ clause-learning/
 !check_proc.sh
 .vector_cache/
 *.pickle
+train_gcn/graph_list.pickle
