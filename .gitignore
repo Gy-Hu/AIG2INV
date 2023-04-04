@@ -49,3 +49,4 @@ utils/picosat/
 clause-learning/
 !check_proc.sh
 .vector_cache/
+*.pickle
