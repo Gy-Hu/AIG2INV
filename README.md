@@ -7,6 +7,12 @@ Accelerating IC3 by inducive clauses prediction
 * [ ] `dataset_hwmcc2007_tip_abc_no_simplification_0-22` test
 * [ ] `dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0-38` test
 * [x] `dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38` test
+* [ ] prediction -> clauses -> real implementation of latest NN model
+* [ ] solve all the WIP in `train_gcn/train.py`
+* [ ] consider the 0 frame converagence cases
+* [ ] SAT cases extraction and data collection
+* [ ] Check all the `XXX` labels in the code
+* [ ] Fixed conda env issue - core dump
 
 
 ### For important dir

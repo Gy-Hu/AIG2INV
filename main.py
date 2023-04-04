@@ -587,7 +587,7 @@ def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_locat
         return False
     '''
     # missing_indices_of_graph -> constant false cex that has no need to generate graph
-    missing_indices_of_graph = find_missing_pickles(f"{extracted_bad_cube_prefix}/bad_cube_cex2graph/expr_to_build_graph/{aig_case_name}",f"{extracted_bad_cube_prefix}/bad_cube_cex2graph/json_to_graph_pickle/")
+    # missing_indices_of_graph = find_missing_pickles(f"{extracted_bad_cube_prefix}/bad_cube_cex2graph/expr_to_build_graph/{aig_case_name}",f"{extracted_bad_cube_prefix}/bad_cube_cex2graph/json_to_graph_pickle/")
     #print(missing_indices_of_graph)
 
 
@@ -650,7 +650,10 @@ def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_locat
     print(f'{selected_aig_case} is generating predicted clauses...')
     assert final_predicted_clauses, 'Final predicted clauses is empty!'
     # insert the missing clause in the original_CTI to final_predicted_clauses
-    for i in missing_indices_of_graph: final_predicted_clauses.insert(i,original_CTI[i])
+    '''
+    Directly insert the missing clause in the original_CTI?
+    '''
+    # for i in missing_indices_of_graph: final_predicted_clauses.insert(i,original_CTI[i])
 
     for i in range(len(original_CTI)):
         # generalize the original_CTI[i] with final_predicted_clauses[i]

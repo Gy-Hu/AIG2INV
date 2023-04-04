@@ -152,58 +152,58 @@ def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
     # initialize the list to store all the abnormal cases
     AigCaseBlackList = [
         #-------- benchmark 2007 stuck in generate smt2-----------
-        'eijk.bs3271.S',
-        #--------- benchmark 2020 stuck in generate smt2------------
-        'vcegar_QF_BV_ar',
-        'rast-p00',
-        'vis_arrays_bufferAlloc',
-        'zipversa_composecrc_prf-p10',
-        'qspiflash_dualflexpress_divthree-p010',
-        'vcegar_QF_BV_itc99_b13_p10',
-        'zipcpu-busdelay-p00',
-        'zipcpu-busdelay-p30',
-        'qspiflash_qflexpress_divfive-p137',
-        'qspiflash_dualflexpress_divthree-p046',
-        'qspiflash_dualflexpress_divfive-p007',
-        'qspiflash_dualflexpress_divfive-p154',
-        'qspiflash_dualflexpress_divfive-p009',
-        'qspiflash_dualflexpress_divfive-p116',
-        'qspiflash_dualflexpress_divthree-p111',
-        'elevator.4.prop1-func-interl',
-        'h_RCU',
-        'vgasim_imgfifo-p105',
-        'cal87',
-        'cal90',
-        'picorv32-check-p05',
-        'cal142',
-        'picorv32-check-p20',
-        'cal118',
-        'cal97',
-        'cal143',
-        'cal102',
-        'cal107',
-        'cal112',
-        'dspfilters_fastfir_second-p09',
-        'dspfilters_fastfir_second-p26',
-        'dspfilters_fastfir_second-p11',
-        'cal161',
-        'rushhour.4.prop1-func-interl',
-        'cal176',
-        #--------- benchmark 2020 stuck in model2graph------------
-        'dspfilters_fastfir_second-p25',
-        'dspfilters_fastfir_second-p05',
-        'dspfilters_fastfir_second-p43',
-        'dspfilters_fastfir_second-p14',
-        'dspfilters_fastfir_second-p07',
-        'dspfilters_fastfir_second-p16',
-        'dspfilters_fastfir_second-p21',
-        #--------- benchmark 2020 stuck in json2networkx------------
-        'dspfilters_fastfir_second-p10',
-        'dspfilters_fastfir_second-p45',
-        'dspfilters_fastfir_second-p42',
-        'dspfilters_fastfir_second-p04',
-        'pgm_protocol.7.prop1-back-serstep',
-        'dspfilters_fastfir_second-p2'
+        # 'eijk.bs3271.S',
+        # #--------- benchmark 2020 stuck in generate smt2------------
+        # 'vcegar_QF_BV_ar',
+        # 'rast-p00',
+        # 'vis_arrays_bufferAlloc',
+        # 'zipversa_composecrc_prf-p10',
+        # 'qspiflash_dualflexpress_divthree-p010',
+        # 'vcegar_QF_BV_itc99_b13_p10',
+        # 'zipcpu-busdelay-p00',
+        # 'zipcpu-busdelay-p30',
+        # 'qspiflash_qflexpress_divfive-p137',
+        # 'qspiflash_dualflexpress_divthree-p046',
+        # 'qspiflash_dualflexpress_divfive-p007',
+        # 'qspiflash_dualflexpress_divfive-p154',
+        # 'qspiflash_dualflexpress_divfive-p009',
+        # 'qspiflash_dualflexpress_divfive-p116',
+        # 'qspiflash_dualflexpress_divthree-p111',
+        # 'elevator.4.prop1-func-interl',
+        # 'h_RCU',
+        # 'vgasim_imgfifo-p105',
+        # 'cal87',
+        # 'cal90',
+        # 'picorv32-check-p05',
+        # 'cal142',
+        # 'picorv32-check-p20',
+        # 'cal118',
+        # 'cal97',
+        # 'cal143',
+        # 'cal102',
+        # 'cal107',
+        # 'cal112',
+        # 'dspfilters_fastfir_second-p09',
+        # 'dspfilters_fastfir_second-p26',
+        # 'dspfilters_fastfir_second-p11',
+        # 'cal161',
+        # 'rushhour.4.prop1-func-interl',
+        # 'cal176',
+        # #--------- benchmark 2020 stuck in model2graph------------
+        # 'dspfilters_fastfir_second-p25',
+        # 'dspfilters_fastfir_second-p05',
+        # 'dspfilters_fastfir_second-p43',
+        # 'dspfilters_fastfir_second-p14',
+        # 'dspfilters_fastfir_second-p07',
+        # 'dspfilters_fastfir_second-p16',
+        # 'dspfilters_fastfir_second-p21',
+        # #--------- benchmark 2020 stuck in json2networkx------------
+        # 'dspfilters_fastfir_second-p10',
+        # 'dspfilters_fastfir_second-p45',
+        # 'dspfilters_fastfir_second-p42',
+        # 'dspfilters_fastfir_second-p04',
+        # 'pgm_protocol.7.prop1-back-serstep',
+        # 'dspfilters_fastfir_second-p2'
     ]
 
     all_cases_name_lst = [] # put into multi-threading pool
@@ -445,10 +445,11 @@ if __name__ == '__main__':
     parser.add_argument('--benchmark', type=str, default=None, help='benchmark, which is used to generate the training dataset, in benchmark_folder')
     parser.add_argument('--ground_truth_folder_prefix', type=str, default=None, help='ground truth folder prefix, the final aim generated folder, in the root folder')
     parser.add_argument('--subset_range', type=str, default=0, help='subset range, the number of subset')
+
     
     args = parser.parse_args()
     '''
-    
+    # remember to comment out Black List if you do not need it
     args = parser.parse_args(['--model-checker', 'abc', \
         #'--simplification-label', 'naive', \
         '--benchmark', 'hwmcc2007_tip', \
@@ -524,7 +525,7 @@ if __name__ == '__main__':
 
     # generate post-graph (pickle format)
     # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/smt2_cex2graph/json2networkx.py
-    generate_post_graph()
+    # generate_post_graph()
 
     print("Finish building data! Ready to train!")
 

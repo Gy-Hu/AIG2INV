@@ -138,7 +138,8 @@ if __name__ == "__main__":
     for testing only
     
     args = parser.parse_args(['--aag',
-        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2020_all/subset_0/simple_alu.aag',
+        #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2020_all/subset_0/simple_alu.aag',
+        '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/hwmcc2020_all/subset_0/vcegar_QF_BV_itc99_b13_p10.aag',
         '--generalize', 'T',
         #'--cnf',
         #'/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset/re-generate_inv/nusmv.brp.B/inv.cnf',

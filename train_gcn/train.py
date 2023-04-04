@@ -29,11 +29,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from sklearn.decomposition import PCA
 import pickle
 
-# with warnings.catch_warnings():
-#     warnings.simplefilter("ignore")
-
-
-
 #################################
 # WIP:
 # 1. generate predicted clauses from json (json -> graph -> model eval() -> predicted clauses)
@@ -45,12 +40,16 @@ import pickle
 # 7. calculate the perfect accuracy (all the clauses are correct)
 # 8. early stop
 # 9. use more suggestion from chatgpt
-# 10. fix the only one variable bug: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_deep_0/bad_cube_cex2graph/expr_to_build_graph/vcegar_QF_BV_itc99_b13_p10/vcegar_QF_BV_itc99_b13_p10_4.smt2
+# 10. fix the only one variable bug: dataset_hwmcc2020_all_only_unsat_abc_deep_0/bad_cube_cex2graph/expr_to_build_graph/vcegar_QF_BV_itc99_b13_p10/vcegar_QF_BV_itc99_b13_p10_4.smt2
 # 11. train loss nan bug
 # 12. some cases may have no data -> check build_data.py
 # 13. solve the zero convergence bug in ic3ref
 # 14. dump all graph using random walk embedding to a pickle file
-# 15. CUDA utilization is low (only 1%, related to conda env?)
+# 15. CUDA utilization is low (only 1%, related to conda env?) -> may adjust the loss calculation in advance
+# 16. utilize betweenness centrality, degree centrality, etc. as node features as well (additional dimension)
+# 17. try heterograph graph training? (Need to calculate the canonical edge types [relations] in the graph in advance)
+# 18. the positive weight of cross entropy may be needed to be tuned
+# 19. new data construction method: how to avoid generating constant_false graph (only one node?)
 #################################
 
 #JSON_FOLDER = '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B/'
@@ -58,11 +57,14 @@ import pickle
 #GROUND_TRUTH = os.path.join(JSON_FOLDER.replace('expr_to_build_graph', 'ground_truth_table'), JSON_FOLDER.split('/')[-2]+'.csv')
 HIDDEN_DIM = 128 # 32 default
 EMBEDDING_DIM = 128 # 16 default
-EPOCH = 500 # 100 default
-LR = 0.005 # =learning rate 0.01 default
-BATCH_SIZE = 16 # 2 default
-DATASET_SPLIT = None # None default, used for testing
+EPOCH = 300 # 100 default
+LR = 0.01 # =learning rate 0.01 default
+BATCH_SIZE = 64 # 2 default
+DATASET_SPLIT = 1 # None default, used for testing
 DUMP_MODE = False # False default, used for preprocessing graph data
+
+# Best parameters (2023.4.4)
+# HIDDEN_DIM = 128, EMBEDDING_DIM = 128, EPOCH = 300, LR = 0.005, BATCH_SIZE = 16
 
 # Use to calculate the weighted in imbalanced data
 def calculate_class_weights(train_labels):
@@ -130,6 +132,7 @@ def data_preprocessing(args):
 
             graph_list.append((G, node_features, node_labels, train_mask))
     
+    
             
     '''
     ----------------Node2Vec Embedding----------------
@@ -169,7 +172,7 @@ def data_preprocessing(args):
     # dump all the graph_list to a pickle file 
     # Save the graph_list to a pickle file
     if DUMP_MODE:
-        with open("graph_list.pickle", "wb") as f:
+        with open(args.dump_pickle_name, "wb") as f:
             pickle.dump(graph_list, f)
         exit(0)
         
@@ -178,14 +181,19 @@ def data_preprocessing(args):
     
     generate_attribute_node_features(graph_list, EMBEDDING_DIM)
     '''
+    
+    # return the graph_list
+    return graph_list
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default=None, help='dataset name')
     parser.add_argument('--load-pickle', action='store_true', help='load pickle file')
+    parser.add_argument('--dump-pickle-name', type=str, default=None, help='dump pickle file name')
     #args = parser.parse_args(['--dataset',  '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/'])
     args = parser.parse_args()
+    if args.dump_pickle_name is not None: DUMP_MODE = True
 
     if args.load_pickle: #  First, load the pickle file if it exists
         graph_list = pickle.load(open("graph_list.pickle", "rb"))
@@ -197,8 +205,6 @@ if __name__ == "__main__":
     # 4. Create a Graph Convolutional Network (GCN) model and custom dataset
 
     # Focal loss
-
-
     dataset = CustomGraphDataset(graph_list)
     dataloader = GraphDataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=False)
 
@@ -235,7 +241,7 @@ if __name__ == "__main__":
             optimizer.step()
             epoch_loss += loss.item()
 
-        print(f"EPOCH: {epoch}, LOSS: {epoch_loss / len(dataloader)}")
+        print(f"EPOCH: {epoch}, LOSS: {(epoch_loss / len(dataloader))*100}") # *100 to make it comparable with the other models
 
 
     # Additional step: evaluate the model by using ThersholdFinder

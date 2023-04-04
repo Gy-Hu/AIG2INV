@@ -4,7 +4,9 @@
 
 * `utils/fetch_aiger.py` : Fetch the benchmark from the hwmcc, and simplly preprocess it (processed data should be in `benchmark_folder/` folder)
     * **usage:** `cd utils && python fetch_aiger.py`
-    * **note:** change `aag_dir` (dump folder), `csv_file` (running info and aiger location prefix) and `aag_list[i]` (aiger files location) in the script to fetch different benchmarks. Modify `fetch_aig_from_csv` to ajust the preprocessing methods (only unsat? only sat? Only hard cases?). Modify `simplify` to determine whether convert `aig` to `aag`
+    * **note:** 
+        * change `aag_dir` (dump folder), `csv_file` (running info and aiger location prefix) and `aag_list[i]` (aiger files location) in the script to fetch different benchmarks. Modify `fetch_aig_from_csv` to ajust the preprocessing methods (only unsat? only sat? Only hard cases?). Modify `simplify` to determine whether convert `aig` to `aag`
+        * Comment out `aag_list = [aag for aag in aag_list if aag.split('/')[-1] in hard_aag_list]` if we don't want to filter out the some cases
 
 ## Build Dataset (Cex -> Graph)
 
@@ -45,6 +47,9 @@ select which model to use (currently only `neurograph` is available)
         * `--batch-size` : The batch size to use (e.g. `2`)
         * `--pos-weight` : The positive weight in BCEWithLogitsLoss (e.g. `1.0`)
         * `--lr` : The learning rate to use (e.g. `0.00001`)
+
+* `train_gcn/train.py`
+    * **usage:** `python train.py --dataset <dataset>  --dump-pickle-name <dump-pickle-name> (optional: --load-pickle)`
 
 ## Validate the Model
 
