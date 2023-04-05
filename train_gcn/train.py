@@ -23,7 +23,7 @@ import argparse
 from sklearn.metrics import f1_score
 from ThersholdFinder import ThresholdFinder
 import warnings
-from Embedding import deepwalk, generate_node2vec_embedding, generate_node_features, generate_attribute_node_features
+from Embedding import deepwalk, generate_node_features, generate_attribute_node_features
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from sklearn.decomposition import PCA
@@ -57,14 +57,17 @@ import pickle
 #GROUND_TRUTH = os.path.join(JSON_FOLDER.replace('expr_to_build_graph', 'ground_truth_table'), JSON_FOLDER.split('/')[-2]+'.csv')
 HIDDEN_DIM = 128 # 32 default
 EMBEDDING_DIM = 128 # 16 default
-EPOCH = 300 # 100 default
-LR = 0.01 # =learning rate 0.01 default
-BATCH_SIZE = 64 # 2 default
-DATASET_SPLIT = 1 # None default, used for testing
+EPOCH = 500 # 100 default
+LR = 0.005 # =learning rate 0.01 default
+BATCH_SIZE = 16 # 2 default
+DATASET_SPLIT = None # None default, used for testing
 DUMP_MODE = False # False default, used for preprocessing graph data
 
 # Best parameters (2023.4.4)
-# HIDDEN_DIM = 128, EMBEDDING_DIM = 128, EPOCH = 300, LR = 0.005, BATCH_SIZE = 16
+# HIDDEN_DIM = 128, EMBEDDING_DIM = 128, EPOCH = 500, LR = 0.005, BATCH_SIZE = 16
+
+# Testing parameters (2021.4.4)
+# HIDDEN_DIM = 128, EMBEDDING_DIM = 128, EPOCH = 300, LR = 0.01, BATCH_SIZE = 64
 
 # Use to calculate the weighted in imbalanced data
 def calculate_class_weights(train_labels):
@@ -132,7 +135,9 @@ def data_preprocessing(args):
 
             graph_list.append((G, node_features, node_labels, train_mask))
     
+    return graph_list
     
+def employ_graph_embedding(graph_list,args):
             
     '''
     ----------------Node2Vec Embedding----------------
@@ -181,30 +186,44 @@ def data_preprocessing(args):
     
     generate_attribute_node_features(graph_list, EMBEDDING_DIM)
     '''
-    
-    # return the graph_list
+
     return graph_list
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default=None, help='dataset name')
-    parser.add_argument('--load-pickle', action='store_true', help='load pickle file')
+    parser.add_argument('--load-pickle', type=str, default=None, help='load pickle file name')
     parser.add_argument('--dump-pickle-name', type=str, default=None, help='dump pickle file name')
+    parser.add_argument('--model-name', type=str, default=None, help='model name to save')
     #args = parser.parse_args(['--dataset',  '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/'])
     args = parser.parse_args()
     if args.dump_pickle_name is not None: DUMP_MODE = True
 
-    if args.load_pickle: #  First, load the pickle file if it exists
-        graph_list = pickle.load(open("graph_list.pickle", "rb"))
+    if args.load_pickle is not None: #  First, load the pickle file if it exists
+        graph_list = pickle.load(open(args.load_pickle, "rb"))
     elif args.dataset is not None: # Second, do data preprocessing if the pickle file does not exist
         graph_list = data_preprocessing(args)
+        graph_list = employ_graph_embedding(graph_list,args)
     else:
         assert False, "Please specify the dataset path to do data preprocessing or load the pickle file."
 
-    # 4. Create a Graph Convolutional Network (GCN) model and custom dataset
+    # 4. Create a custom dataset
+    '''
+    # Split the graph_list into train, val, and test datasets
+    train_data, temp_data = train_test_split(graph_list, test_size=0.3, random_state=42)
+    val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
+    
+    # Create custom datasets for each split
+    train_dataset = CustomGraphDataset(train_data, split='train')
+    val_dataset = CustomGraphDataset(val_data, split='val')
+    test_dataset = CustomGraphDataset(test_data, split='test')
 
-    # Focal loss
+    # Create dataloaders for each split
+    train_dataloader = GraphDataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=False)
+    val_dataloader = GraphDataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
+    test_dataloader = GraphDataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
+    '''
     dataset = CustomGraphDataset(graph_list)
     dataloader = GraphDataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=False)
 
@@ -219,7 +238,7 @@ if __name__ == "__main__":
     #loss_function = FocalLoss()
     optimizer = Adam(model.parameters(), lr=LR)
 
-
+    #best_val_loss = float('inf')
     for epoch in range(EPOCH):
         model.train()
         epoch_loss = 0
@@ -240,8 +259,32 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
             epoch_loss += loss.item()
-
-        print(f"EPOCH: {epoch}, LOSS: {(epoch_loss / len(dataloader))*100}") # *100 to make it comparable with the other models
+        
+        '''
+        # Validation loop
+        
+        model.eval()
+        val_loss = 0
+        for batched_dgl_G in val_dataloader:
+            batched_dgl_G = batched_dgl_G.to(device)
+            logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
+            
+            # Compute the class weights for the current batch
+            val_labels = batched_dgl_G.ndata['label'][batched_dgl_G.ndata['val_mask']].cpu().numpy()
+            class_weights = calculate_class_weights(val_labels)
+            if len(class_weights) == 0:
+                class_weights = [1.0, 1.0]  # error handling
+            
+            # Update the loss function with the computed class weights
+            loss_function = nn.CrossEntropyLoss(weight=torch.FloatTensor(class_weights).to(device))
+            
+            loss = loss_function(logits[batched_dgl_G.ndata['val_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['val_mask']])
+            val_loss += loss.item()
+        '''
+            
+         # *100 to make it comparable with the other models
+        print(f"EPOCH: {epoch}, TRAIN LOSS: {(epoch_loss / len(dataloader))*100}") 
+        #print(f"EPOCH: {epoch}, VAL LOSS: {(val_loss / len(val_dataloader))*100}")
 
 
     # Additional step: evaluate the model by using ThersholdFinder
@@ -296,6 +339,10 @@ if __name__ == "__main__":
     print("F1-score: ", f1)
     print("Confusion matrix:")
     print(confusion)
+    
+    # save the model
+    if args.model_name is not None:
+        torch.save(model.state_dict(), f"{args.model_name}.pt")
 
 
 

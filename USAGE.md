@@ -7,6 +7,7 @@
     * **note:** 
         * change `aag_dir` (dump folder), `csv_file` (running info and aiger location prefix) and `aag_list[i]` (aiger files location) in the script to fetch different benchmarks. Modify `fetch_aig_from_csv` to ajust the preprocessing methods (only unsat? only sat? Only hard cases?). Modify `simplify` to determine whether convert `aig` to `aag`
         * Comment out `aag_list = [aag for aag in aag_list if aag.split('/')[-1] in hard_aag_list]` if we don't want to filter out the some cases
+        * Choose what filter method you want to use in `fetch_aig_from_csv()`
 
 ## Build Dataset (Cex -> Graph)
 

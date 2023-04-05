@@ -115,10 +115,25 @@ def fetch_aig_from_csv(csv_file):
         'dspfilters_fastfir_second-p2'
     ]
     
-    # filter out the aag_list by hard_aag_list
+    '''
+    filter out the aag_list by hard_aag_list
+    '''
     # aag_list = [aag for aag in aag_list if aag.split('/')[-1] in hard_aag_list]
-    
+    # filtered_df = df[df['aag_name'].apply(lambda x: any(substring in x for substring in hard_aag_list))]
 
+    '''
+    filter out the aag_list by time and n_clause
+    '''
+    #df_sorted = df.sort_values(by='time', ascending=False)
+    #df_filtered = df_sorted[df_sorted['n_clause'] <= 50]
+    
+    '''
+    Adjust options
+    '''
+    # Set display options
+    # pd.set_option("display.max_rows", 100)
+    # pd.set_option("display.max_colwidth", None)
+    
     # Add file path to the aag_list
     for i in range(len(aag_list)):
         #aag_list[i] = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07/" + aag_list[i] + ".aig"

@@ -32,6 +32,9 @@ def deepwalk(G, num_walks, walk_length, embedding_dim, window_size):
 
     return node_embeddings
 
+'''
+node2vec
+
 def generate_node2vec_embedding(graph_data, EMBEDDING_DIM):
     G, _, node_labels, train_mask = graph_data
 
@@ -45,6 +48,7 @@ def generate_node2vec_embedding(graph_data, EMBEDDING_DIM):
         node_features[i] = model.wv[f"{node_id}"]
 
     return (G, node_features, node_labels, train_mask)
+'''
 
 # simple node embedding
 def generate_node_features(graph_list, EMBEDDING_DIM):
