@@ -28,6 +28,7 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from sklearn.decomposition import PCA
 import pickle
+from sklearn.model_selection import train_test_split
 
 #################################
 # WIP:
@@ -57,10 +58,11 @@ import pickle
 #GROUND_TRUTH = os.path.join(JSON_FOLDER.replace('expr_to_build_graph', 'ground_truth_table'), JSON_FOLDER.split('/')[-2]+'.csv')
 HIDDEN_DIM = 128 # 32 default
 EMBEDDING_DIM = 128 # 16 default
-EPOCH = 500 # 100 default
-LR = 0.005 # =learning rate 0.01 default
-BATCH_SIZE = 16 # 2 default
+EPOCH = 100 # 100 default
+LR = 0.01 # =learning rate 0.01 default
+BATCH_SIZE = 32 # 2 default
 DATASET_SPLIT = None # None default, used for testing
+WEIGHT_DECAY = 1e-2 # Apply L1 or L2 regularization, [1e-3,1e-2], default 1e-5
 DUMP_MODE = False # False default, used for preprocessing graph data
 
 # Best parameters (2023.4.4)
@@ -192,11 +194,14 @@ def employ_graph_embedding(graph_list,args):
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default=None, help='dataset name')
+    parser.add_argument('--dataset', type=str, default=None, help='dataset name') # no need if load pickle
     parser.add_argument('--load-pickle', type=str, default=None, help='load pickle file name')
-    parser.add_argument('--dump-pickle-name', type=str, default=None, help='dump pickle file name')
+    parser.add_argument('--dump-pickle-name', type=str, default=None, help='dump pickle file name') # no need if load pickle
     parser.add_argument('--model-name', type=str, default=None, help='model name to save')
+    # complex
     #args = parser.parse_args(['--dataset',  '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/'])
+    # simple
+    #args = parser.parse_args(['--dataset', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/expr_to_build_graph'])
     args = parser.parse_args()
     if args.dump_pickle_name is not None: DUMP_MODE = True
 
@@ -209,10 +214,12 @@ if __name__ == "__main__":
         assert False, "Please specify the dataset path to do data preprocessing or load the pickle file."
 
     # 4. Create a custom dataset
-    '''
+    
     # Split the graph_list into train, val, and test datasets
-    train_data, temp_data = train_test_split(graph_list, test_size=0.3, random_state=42)
-    val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
+    graph_list = graph_list[:DATASET_SPLIT]
+    # train_data, temp_data = train_test_split(graph_list, test_size=0.2, random_state=42)
+    # val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
+    train_data = graph_list ; val_data = graph_list ; test_data = graph_list
     
     # Create custom datasets for each split
     train_dataset = CustomGraphDataset(train_data, split='train')
@@ -223,9 +230,7 @@ if __name__ == "__main__":
     train_dataloader = GraphDataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=False)
     val_dataloader = GraphDataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
     test_dataloader = GraphDataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
-    '''
-    dataset = CustomGraphDataset(graph_list)
-    dataloader = GraphDataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=False)
+
 
     # 5. Train the model
     #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -236,13 +241,14 @@ if __name__ == "__main__":
     model = BWGNN(input_feature_dim, HIDDEN_DIM, 2).to(device)
     #loss_function = nn.CrossEntropyLoss()
     #loss_function = FocalLoss()
-    optimizer = Adam(model.parameters(), lr=LR)
+    optimizer = Adam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 
-    #best_val_loss = float('inf')
+    best_val_loss = float('inf')
+    overall_best_f1 = 0 # overall best f1 score in all epochs
     for epoch in range(EPOCH):
         model.train()
         epoch_loss = 0
-        for batched_dgl_G in dataloader:
+        for batched_dgl_G in train_dataloader:
             batched_dgl_G = batched_dgl_G.to(device)
             logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
             # Compute the class weights for the current batch
@@ -260,7 +266,7 @@ if __name__ == "__main__":
             optimizer.step()
             epoch_loss += loss.item()
         
-        '''
+        
         # Validation loop
         
         model.eval()
@@ -280,18 +286,22 @@ if __name__ == "__main__":
             
             loss = loss_function(logits[batched_dgl_G.ndata['val_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['val_mask']])
             val_loss += loss.item()
-        '''
-            
-         # *100 to make it comparable with the other models
-        print(f"EPOCH: {epoch}, TRAIN LOSS: {(epoch_loss / len(dataloader))*100}") 
-        #print(f"EPOCH: {epoch}, VAL LOSS: {(val_loss / len(val_dataloader))*100}")
+        
+        #if val_loss < best_val_loss: best_val_loss = val_loss
+        threshold_finder = ThresholdFinder(val_dataloader, model, device)
+        _, best_f1, _ = threshold_finder.find_best_threshold() # best f1 score under the best threshold in the current epoch
+        if best_f1 > overall_best_f1: overall_best_f1 = best_f1 
+        # *10 to make the loss comparable
+        print(f"EPOCH: {epoch}, TRAIN LOSS: {(epoch_loss/len(train_dataloader))*10},VAL LOSS: {(val_loss/len(val_dataloader))*10}, BEST F1: {overall_best_f1}")
+        # employ early stop
+        if overall_best_f1 >= 0.7: break
 
 
     # Additional step: evaluate the model by using ThersholdFinder
 
     # Instantiate the ThresholdFinder class
     model.eval()
-    threshold_finder = ThresholdFinder(dataloader, model, device)
+    threshold_finder = ThresholdFinder(test_dataloader, model, device)
 
     # Find the best threshold
     best_threshold, best_f1, best_confusion = threshold_finder.find_best_threshold()
@@ -306,14 +316,14 @@ if __name__ == "__main__":
     variable_pred_list = []
     variable_true_labels_list = []
 
-    for batched_dgl_G in dataloader:
+    for batched_dgl_G in test_dataloader:
         batched_dgl_G = batched_dgl_G.to(device)
         logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
         pred = logits.argmax(1).cpu().numpy()
         true_labels = batched_dgl_G.ndata['label'].cpu().numpy()
 
         # Create variable_mask for the batched_dgl_G
-        variable_mask = batched_dgl_G.ndata['train_mask'].cpu().numpy()
+        variable_mask = batched_dgl_G.ndata['test_mask'].cpu().numpy()
 
         pred_list.append(pred)
         true_labels_list.append(true_labels)

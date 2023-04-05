@@ -154,7 +154,7 @@ class BWGNN(nn.Module):
         which increases its capacity to learn complex patterns in the data. 
         This increased capacity can help the model perform better on imbalanced datasets.
         '''
-        
+        self.dropout = nn.Dropout(0.8)
         self.thetas = calculate_theta2(d=d)
         self.conv = []
         for i in range(len(self.thetas)):
@@ -183,6 +183,7 @@ class BWGNN(nn.Module):
         self.g = g
         device = in_feat.device
         h = self.linear(in_feat)
+        h = self.dropout(h)
         h = self.act(h)
         h = self.linear2(h)
         h = self.act(h)

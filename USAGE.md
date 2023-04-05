@@ -50,7 +50,20 @@ select which model to use (currently only `neurograph` is available)
         * `--lr` : The learning rate to use (e.g. `0.00001`)
 
 * `train_gcn/train.py`
-    * **usage:** `python train.py --dataset <dataset>  --dump-pickle-name <dump-pickle-name> (optional: --load-pickle)`
+    parser.add_argument('--dataset', type=str, default=None, help='dataset name') # no need if load pickle
+    parser.add_argument('--load-pickle', type=str, default=None, help='load pickle file name')
+    parser.add_argument('--dump-pickle-name', type=str, default=None, help='dump pickle file name') # no need if load pickle
+    parser.add_argument('--model-name', type=str, default=None, help='model name to save')
+    * **usage:** `python train.py --dataset <dataset>  (optional: --load-pickle, --model-name, --dump-pickle-name <dump-pickle-name> , etc.)`
+    * **parameters:**
+        * `--dataset` : The dataset to use (e.g. `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/`)
+        * `--load-pickle` : The pickle file to load (e.g. `hwmcc07_tip_ic3ref_no_simplification_0-22.pickle`)
+        * `--dump-pickle-name` : The pickle file to dump (e.g. `hwmcc07_tip_ic3ref_no_simplification_0-22.pickle`)
+        * `--model-name` : The model name to save (e.g. `hwmcc07_ic3ref_tip_no_simplification_0-22.pt`)
+    * **note:**
+        * Adjust `DATASET_SPLIT` if you just want to test the code
+        * Adjust `h = self.dropout(h)` in `train_gcn/GNN_Model.py` and `WEIGHT_DECAY` in `train_gcn/train.py` if you want to prevent overfitting
+        * Define how to split the dataset by yourself (using `train_test_split()`)
 
 ## Validate the Model
 
