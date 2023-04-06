@@ -183,7 +183,7 @@ class BWGNN(nn.Module):
         self.g = g
         device = in_feat.device
         h = self.linear(in_feat)
-        h = self.dropout(h)
+        #h = self.dropout(h)
         h = self.act(h)
         h = self.linear2(h)
         h = self.act(h)

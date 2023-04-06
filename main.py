@@ -753,7 +753,7 @@ if __name__ == "__main__":
     '''
 
     '''
-    
+    '''
     args = parser.parse_args([
         '--threshold', '0.5',
         '--selected-built-dataset', 'dataset_hwmcc2007_tip_abc_no_simplification_0-22',
@@ -761,7 +761,7 @@ if __name__ == "__main__":
         '--gpu-id', '1',
         '--compare_with_abc',
         '--re-predict'])
-    '''
+    
 
     assert args.log_location is not None, 'log location is required'
     args.compare_with_ic3ref_basic_generalization = "-b" if args.compare_with_ic3ref_basic_generalization else ""

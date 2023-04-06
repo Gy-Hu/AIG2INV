@@ -52,3 +52,4 @@ clause-learning/
 *.pickle
 train_gcn/graph_list.pickle
 data2dataset/cex2smt2/deps/pydimacs
+*.pt

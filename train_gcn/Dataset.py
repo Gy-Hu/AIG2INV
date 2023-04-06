@@ -14,6 +14,7 @@ class CustomGraphDataset(dgl.data.DGLDataset):
         dgl_G.ndata['feat'] = torch.tensor(node_features, dtype=torch.float32)
         dgl_G.ndata['label'] = torch.tensor(node_labels, dtype=torch.long)
         dgl_G.ndata['train_mask'] = torch.tensor(train_mask)
+        #dgl_G.graph['name'] = G.graph['name']
 
         if self.split == 'train':
             dgl_G.ndata['val_mask'] = torch.tensor([False] * len(node_labels))

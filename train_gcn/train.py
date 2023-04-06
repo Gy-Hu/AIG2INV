@@ -35,7 +35,7 @@ from sklearn.model_selection import train_test_split
 # 1. generate predicted clauses from json (json -> graph -> model eval() -> predicted clauses)
 # 2. use better features (features engineering on the graph: transition relation, initial state, etc.)
 # 3. use better model (STGCN, GAT, BWGNN, etc.)
-# 4. use more graph (add more graphs to the dataset, hwmcc2007, etc.)
+# 4. use more graph (add more graphs to the dataset, hwmcc2007, etc.) - DONE
 # 5. solve the imbalanced data problem (class weights, moving thereshold, focal loss, etc.)
 # 6. weird loss <1
 # 7. calculate the perfect accuracy (all the clauses are correct)
@@ -51,6 +51,7 @@ from sklearn.model_selection import train_test_split
 # 17. try heterograph graph training? (Need to calculate the canonical edge types [relations] in the graph in advance)
 # 18. the positive weight of cross entropy may be needed to be tuned
 # 19. new data construction method: how to avoid generating constant_false graph (only one node?)
+# 20. fix loss function weight calculation bug
 #################################
 
 #JSON_FOLDER = '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B/'
@@ -59,10 +60,10 @@ from sklearn.model_selection import train_test_split
 HIDDEN_DIM = 128 # 32 default
 EMBEDDING_DIM = 128 # 16 default
 EPOCH = 100 # 100 default
-LR = 0.01 # =learning rate 0.01 default
+LR = 0.005 # =learning rate 0.01 default
 BATCH_SIZE = 32 # 2 default
 DATASET_SPLIT = None # None default, used for testing
-WEIGHT_DECAY = 1e-2 # Apply L1 or L2 regularization, [1e-3,1e-2], default 1e-5
+WEIGHT_DECAY = 0 # Apply L1 or L2 regularization, [1e-3,1e-2], default 1e-5
 DUMP_MODE = False # False default, used for preprocessing graph data
 
 # Best parameters (2023.4.4)
@@ -89,11 +90,12 @@ def data_preprocessing(args):
         json_files = [f for f in os.listdir(JSON_FOLDER) if f.endswith('.json')]
         # For each aiger case, read all the JSON files
         for _ in json_files:
+            #print(_) ; graph_list.append(_) ; continue # for bug fix only
             # 1. Parse the JSON graph data and create the graph structure
             with open(os.path.join(JSON_FOLDER, _)) as f:
                 graph_data = json.loads(f.read())
 
-            G = nx.DiGraph()
+            G = nx.DiGraph(name=os.path.splitext(_)[0])
 
             for node in graph_data:
                 G.add_node(node['data']['id'], **node['data'])
@@ -137,6 +139,7 @@ def data_preprocessing(args):
 
             graph_list.append((G, node_features, node_labels, train_mask))
     
+    #with open(args.dump_pickle_name, "wb") as f: pickle.dump(graph_list, f) ; exit(0) # for bug fix only
     return graph_list
     
 def employ_graph_embedding(graph_list,args):
@@ -199,7 +202,10 @@ if __name__ == "__main__":
     parser.add_argument('--dump-pickle-name', type=str, default=None, help='dump pickle file name') # no need if load pickle
     parser.add_argument('--model-name', type=str, default=None, help='model name to save')
     # complex
-    #args = parser.parse_args(['--dataset',  '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/'])
+    # args = parser.parse_args(['--dataset', \
+    #                           '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_hard_abc_no_simplification_0-9/bad_cube_cex2graph/expr_to_build_graph/',\
+    #                           '--dump-pickle-name', 'dataset_hwmcc2020_all_only_unsat_hard_abc_no_simplification_0-9_list_name'
+    #                           ])
     # simple
     #args = parser.parse_args(['--dataset', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/expr_to_build_graph'])
     args = parser.parse_args()
@@ -217,9 +223,14 @@ if __name__ == "__main__":
     
     # Split the graph_list into train, val, and test datasets
     graph_list = graph_list[:DATASET_SPLIT]
+
+    train_data, test_data = train_test_split(graph_list, test_size=0.05, random_state=42)
+    _, val_data = train_test_split(train_data, test_size=0.2, random_state=42)
+    
     # train_data, temp_data = train_test_split(graph_list, test_size=0.2, random_state=42)
     # val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
-    train_data = graph_list ; val_data = graph_list ; test_data = graph_list
+    
+    # train_data = graph_list ; val_data = graph_list ; test_data = graph_list
     
     # Create custom datasets for each split
     train_dataset = CustomGraphDataset(train_data, split='train')
@@ -294,7 +305,7 @@ if __name__ == "__main__":
         # *10 to make the loss comparable
         print(f"EPOCH: {epoch}, TRAIN LOSS: {(epoch_loss/len(train_dataloader))*10},VAL LOSS: {(val_loss/len(val_dataloader))*10}, BEST F1: {overall_best_f1}")
         # employ early stop
-        if overall_best_f1 >= 0.7: break
+        #if overall_best_f1 >= 0.7: break
 
 
     # Additional step: evaluate the model by using ThersholdFinder
