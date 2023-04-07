@@ -64,6 +64,12 @@ select which model to use (currently only `neurograph` is available)
         * Adjust `DATASET_SPLIT` if you just want to test the code
         * Adjust `h = self.dropout(h)` in `train_gcn/GNN_Model.py` and `WEIGHT_DECAY` in `train_gcn/train.py` if you want to prevent overfitting
         * Define how to split the dataset by yourself (using `train_test_split()`)
+        * Uncomment `prof.step()` in training loop if you want to profile the code
+        * Check `threshold_finder = ThresholdFinder(val_dataloader, model, device)`, confirm which dataloader you want to use in testing
+        * Check `Validation loop` in training loop, uncomment if you need it (e.g. early stop or hyperparameter fine tuning)
+        * Check node embedding method that you want to employ in `graph_list = employ_graph_embedding(graph_list,args)`
+        * Comment out args if you want to input them in command line
+        * Comment out `G = G.to_undirected()` if you want to use directed graph
 
 ## Validate the Model
 

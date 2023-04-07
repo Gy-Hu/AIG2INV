@@ -7,20 +7,20 @@ Accelerating IC3 by inducive clauses prediction
 * [ ] `dataset_hwmcc2007_tip_abc_no_simplification_0-22` test
 * [ ] `dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0-38` test
 * [x] `dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38` test
-* [ ] prediction -> clauses -> real implementation of latest NN model
+* [x] prediction -> clauses -> real implementation of latest NN model
 * [ ] solve all the WIP in `train_gcn/train.py`
 * [ ] consider the 0 frame converagence cases
-* [ ] SAT cases extraction and data collection
+* [ ] SAT(unsafe) cases extraction and data collection
 * [ ] Check all the `XXX` labels in the code
-* [ ] Fixed conda env issue - core dump
+* [x] Fixed conda env issue - core dump
 
 
 ### For important dir
 
 **for ground truth**
-* abc hwmcc07: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-abc-result/output/tip/`
+* abc hwmcc07: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc07_abc_7200_result`
 * abc hwmcc20: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result/`
-* ic3ref hwmcc07: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/`
+* ic3ref hwmcc07: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc07-ic3ref_7200-result`
 * ic3ref hwmcc20: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20-ic3ref_7200-result/`
 
 ### For deps
@@ -62,10 +62,13 @@ clone modified abc to utils - https://github.com/zhanghongce/abc
 
 ### For converted aiger
 * `cnt1` , `cnt2` and `cnt-zeros` : For toy experiments
-* `benchmark_folder/hwmcc2007_all`: hwmcc07 tip all safety cases, including both UNSAT and SAT cases (all aiger1.0 format)
+* `benchmark_folder/hwmcc2007_tip`: hwmcc07 tip all safety cases, including both UNSAT and SAT cases (all aiger1.0 format), now `onlu consider UNSAT cases`
+* `benchmark_folder/hwmcc2007_all_only_unsat`: hwmcc07 all safety cases without SAT and UNKNOWN cases (all aiger1.0 format)
+* `benchmark_folder/hwmcc2007_all_only_unsat_hard_less_clauses`: hwmcc07 all safety cases without SAT and UNKNOWN cases (all aiger1.0 format), only contains hard cases with less clauses
 * `benchmark_folder/hwmcc2020_all`: hwmcc20 safety cases (all aiger1.0 format)
-* `benchmark_folder/hwmcc2020_small`: part of hwmcc20 safety cases (all aiger1.0 format), only contains 50 simple cases
 * `benchmark_folder/hwmcc2020_all_only_unsat`: hwmcc20 safety cases without SAT and UNKNOWN cases (all aiger1.0 format)
+* `benchmark_folder/hwmcc2020_all_only_unsat_hard`: hwmcc20 safety cases without SAT and UNKNOWN cases (all aiger1.0 format), only contains hard cases
+* `benchmark_folder/hwmcc2020_all_only_unsat_hard_less_clauses`: hwmcc20 safety cases without SAT and UNKNOWN cases (all aiger1.0 format), only contains hard cases with less clauses
 
 ### For validate result
 * `case4comp/xxx_comp`: contains the aiger and its predicted clauses (`xxx` normally is the corresponding dataset name)

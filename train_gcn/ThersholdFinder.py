@@ -51,15 +51,15 @@ class ThresholdFinder:
                 probs = F.softmax(logits, dim=1)
                 pred = self.make_predictions(probs, threshold)
                 true_labels = batched_dgl_G.ndata['label'].cpu().numpy()
-
-                if self.dataloader.dataset.split == 'train':
-                    variable_mask = batched_dgl_G.ndata['train_mask'].cpu().numpy()
-                elif self.dataloader.dataset.split == 'val':
-                    variable_mask = batched_dgl_G.ndata['val_mask'].cpu().numpy()
-                elif self.dataloader.dataset.split == 'test':
-                    variable_mask = batched_dgl_G.ndata['test_mask'].cpu().numpy()
-                else:
-                    assert False, "Invalid dataset, check the dataset constructor."
+                variable_mask = batched_dgl_G.ndata['train_mask'].cpu().numpy()
+                # if self.dataloader.dataset.split == 'train':
+                #     variable_mask = batched_dgl_G.ndata['train_mask'].cpu().numpy()
+                # elif self.dataloader.dataset.split == 'val':
+                #     variable_mask = batched_dgl_G.ndata['val_mask'].cpu().numpy()
+                # elif self.dataloader.dataset.split == 'test':
+                #     variable_mask = batched_dgl_G.ndata['test_mask'].cpu().numpy()
+                # else:
+                #     assert False, "Invalid dataset, check the dataset constructor."
                 variable_pred_list.append(pred[variable_mask])
                 variable_true_labels_list.append(true_labels[variable_mask])
 

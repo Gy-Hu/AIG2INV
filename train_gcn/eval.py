@@ -6,7 +6,7 @@ from Dataset import CustomGraphDataset
 
 if __name__ == "__main__":
     # load pickle file
-    with open("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_gcn/hwmcc07_tip_ic3ref_no_simplification_0-22.pickle", "rb") as f:
+    with open("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_gcn/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22.pickle", "rb") as f:
         data = pickle.load(f)
         
     # for bug fix only
@@ -22,7 +22,7 @@ if __name__ == "__main__":
     
     # load data
     test_dataset = CustomGraphDataset(data, split='test')
-    batched_dgl_G = test_dataset[67] # 160,163,164,165,166 is small data
+    batched_dgl_G = test_dataset[167] # 160,163,164,165,166 is small data
     batched_dgl_G = batched_dgl_G.to('cuda:0')
     logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
     pred = logits.argmax(1).cpu().numpy()
@@ -30,13 +30,24 @@ if __name__ == "__main__":
     output = [
         (data['application'])
         for idx, (_, data) in enumerate(
-            list(data[67][0].nodes(data=True))
+            list(data[167][0].nodes(data=True))
         )
         if data['type'] == 'variable'
         and data['application'].startswith('v')
-        and batched_dgl_G.ndata['test_mask'].cpu().numpy()[idx]
+        and batched_dgl_G.ndata['train_mask'].cpu().numpy()[idx]
         and pred[idx]==1
     ]
+    real_output = [
+        (data['application'])
+        for idx, (_, data) in enumerate(
+            list(data[167][0].nodes(data=True))
+        )
+        if data['type'] == 'variable'
+        and data['application'].startswith('v')
+        and batched_dgl_G.ndata['train_mask'].cpu().numpy()[idx]
+        and true_labels[idx]==1
+    ]
     print(output)
-    #print(pred)
-    #print(true_labels)
+    print(real_output)
+    print(pred)
+    print(true_labels)

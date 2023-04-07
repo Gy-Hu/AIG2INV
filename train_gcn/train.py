@@ -29,6 +29,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from sklearn.decomposition import PCA
 import pickle
 from sklearn.model_selection import train_test_split
+import torch.profiler
 
 #################################
 # WIP:
@@ -59,9 +60,9 @@ from sklearn.model_selection import train_test_split
 #GROUND_TRUTH = os.path.join(JSON_FOLDER.replace('expr_to_build_graph', 'ground_truth_table'), JSON_FOLDER.split('/')[-2]+'.csv')
 HIDDEN_DIM = 128 # 32 default
 EMBEDDING_DIM = 128 # 16 default
-EPOCH = 100 # 100 default
-LR = 0.005 # =learning rate 0.01 default
-BATCH_SIZE = 32 # 2 default
+EPOCH = 300 # 100 default
+LR = 0.01 # =learning rate 0.01 default
+BATCH_SIZE = 64 # 2 default
 DATASET_SPLIT = None # None default, used for testing
 WEIGHT_DECAY = 0 # Apply L1 or L2 regularization, [1e-3,1e-2], default 1e-5
 DUMP_MODE = False # False default, used for preprocessing graph data
@@ -106,7 +107,7 @@ def data_preprocessing(args):
                         G.add_edge(node['data']['id'], child_id)
 
             # Convert the directed graph G to an undirected graph
-            G = G.to_undirected()
+            # G = G.to_undirected()
 
             # 2. Assign node features and labels
 
@@ -195,7 +196,7 @@ def employ_graph_embedding(graph_list,args):
     return graph_list
 
 if __name__ == "__main__":
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default=None, help='dataset name') # no need if load pickle
     parser.add_argument('--load-pickle', type=str, default=None, help='load pickle file name')
@@ -207,7 +208,7 @@ if __name__ == "__main__":
     #                           '--dump-pickle-name', 'dataset_hwmcc2020_all_only_unsat_hard_abc_no_simplification_0-9_list_name'
     #                           ])
     # simple
-    #args = parser.parse_args(['--dataset', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/expr_to_build_graph'])
+    #args = parser.parse_args(['--load-pickle', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_gcn/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22.pickle'])
     args = parser.parse_args()
     if args.dump_pickle_name is not None: DUMP_MODE = True
 
@@ -224,8 +225,12 @@ if __name__ == "__main__":
     # Split the graph_list into train, val, and test datasets
     graph_list = graph_list[:DATASET_SPLIT]
 
-    train_data, test_data = train_test_split(graph_list, test_size=0.05, random_state=42)
+    train_data = graph_list
     _, val_data = train_test_split(train_data, test_size=0.2, random_state=42)
+    print("Length of val_data: ", len(val_data))
+    
+    #train_data, test_data = train_test_split(graph_list, test_size=0.05, random_state=42)
+    #_, val_data = train_test_split(train_data, test_size=0.2, random_state=42)
     
     # train_data, temp_data = train_test_split(graph_list, test_size=0.2, random_state=42)
     # val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
@@ -235,12 +240,12 @@ if __name__ == "__main__":
     # Create custom datasets for each split
     train_dataset = CustomGraphDataset(train_data, split='train')
     val_dataset = CustomGraphDataset(val_data, split='val')
-    test_dataset = CustomGraphDataset(test_data, split='test')
+    #test_dataset = CustomGraphDataset(test_data, split='test')
 
     # Create dataloaders for each split
     train_dataloader = GraphDataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=False)
     val_dataloader = GraphDataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
-    test_dataloader = GraphDataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
+    #test_dataloader = GraphDataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
 
 
     # 5. Train the model
@@ -250,35 +255,48 @@ if __name__ == "__main__":
     input_feature_dim = EMBEDDING_DIM
     #model = GCNModel(input_feature_dim, HIDDEN_DIM, 2).to(device)
     model = BWGNN(input_feature_dim, HIDDEN_DIM, 2).to(device)
-    #loss_function = nn.CrossEntropyLoss()
+    print(model) # for log analysis
+    loss_function = nn.CrossEntropyLoss()
     #loss_function = FocalLoss()
     optimizer = Adam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 
     best_val_loss = float('inf')
     overall_best_f1 = 0 # overall best f1 score in all epochs
+    
     for epoch in range(EPOCH):
         model.train()
         epoch_loss = 0
-        for batched_dgl_G in train_dataloader:
-            batched_dgl_G = batched_dgl_G.to(device)
-            logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
-            # Compute the class weights for the current batch
-            train_labels = batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']].cpu().numpy()
-            class_weights = calculate_class_weights(train_labels)
-            if len(class_weights)==0: class_weights = [1.0, 1.0] # error handling
-            # Update the loss function with the computed class weights
-            loss_function = nn.CrossEntropyLoss(weight=torch.FloatTensor(class_weights).to(device))
+        with torch.profiler.profile(
+        schedule=torch.profiler.schedule(wait=0, warmup=1, active=3),
+        on_trace_ready=torch.profiler.tensorboard_trace_handler('./log'),
+        record_shapes=True,
+        profile_memory=True,
+        with_stack=True,
+        use_cuda=True,
+        ) as prof:
+            for batched_dgl_G in train_dataloader:
+                batched_dgl_G = batched_dgl_G.to(device) #this may cost too much time
+                logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
+                # Compute the class weights for the current batch
+                train_labels = batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']].cpu().numpy()
+                class_weights = calculate_class_weights(train_labels)
+                if len(class_weights)==0: class_weights = [1.0, 1.0] # error handling
+                # Update the loss function with the computed class weights
+                #loss_function = nn.CrossEntropyLoss(weight=torch.FloatTensor(class_weights).to(device))
+                loss_function.weight = torch.FloatTensor(class_weights).to(device)
 
-            loss = loss_function(logits[batched_dgl_G.ndata['train_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']])
-            #loss = loss_function(logits[batched_dgl_G.ndata['train_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']])
+                loss = loss_function(logits[batched_dgl_G.ndata['train_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']])
+                #loss = loss_function(logits[batched_dgl_G.ndata['train_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']])
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            epoch_loss += loss.item()
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                epoch_loss += loss.item()
+                #prof.step()
         
         
         # Validation loop
+        '''
         
         model.eval()
         val_loss = 0
@@ -287,7 +305,7 @@ if __name__ == "__main__":
             logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
             
             # Compute the class weights for the current batch
-            val_labels = batched_dgl_G.ndata['label'][batched_dgl_G.ndata['val_mask']].cpu().numpy()
+            val_labels = batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']].cpu().numpy()
             class_weights = calculate_class_weights(val_labels)
             if len(class_weights) == 0:
                 class_weights = [1.0, 1.0]  # error handling
@@ -295,7 +313,7 @@ if __name__ == "__main__":
             # Update the loss function with the computed class weights
             loss_function = nn.CrossEntropyLoss(weight=torch.FloatTensor(class_weights).to(device))
             
-            loss = loss_function(logits[batched_dgl_G.ndata['val_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['val_mask']])
+            loss = loss_function(logits[batched_dgl_G.ndata['train_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']])
             val_loss += loss.item()
         
         #if val_loss < best_val_loss: best_val_loss = val_loss
@@ -303,7 +321,9 @@ if __name__ == "__main__":
         _, best_f1, _ = threshold_finder.find_best_threshold() # best f1 score under the best threshold in the current epoch
         if best_f1 > overall_best_f1: overall_best_f1 = best_f1 
         # *10 to make the loss comparable
-        print(f"EPOCH: {epoch}, TRAIN LOSS: {(epoch_loss/len(train_dataloader))*10},VAL LOSS: {(val_loss/len(val_dataloader))*10}, BEST F1: {overall_best_f1}")
+        print(f"EPOCH: {epoch}, TRAIN LOSS: {(epoch_loss)},VAL LOSS: {(val_loss)}, BEST F1: {overall_best_f1}")
+        '''
+        print(f"EPOCH: {epoch}, TRAIN LOSS: {(epoch_loss)}")
         # employ early stop
         #if overall_best_f1 >= 0.7: break
 
@@ -312,7 +332,8 @@ if __name__ == "__main__":
 
     # Instantiate the ThresholdFinder class
     model.eval()
-    threshold_finder = ThresholdFinder(test_dataloader, model, device)
+    threshold_finder = ThresholdFinder(val_dataloader, model, device)
+    #threshold_finder = ThresholdFinder(test_dataloader, model, device)
 
     # Find the best threshold
     best_threshold, best_f1, best_confusion = threshold_finder.find_best_threshold()
@@ -327,14 +348,15 @@ if __name__ == "__main__":
     variable_pred_list = []
     variable_true_labels_list = []
 
-    for batched_dgl_G in test_dataloader:
+    #for batched_dgl_G in test_dataloader:
+    for batched_dgl_G in val_dataloader:
         batched_dgl_G = batched_dgl_G.to(device)
         logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
         pred = logits.argmax(1).cpu().numpy()
         true_labels = batched_dgl_G.ndata['label'].cpu().numpy()
 
         # Create variable_mask for the batched_dgl_G
-        variable_mask = batched_dgl_G.ndata['test_mask'].cpu().numpy()
+        variable_mask = batched_dgl_G.ndata['train_mask'].cpu().numpy()
 
         pred_list.append(pred)
         true_labels_list.append(true_labels)

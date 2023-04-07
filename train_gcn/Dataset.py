@@ -16,19 +16,19 @@ class CustomGraphDataset(dgl.data.DGLDataset):
         dgl_G.ndata['train_mask'] = torch.tensor(train_mask)
         #dgl_G.graph['name'] = G.graph['name']
 
-        if self.split == 'train':
-            dgl_G.ndata['val_mask'] = torch.tensor([False] * len(node_labels))
-            dgl_G.ndata['test_mask'] = torch.tensor([False] * len(node_labels))
-        elif self.split == 'val':
-            dgl_G.ndata['train_mask'] = torch.tensor([False] * len(node_labels))
-            dgl_G.ndata['val_mask'] = torch.tensor(train_mask)
-            dgl_G.ndata['test_mask'] = torch.tensor([False] * len(node_labels))
-        elif self.split == 'test':
-            dgl_G.ndata['train_mask'] = torch.tensor([False] * len(node_labels))
-            dgl_G.ndata['val_mask'] = torch.tensor([False] * len(node_labels))
-            dgl_G.ndata['test_mask'] = torch.tensor(train_mask)
-        else:
-            raise ValueError("Invalid split value. Allowed values are 'train', 'val', and 'test'.")
+        # if self.split == 'train':
+        #     dgl_G.ndata['val_mask'] = torch.tensor([False] * len(node_labels))
+        #     dgl_G.ndata['test_mask'] = torch.tensor([False] * len(node_labels))
+        # elif self.split == 'val':
+        #     dgl_G.ndata['train_mask'] = torch.tensor([False] * len(node_labels))
+        #     dgl_G.ndata['val_mask'] = torch.tensor(train_mask)
+        #     dgl_G.ndata['test_mask'] = torch.tensor([False] * len(node_labels))
+        # elif self.split == 'test':
+        #     dgl_G.ndata['train_mask'] = torch.tensor([False] * len(node_labels))
+        #     dgl_G.ndata['val_mask'] = torch.tensor([False] * len(node_labels))
+        #     dgl_G.ndata['test_mask'] = torch.tensor(train_mask)
+        # else:
+        #     raise ValueError("Invalid split value. Allowed values are 'train', 'val', and 'test'.")
 
         return dgl_G
 

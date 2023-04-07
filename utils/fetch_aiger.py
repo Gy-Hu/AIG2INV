@@ -58,6 +58,7 @@ def fetch_aig_from_csv(csv_file):
     # df = df[df["res"] == "unsat"].sort_values(['res','n_clause'], ascending = True).head(50)
     
     df = df[df["res"] == "unsat"]
+    df = df[df["O"]==1]
     # Export the aag_name column to a list
     aag_list = df["aag_name"].tolist()
     
@@ -123,9 +124,11 @@ def fetch_aig_from_csv(csv_file):
 
     '''
     filter out the aag_list by time and n_clause
+    
+    df_sorted = df.sort_values(by='time', ascending=False)
+    df_filtered = df_sorted[df_sorted['n_clause'] <= 20]
+    df = df_filtered ; aag_list = df_filtered['aag_name'].tolist()
     '''
-    #df_sorted = df.sort_values(by='time', ascending=False)
-    #df_filtered = df_sorted[df_sorted['n_clause'] <= 50]
     
     '''
     Adjust options
@@ -136,13 +139,13 @@ def fetch_aig_from_csv(csv_file):
     
     # Add file path to the aag_list
     for i in range(len(aag_list)):
-        #aag_list[i] = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07/" + aag_list[i] + ".aig"
-        aag_list[i] = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc20/" + aag_list[i] + ".aig"
+        aag_list[i] = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07/" + aag_list[i] + ".aig"
+        #aag_list[i] = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc20/" + aag_list[i] + ".aig"
 
     return aag_list
 
 if __name__ == '__main__':
-    aag_dir = './pre-dataset/aag4train_hwmcc20_only_unsat_hard/'
+    aag_dir = './pre-dataset/hwmcc2007_all_only_unsat/'
     parser = argparse.ArgumentParser(description="Convert aig to aag automatically")
     parser.add_argument('-outdir', type=str, default=aag_dir, help='Export the converted aag to the directory')
     parser.add_argument('-d', type=int, default=1, help='Determin whether to divide files into subset')
@@ -154,7 +157,7 @@ if __name__ == '__main__':
     # make aag_dir if it does not exist
     if not os.path.isdir(aag_dir): 
         os.makedirs(aag_dir)
-    csv_file = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/stat/size20.csv"
+    csv_file = "/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/stat/size07.csv"
     aig_list = fetch_aig_from_csv(csv_file)
 
     for file in aig_list:
