@@ -562,6 +562,11 @@ def find_missing_pickles(json_folder, pickle_folder):
             missing_indices.append(index)
     
     return missing_indices
+
+def generate_predicted_inv_dgl(threshold, aig_case_name, NN_model,aig_original_location_prefix):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    
     
 def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_location_prefix):
     sigmoid = nn.Sigmoid()
@@ -756,14 +761,14 @@ if __name__ == "__main__":
     '''
     args = parser.parse_args([
         '--threshold', '0.5',
-        '--selected-built-dataset', 'dataset_hwmcc2007_tip_abc_no_simplification_0-22',
+        '--selected-built-dataset', 'dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22',
         '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
         '--gpu-id', '1',
-        '--compare_with_abc',
+        '--compare_with_ic3ref',
         '--re-predict'])
     
 
-    assert args.log_location is not None, 'log location is required'
+    #assert args.log_location is not None, 'log location is required'
     args.compare_with_ic3ref_basic_generalization = "-b" if args.compare_with_ic3ref_basic_generalization else ""
     args.compare_with_nnic3_basic_generalization = "-b" if args.compare_with_nnic3_basic_generalization else ""
 
@@ -804,7 +809,7 @@ if __name__ == "__main__":
                     f'{aig_case_folder_prefix_for_prediction}/{args.aig_case_name}/{args.aig_case_name}_predicted_clauses_after_filtering.cnf'
                 ) and not args.re_predict
             )
-            else generate_predicted_inv(
+            else generate_predicted_inv_dgl(
                 threshold=args.threshold,
                 aig_case_name=args.aig_case_name,
                 NN_model=args.NN_model,
@@ -832,7 +837,7 @@ if __name__ == "__main__":
                         f'{aig_case_folder_prefix_for_prediction}/{aig_case.split("/")[-1]}/{aig_case.split("/")[-1]}_predicted_clauses_after_filtering.cnf'
                     ) and not args.re_predict # exist file and I don't want to re-genereate it
                 )
-                else generate_predicted_inv(# generate the inv again
+                else generate_predicted_inv_dgl(# generate the inv again
                     threshold=args.threshold,
                     aig_case_name=aig_case.split('/')[-1],
                     NN_model=args.NN_model,

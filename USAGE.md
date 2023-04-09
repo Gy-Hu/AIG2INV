@@ -68,7 +68,7 @@ select which model to use (currently only `neurograph` is available)
         * Check `threshold_finder = ThresholdFinder(val_dataloader, model, device)`, confirm which dataloader you want to use in testing
         * Check `Validation loop` in training loop, uncomment if you need it (e.g. early stop or hyperparameter fine tuning)
         * Check node embedding method that you want to employ in `graph_list = employ_graph_embedding(graph_list,args)`
-        * Comment out args if you want to input them in command line
+        * Comment out `default args` if you want to input them in command line
         * Comment out `G = G.to_undirected()` if you want to use directed graph
 
 ## Validate the Model

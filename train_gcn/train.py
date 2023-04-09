@@ -107,7 +107,7 @@ def data_preprocessing(args):
                         G.add_edge(node['data']['id'], child_id)
 
             # Convert the directed graph G to an undirected graph
-            # G = G.to_undirected()
+            G = G.to_undirected()
 
             # 2. Assign node features and labels
 
@@ -208,8 +208,8 @@ if __name__ == "__main__":
     #                           '--dump-pickle-name', 'dataset_hwmcc2020_all_only_unsat_hard_abc_no_simplification_0-9_list_name'
     #                           ])
     # simple
-    #args = parser.parse_args(['--load-pickle', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_gcn/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22.pickle'])
-    args = parser.parse_args()
+    args = parser.parse_args(['--load-pickle', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_gcn/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22.pickle'])
+   # args = parser.parse_args()
     if args.dump_pickle_name is not None: DUMP_MODE = True
 
     if args.load_pickle is not None: #  First, load the pickle file if it exists
