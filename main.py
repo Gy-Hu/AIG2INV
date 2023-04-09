@@ -568,11 +568,12 @@ def minimize_cti_by_pclause(CTI, pclauses):
         found = False
 
         for pc_sublist in pclauses:
+            if pc_sublist in result: continue
             if set(pc_sublist).issubset(cti_sublist):
                 result.append(pc_sublist)
-                found = True
+                #found = True
             # break if naive minimization is found
-            if found: break
+            #if found: break
 
         if not found:
             modified_cti_sublist = cti_sublist.copy()
@@ -582,6 +583,7 @@ def minimize_cti_by_pclause(CTI, pclauses):
                     modified_cti_sublist[i] = str(int(num) - 1)
 
             for pc_sublist in pclauses:
+                if pc_sublist in result: continue
                 if set(pc_sublist).issubset(modified_cti_sublist):
                     recovered_sublist = [
                         str(int(modified_cti_sublist[i])) if int(modified_cti_sublist[i]) == int(cti_sublist[i]) else cti_sublist[i]
