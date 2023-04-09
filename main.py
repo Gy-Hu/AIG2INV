@@ -550,6 +550,48 @@ def compare_ic3ref(aig_original_location, selected_aig_case, ic3ref_basic_genera
 
     print('compare with ic3ref done')
     
+def sort_lists(cti_list, pclause_list):
+    sorted_cti = [sorted(sublist, key=int) for sublist in cti_list]
+    sorted_pclauses = [sorted(sublist, key=int) for sublist in pclause_list]
+
+    sorted_cti = sorted(sorted_cti, key=lambda x: x[0])
+    sorted_pclauses = sorted(sorted_pclauses, key=lambda x: x[0])
+
+    return sorted_cti, sorted_pclauses
+
+def minimize_cti_by_pclause(CTI, pclauses):
+    CTI, pclauses = sort_lists(CTI, pclauses)
+    
+    result = []
+
+    for cti_sublist in CTI:
+        found = False
+
+        for pc_sublist in pclauses:
+            if set(pc_sublist).issubset(cti_sublist):
+                result.append(pc_sublist)
+                found = True
+            # break if naive minimization is found
+            if found: break
+
+        if not found:
+            modified_cti_sublist = cti_sublist.copy()
+
+            for i, num in enumerate(modified_cti_sublist):
+                if int(num) % 2 == 1:
+                    modified_cti_sublist[i] = str(int(num) - 1)
+
+            for pc_sublist in pclauses:
+                if set(pc_sublist).issubset(modified_cti_sublist):
+                    recovered_sublist = [
+                        str(int(modified_cti_sublist[i])) if int(modified_cti_sublist[i]) == int(cti_sublist[i]) else cti_sublist[i]
+                        for i in range(len(modified_cti_sublist))
+                    ]
+                    result.append([recovered_sublist[i] for i in range(len(recovered_sublist)) if recovered_sublist[i] in pc_sublist or str(int(recovered_sublist[i])-1) in pc_sublist])
+
+    return result
+
+    
 def find_missing_pickles(json_folder, pickle_folder):
     json_files = [f for f in os.listdir(json_folder) if f.endswith('.json')]
     pickle_files = [f for f in os.listdir(pickle_folder) if f.endswith('.pkl')]
@@ -645,6 +687,7 @@ def dump_predicted_clauses(selected_aig_case, extracted_bad_cube_prefix,aig_orig
     '''
     # for i in missing_indices_of_graph: final_predicted_clauses.insert(i,original_CTI[i])
     '''
+    
     for i in range(len(original_CTI)):
         # generalize the original_CTI[i] with final_predicted_clauses[i]
         # if the literal in original_CTI[i] is not in final_predicted_clauses[i], then remove it
@@ -652,7 +695,10 @@ def dump_predicted_clauses(selected_aig_case, extracted_bad_cube_prefix,aig_orig
         if not cls: cls = original_CTI[i]
         final_generate_res.append(cls)
     '''
-    final_generate_res = final_predicted_clauses
+    final_generate_res = minimize_cti_by_pclause(original_CTI, final_predicted_clauses)
+    
+    # directly use (ignore `NOT` literal condition )
+    # final_generate_res = final_predicted_clauses
     # remove the duplicate clause in final_generate_res
     # be careful, using set will change the order of the list
     final_generate_res = [
@@ -810,7 +856,6 @@ if __name__ == "__main__":
     '''
 
     '''
-    
     args = parser.parse_args([
         '--threshold', '0.5',
         '--selected-built-dataset', 'dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22',

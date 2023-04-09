@@ -202,7 +202,7 @@ def employ_graph_embedding(graph_list,args):
 
 def model_eval(args, val_dataloader, model, device, save_model=False):
     model.eval()
-    print('Evaluating the model...')
+    
     pred_list = []
     true_labels_list = []
     variable_pred_list = []
@@ -237,6 +237,7 @@ def model_eval(args, val_dataloader, model, device, save_model=False):
     confusion = confusion_matrix(variable_true_labels, variable_pred)
 
     if save_model:
+        print('Evaluating the model...')
         #print("Accuracy: ", accuracy, "Precision: ", precision, "Recall: ", recall, "F1-score: ", f1)
         print("Precision: ", precision)
         print("Recall: ", recall)
