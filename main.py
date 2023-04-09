@@ -30,6 +30,7 @@ import argparse
 import shutil
 import re
 import concurrent.futures
+import pickle
 
 '''
 ---------------------------------------------------------
@@ -565,7 +566,125 @@ def find_missing_pickles(json_folder, pickle_folder):
 
 def generate_predicted_inv_dgl(threshold, aig_case_name, NN_model,aig_original_location_prefix):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    with open(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_gcn/{(aig_original_location_prefix.split('/'))[1].split('_comp')[0]}.pickle", 'rb') as f:
+        graph_list = pickle.load(f)
+    from train_gcn.GNN_Model import GCNModel, BWGNN
+    model = BWGNN(128,128,2).to(device)
+    if torch.cuda.is_available():
+        map_location=lambda storage, loc: storage.cuda()
+    else:
+        map_location='cpu'
+    model.load_state_dict(torch.load( f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_gcn/{(aig_original_location_prefix.split('/'))[1].split('_comp')[0]}.pt",map_location=map_location))
+    model.eval()
     
+    # load data
+    from train_gcn.Dataset import CustomGraphDataset
+    # Find all the graph in graph list that graph_list[x][0].name is start with aig_case_name
+    graph_list = [graph for graph in graph_list if graph[0].name.startswith(aig_case_name)]
+    dataset = CustomGraphDataset(graph_list,split='test')
+    final_predicted_clauses = []
+    for idx, dgl_graph in enumerate(dataset):
+        dgl_graph = dgl_graph.to(device)
+        logits = model(dgl_graph, dgl_graph.ndata['feat'])
+        pred = logits.argmax(1).cpu().numpy()
+        true_labels = dgl_graph.ndata['label'].cpu().numpy()
+        output = [
+            (data['application'])
+            for idx, (_, data) in enumerate(
+                list(graph_list[idx][0].nodes(data=True))
+            )
+            if data['type'] == 'variable'
+            and data['application'].startswith('v')
+            and dgl_graph.ndata['train_mask'].cpu().numpy()[idx]
+            and pred[idx]==1
+        ]
+        real_output = [
+            (data['application'])
+            for idx, (_, data) in enumerate(
+                list(graph_list[idx][0].nodes(data=True))
+            )
+            if data['type'] == 'variable'
+            and data['application'].startswith('v')
+            and dgl_graph.ndata['train_mask'].cpu().numpy()[idx]
+            and true_labels[idx]==1
+        ]
+        
+        print(f"Predicted Invariant: {output}")
+        print(f"Real Invariant: {real_output}")
+        final_predicted_clauses.append(output)
+    dump_predicted_clauses(aig_case_name, f"./{SELECTED_DATASET}", aig_original_location_prefix,final_predicted_clauses)
+    
+def dump_predicted_clauses(selected_aig_case, extracted_bad_cube_prefix,aig_original_location_prefix, final_predicted_clauses):
+    # print final_predicted_clauses line by line
+    # for clause in final_predicted_clauses: print(clause) #TAG: uncomment this line to print the predicted clauses
+
+    # parse file from aig original location
+    aig_original_location = f'{aig_original_location_prefix}/{selected_aig_case}' #TAG: adjust the aig original location
+
+    # number_of_subset = 1 #TAG: adjust the number of subset
+    # aig_original_location = f'benchmark_folder/hwmcc2007/subset{number_of_subset}/{selected_aig_case}'
+
+    CTI_file = f'{extracted_bad_cube_prefix}/bad_cube_cex2graph/cti_for_inv_map_checking/{selected_aig_case}/{selected_aig_case}_inv_CTI.txt'
+    Predict_Clauses_File = f'{aig_original_location}/{selected_aig_case}_inv_CTI_predicted.cnf'
+    with open(CTI_file,'r') as f:
+        original_CTI = f.readlines()
+    # remove the last '\n'
+    original_CTI = [i[:-1] for i in original_CTI]
+    # split original_CTI into list with comma
+    original_CTI = [clause.split(',') for clause in original_CTI]
+    # filter the original_CTI with final_predicted_clauses
+    # first, convert final_predicted_clauses to a list that without 'v'
+    final_predicted_clauses = [[literal.replace('v','') for literal in clause] for clause in final_predicted_clauses]
+
+    final_generate_res = [] # this will be side loaded to ic3ref
+    print(f'{selected_aig_case} is generating predicted clauses...')
+    assert final_predicted_clauses, 'Final predicted clauses is empty!'
+    # insert the missing clause in the original_CTI to final_predicted_clauses
+    '''
+    Directly insert the missing clause in the original_CTI?
+    '''
+    # for i in missing_indices_of_graph: final_predicted_clauses.insert(i,original_CTI[i])
+    '''
+    for i in range(len(original_CTI)):
+        # generalize the original_CTI[i] with final_predicted_clauses[i]
+        # if the literal in original_CTI[i] is not in final_predicted_clauses[i], then remove it
+        cls = [literal for literal in original_CTI[i] if literal in final_predicted_clauses[i] or str(int(literal)-1) in final_predicted_clauses[i]]
+        if not cls: cls = original_CTI[i]
+        final_generate_res.append(cls)
+    '''
+    final_generate_res = final_predicted_clauses
+    # remove the duplicate clause in final_generate_res
+    # be careful, using set will change the order of the list
+    final_generate_res = [
+        list(t) for t in {tuple(element) for element in final_generate_res}
+    ]
+
+    # write final_generate_res to Predict_Clauses_File
+    with open(Predict_Clauses_File,'w') as f:
+        # write the first line with basic info
+        f.write(f'unsat {len(final_generate_res)}' + '\n')
+        for clause in final_generate_res:
+            f.write(' '.join(clause))
+            f.write('\n')
+
+    # check the final_generate_res with ic3ref -> whether it is fulfill the property
+    case = selected_aig_case
+    aag_name = f"./{aig_original_location}/{case}.aag"
+    cnf_name = f"./{aig_original_location}/{case}_inv_CTI_predicted.cnf"
+    model_name = case
+    m = AAGmodel()
+    m.from_file(aag_name)
+    predicted_clauses = Clauses(fname=cnf_name, num_sv = len(m.svars), num_input = len(m.inputs))
+    predicted_clauses_filter = CNF_Filter(aagmodel = m, clause = predicted_clauses ,name = model_name, aig_location=aig_original_location)
+    predicted_clauses_filter.check_and_reduce()
+    #predicted_clauses_filter.check_and_generalize()#FIXME: Encounter error, the cnf file will become empty
+    if predicted_clauses_filter.check_and_reduce_res: 
+        return True 
+    else: 
+        return False
+    #return aig_original_location, selected_aig_case
+
+    #compare_ic3ref(aig_original_location=aig_original_location,selected_aig_case=selected_aig_case)
     
     
 def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_location_prefix):
@@ -630,75 +749,8 @@ def generate_predicted_inv(threshold, aig_case_name, NN_model,aig_original_locat
         # print svar_lst[i]['data']['application'] in list
         final_predicted_clauses.append([svar_lst[i]['data']['application'] for i in range(len(preds)) if preds[i] == 1])
 
-    # print final_predicted_clauses line by line
-    # for clause in final_predicted_clauses: print(clause) #TAG: uncomment this line to print the predicted clauses
-
-    # parse file from aig original location
-    aig_original_location = f'{aig_original_location_prefix}/{selected_aig_case}' #TAG: adjust the aig original location
-
-    # number_of_subset = 1 #TAG: adjust the number of subset
-    # aig_original_location = f'benchmark_folder/hwmcc2007/subset{number_of_subset}/{selected_aig_case}'
-
-    CTI_file = f'{extracted_bad_cube_prefix}/bad_cube_cex2graph/cti_for_inv_map_checking/{selected_aig_case}/{selected_aig_case}_inv_CTI.txt'
-    Predict_Clauses_File = f'{aig_original_location}/{selected_aig_case}_inv_CTI_predicted.cnf'
-    with open(CTI_file,'r') as f:
-        original_CTI = f.readlines()
-    # remove the last '\n'
-    original_CTI = [i[:-1] for i in original_CTI]
-    # split original_CTI into list with comma
-    original_CTI = [clause.split(',') for clause in original_CTI]
-    # filter the original_CTI with final_predicted_clauses
-    # first, convert final_predicted_clauses to a list that without 'v'
-    final_predicted_clauses = [[literal.replace('v','') for literal in clause] for clause in final_predicted_clauses]
-
-    final_generate_res = [] # this will be side loaded to ic3ref
-    print(f'{selected_aig_case} is generating predicted clauses...')
-    assert final_predicted_clauses, 'Final predicted clauses is empty!'
-    # insert the missing clause in the original_CTI to final_predicted_clauses
-    '''
-    Directly insert the missing clause in the original_CTI?
-    '''
-    # for i in missing_indices_of_graph: final_predicted_clauses.insert(i,original_CTI[i])
-
-    for i in range(len(original_CTI)):
-        # generalize the original_CTI[i] with final_predicted_clauses[i]
-        # if the literal in original_CTI[i] is not in final_predicted_clauses[i], then remove it
-        cls = [literal for literal in original_CTI[i] if literal in final_predicted_clauses[i] or str(int(literal)-1) in final_predicted_clauses[i]]
-        if not cls: cls = original_CTI[i]
-        final_generate_res.append(cls)
-
-    # remove the duplicate clause in final_generate_res
-    # be careful, using set will change the order of the list
-    final_generate_res = [
-        list(t) for t in {tuple(element) for element in final_generate_res}
-    ]
-
-    # write final_generate_res to Predict_Clauses_File
-    with open(Predict_Clauses_File,'w') as f:
-        # write the first line with basic info
-        f.write(f'unsat {len(final_generate_res)}' + '\n')
-        for clause in final_generate_res:
-            f.write(' '.join(clause))
-            f.write('\n')
-
-    # check the final_generate_res with ic3ref -> whether it is fulfill the property
-    case = selected_aig_case
-    aag_name = f"./{aig_original_location}/{case}.aag"
-    cnf_name = f"./{aig_original_location}/{case}_inv_CTI_predicted.cnf"
-    model_name = case
-    m = AAGmodel()
-    m.from_file(aag_name)
-    predicted_clauses = Clauses(fname=cnf_name, num_sv = len(m.svars), num_input = len(m.inputs))
-    predicted_clauses_filter = CNF_Filter(aagmodel = m, clause = predicted_clauses ,name = model_name, aig_location=aig_original_location)
-    predicted_clauses_filter.check_and_reduce()
-    #predicted_clauses_filter.check_and_generalize()#FIXME: Encounter error, the cnf file will become empty
-    if predicted_clauses_filter.check_and_reduce_res: 
-        return True 
-    else: 
-        return False
-    #return aig_original_location, selected_aig_case
-
-    #compare_ic3ref(aig_original_location=aig_original_location,selected_aig_case=selected_aig_case)
+    dump_predicted_clauses(selected_aig_case,extracted_bad_cube_prefix,aig_original_location_prefix,final_predicted_clauses)
+    
 
 def compare_inv_and_draw_table(threshold, NN_model, aig_with_predicted_location_prefix, aig_without_predicted_location_prefix):
     pass
@@ -758,7 +810,7 @@ if __name__ == "__main__":
     '''
 
     '''
-    '''
+    
     args = parser.parse_args([
         '--threshold', '0.5',
         '--selected-built-dataset', 'dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22',
@@ -766,7 +818,7 @@ if __name__ == "__main__":
         '--gpu-id', '1',
         '--compare_with_ic3ref',
         '--re-predict'])
-    
+    '''
 
     #assert args.log_location is not None, 'log location is required'
     args.compare_with_ic3ref_basic_generalization = "-b" if args.compare_with_ic3ref_basic_generalization else ""
