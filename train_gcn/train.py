@@ -61,8 +61,8 @@ import torch.profiler
 HIDDEN_DIM = 128 # 32 default
 EMBEDDING_DIM = 128 # 16 default
 EPOCH = 300 # 100 default
-LR = 0.01 # =learning rate 0.01 default
-BATCH_SIZE = 64 # 2 default
+LR = 0.005 # =learning rate 0.01 default
+BATCH_SIZE = 16 # 2 default
 DATASET_SPLIT = None # None default, used for testing
 WEIGHT_DECAY = 0 # Apply L1 or L2 regularization, [1e-3,1e-2], default 1e-5
 DUMP_MODE = False # False default, used for preprocessing graph data
@@ -70,13 +70,18 @@ DUMP_MODE = False # False default, used for preprocessing graph data
 # Best parameters (2023.4.4)
 # HIDDEN_DIM = 128, EMBEDDING_DIM = 128, EPOCH = 500, LR = 0.005, BATCH_SIZE = 16
 
-# Testing parameters (2021.4.4)
+# Testing parameters (2021.4.4) -> not good enough
 # HIDDEN_DIM = 128, EMBEDDING_DIM = 128, EPOCH = 300, LR = 0.01, BATCH_SIZE = 64
 
 # Use to calculate the weighted in imbalanced data
 def calculate_class_weights(train_labels):
     class_counts = np.bincount(train_labels)
     total_samples = len(train_labels)
+    # directly calculate the weight of each class
+    # return class_counts[0] / class_counts
+
+    # takes into account the class imbalance but also incorporates the total number of samples 
+    # and the number of classes in the calculation
     return total_samples / (len(class_counts) * class_counts)
 
 # Preprocess the data before training
@@ -195,6 +200,58 @@ def employ_graph_embedding(graph_list,args):
 
     return graph_list
 
+def model_eval(args, val_dataloader, model, device, save_model=False):
+    model.eval()
+    print('Evaluating the model...')
+    pred_list = []
+    true_labels_list = []
+    variable_pred_list = []
+    variable_true_labels_list = []
+
+    #for batched_dgl_G in test_dataloader:
+    for batched_dgl_G in val_dataloader:
+        batched_dgl_G = batched_dgl_G.to(device)
+        logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
+        pred = logits.argmax(1).cpu().numpy()
+        true_labels = batched_dgl_G.ndata['label'].cpu().numpy()
+
+        # Create variable_mask for the batched_dgl_G
+        variable_mask = batched_dgl_G.ndata['train_mask'].cpu().numpy()
+
+        pred_list.append(pred)
+        true_labels_list.append(true_labels)
+        variable_pred_list.append(pred[variable_mask])
+        variable_true_labels_list.append(true_labels[variable_mask])
+
+    # Concatenate predictions and true labels
+    pred = np.concatenate(pred_list)
+    true_labels = np.concatenate(true_labels_list)
+    variable_pred = np.concatenate(variable_pred_list)
+    variable_true_labels = np.concatenate(variable_true_labels_list)
+
+    # Calculate metrics
+    accuracy = accuracy_score(variable_true_labels, variable_pred)
+    precision = precision_score(variable_true_labels, variable_pred)
+    recall = recall_score(variable_true_labels, variable_pred)
+    f1 = f1_score(variable_true_labels, variable_pred)
+    confusion = confusion_matrix(variable_true_labels, variable_pred)
+
+    if save_model:
+        #print("Accuracy: ", accuracy, "Precision: ", precision, "Recall: ", recall, "F1-score: ", f1)
+        print("Precision: ", precision)
+        print("Recall: ", recall)
+        print("F1-score: ", f1)
+        print("Confusion matrix:")
+        print(confusion)
+        
+        # save the model
+        if args.model_name is not None:
+            torch.save(model.state_dict(), f"{args.model_name}.pt")
+    
+    return f1
+    
+    
+
 if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     parser = argparse.ArgumentParser()
@@ -208,8 +265,8 @@ if __name__ == "__main__":
     #                           '--dump-pickle-name', 'dataset_hwmcc2020_all_only_unsat_hard_abc_no_simplification_0-9_list_name'
     #                           ])
     # simple
-    args = parser.parse_args(['--load-pickle', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_gcn/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22.pickle'])
-   # args = parser.parse_args()
+    #args = parser.parse_args(['--load-pickle', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_gcn/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22.pickle'])
+    args = parser.parse_args()
     if args.dump_pickle_name is not None: DUMP_MODE = True
 
     if args.load_pickle is not None: #  First, load the pickle file if it exists
@@ -297,7 +354,6 @@ if __name__ == "__main__":
         
         # Validation loop
         '''
-        
         model.eval()
         val_loss = 0
         for batched_dgl_G in val_dataloader:
@@ -323,9 +379,11 @@ if __name__ == "__main__":
         # *10 to make the loss comparable
         print(f"EPOCH: {epoch}, TRAIN LOSS: {(epoch_loss)},VAL LOSS: {(val_loss)}, BEST F1: {overall_best_f1}")
         '''
-        print(f"EPOCH: {epoch}, TRAIN LOSS: {(epoch_loss)}")
+        f1 = model_eval(args, val_dataloader, model, device, save_model=False)
+        if f1 > overall_best_f1: overall_best_f1 = f1
+        print(f"EPOCH: {epoch}, TRAIN LOSS: {(epoch_loss)}, BEST F1: {overall_best_f1}")
         # employ early stop
-        #if overall_best_f1 >= 0.7: break
+        if overall_best_f1 == 1: break
 
 
     # Additional step: evaluate the model by using ThersholdFinder
@@ -342,50 +400,8 @@ if __name__ == "__main__":
     print("Best confusion matrix:\n ", best_confusion)
 
     # 6. Evaluate the model
-
-    pred_list = []
-    true_labels_list = []
-    variable_pred_list = []
-    variable_true_labels_list = []
-
-    #for batched_dgl_G in test_dataloader:
-    for batched_dgl_G in val_dataloader:
-        batched_dgl_G = batched_dgl_G.to(device)
-        logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
-        pred = logits.argmax(1).cpu().numpy()
-        true_labels = batched_dgl_G.ndata['label'].cpu().numpy()
-
-        # Create variable_mask for the batched_dgl_G
-        variable_mask = batched_dgl_G.ndata['train_mask'].cpu().numpy()
-
-        pred_list.append(pred)
-        true_labels_list.append(true_labels)
-        variable_pred_list.append(pred[variable_mask])
-        variable_true_labels_list.append(true_labels[variable_mask])
-
-    # Concatenate predictions and true labels
-    pred = np.concatenate(pred_list)
-    true_labels = np.concatenate(true_labels_list)
-    variable_pred = np.concatenate(variable_pred_list)
-    variable_true_labels = np.concatenate(variable_true_labels_list)
-
-    # Calculate metrics
-    accuracy = accuracy_score(variable_true_labels, variable_pred)
-    precision = precision_score(variable_true_labels, variable_pred)
-    recall = recall_score(variable_true_labels, variable_pred)
-    f1 = f1_score(variable_true_labels, variable_pred)
-    confusion = confusion_matrix(variable_true_labels, variable_pred)
-
-    print("Accuracy: ", accuracy)
-    print("Precision: ", precision)
-    print("Recall: ", recall)
-    print("F1-score: ", f1)
-    print("Confusion matrix:")
-    print(confusion)
-    
-    # save the model
-    if args.model_name is not None:
-        torch.save(model.state_dict(), f"{args.model_name}.pt")
+    _ = model_eval(args, train_dataloader, model, device, save_model=True)
+   
 
 
 

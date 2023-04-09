@@ -153,6 +153,11 @@ def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
     AigCaseBlackList = [
         #-------- benchmark 2007 stuck in generate smt2-----------
         # 'eijk.bs3271.S',
+        # 'cmu.dme1.B',
+        # 'cmu.dme2.B',
+        # 'cmu.periodic.N',
+        # 'eijk.bs3271.S',
+        # 'texas.PI_main^01.E
         # #--------- benchmark 2020 stuck in generate smt2------------
         # 'vcegar_QF_BV_ar',
         # 'rast-p00',
