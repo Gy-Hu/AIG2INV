@@ -159,49 +159,49 @@ def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
         # 'eijk.bs3271.S',
         # 'texas.PI_main^01.E
         # #--------- benchmark 2020 stuck in generate smt2------------
-        # 'vcegar_QF_BV_ar',
-        # 'rast-p00',
-        # 'vis_arrays_bufferAlloc',
-        # 'zipversa_composecrc_prf-p10',
-        # 'qspiflash_dualflexpress_divthree-p010',
-        # 'vcegar_QF_BV_itc99_b13_p10',
-        # 'zipcpu-busdelay-p00',
-        # 'zipcpu-busdelay-p30',
-        # 'qspiflash_qflexpress_divfive-p137',
-        # 'qspiflash_dualflexpress_divthree-p046',
-        # 'qspiflash_dualflexpress_divfive-p007',
-        # 'qspiflash_dualflexpress_divfive-p154',
-        # 'qspiflash_dualflexpress_divfive-p009',
-        # 'qspiflash_dualflexpress_divfive-p116',
-        # 'qspiflash_dualflexpress_divthree-p111',
-        # 'elevator.4.prop1-func-interl',
-        # 'h_RCU',
-        # 'vgasim_imgfifo-p105',
-        # 'cal87',
-        # 'cal90',
-        # 'picorv32-check-p05',
-        # 'cal142',
-        # 'picorv32-check-p20',
-        # 'cal118',
-        # 'cal97',
-        # 'cal143',
-        # 'cal102',
-        # 'cal107',
-        # 'cal112',
-        # 'dspfilters_fastfir_second-p09',
-        # 'dspfilters_fastfir_second-p26',
-        # 'dspfilters_fastfir_second-p11',
-        # 'cal161',
-        # 'rushhour.4.prop1-func-interl',
-        # 'cal176',
+        'vcegar_QF_BV_ar',
+        'rast-p00',
+        'vis_arrays_bufferAlloc',
+        'zipversa_composecrc_prf-p10',
+        'qspiflash_dualflexpress_divthree-p010',
+        'vcegar_QF_BV_itc99_b13_p10',
+        'zipcpu-busdelay-p00',
+        'zipcpu-busdelay-p30',
+        'qspiflash_qflexpress_divfive-p137',
+        'qspiflash_dualflexpress_divthree-p046',
+        'qspiflash_dualflexpress_divfive-p007',
+        'qspiflash_dualflexpress_divfive-p154',
+        'qspiflash_dualflexpress_divfive-p009',
+        'qspiflash_dualflexpress_divfive-p116',
+        'qspiflash_dualflexpress_divthree-p111',
+        'elevator.4.prop1-func-interl',
+        'h_RCU',
+        'vgasim_imgfifo-p105',
+        'cal87',
+        'cal90',
+        'picorv32-check-p05',
+        'cal142',
+        'picorv32-check-p20',
+        'cal118',
+        'cal97',
+        'cal143',
+        'cal102',
+        'cal107',
+        'cal112',
+        'dspfilters_fastfir_second-p09',
+        'dspfilters_fastfir_second-p26',
+        'dspfilters_fastfir_second-p11',
+        'cal161',
+        'rushhour.4.prop1-func-interl',
+        'cal176',
         # #--------- benchmark 2020 stuck in model2graph------------
-        # 'dspfilters_fastfir_second-p25',
-        # 'dspfilters_fastfir_second-p05',
-        # 'dspfilters_fastfir_second-p43',
-        # 'dspfilters_fastfir_second-p14',
-        # 'dspfilters_fastfir_second-p07',
-        # 'dspfilters_fastfir_second-p16',
-        # 'dspfilters_fastfir_second-p21',
+        'dspfilters_fastfir_second-p25',
+        'dspfilters_fastfir_second-p05',
+        'dspfilters_fastfir_second-p43',
+        'dspfilters_fastfir_second-p14',
+        'dspfilters_fastfir_second-p07',
+        'dspfilters_fastfir_second-p16',
+        'dspfilters_fastfir_second-p21',
         # #--------- benchmark 2020 stuck in json2networkx------------
         # 'dspfilters_fastfir_second-p10',
         # 'dspfilters_fastfir_second-p45',
@@ -249,7 +249,7 @@ def generate_smt2(run_mode='normal', model_checker='ic3ref'):
             results.append(pool.apply_async(
                 call_proc,
                 (
-                    f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2} --run-mode {run_mode} --model-checker {model_checker} {SIMPLIFICATION_LABEL} --ground-truth-folder-prefix {GROUND_TRUTH_FOLDER_PREFIX} --dump-folder-prefix {DATASET_FOLDER_PREFIX}",
+                    f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2} --run-mode {run_mode} --model-checker {model_checker} {SIMPLIFICATION_LABEL} --ground-truth-folder-prefix {GROUND_TRUTH_FOLDER_PREFIX} --dump-folder-prefix {DATASET_FOLDER_PREFIX} --num-cex {NUM_CEX}",
                 ),
                 callback=lambda _: update_progress_bar(pbar)
             ))
@@ -342,7 +342,7 @@ def generate_smt2_error_handle(log_file=None, only_re_generate_inv=False, ic3ref
             results.append(pool.apply_async(
                 call_proc,
                 (
-                    f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2} --cnf {DATASET_FOLDER_PREFIX}/re-generate_inv/{aig_to_generate_smt2.split('/')[-1].split('.aag')[0]}/inv.cnf",
+                    f"python /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py --aag {aig_to_generate_smt2} --cnf {DATASET_FOLDER_PREFIX}/re-generate_inv/{aig_to_generate_smt2.split('/')[-1].split('.aag')[0]}/inv.cnf --num-cex {NUM_CEX}" ,
                 ),
             ))
         pool.close()
@@ -440,9 +440,9 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
     # this option only for that you have .log with mismatched cases list
-    parser.add_argument('--only_re_generate_inv', action='store_true', help='only re-generate the inv.cnf for the cases that has mismatched inductive invariants')
-    parser.add_argument('--initialization_with_inv_generated', action='store_true', help='initialization with inv generated')
-    parser.add_argument('--error_handle_with_ic3ref_basic_generalization', action='store_true', help='error handle with ic3ref basic generalization')
+    #parser.add_argument('--only_re_generate_inv', action='store_true', help='only re-generate the inv.cnf for the cases that has mismatched inductive invariants')
+    #parser.add_argument('--initialization_with_inv_generated', action='store_true', help='initialization with inv generated')
+    #parser.add_argument('--error_handle_with_ic3ref_basic_generalization', action='store_true', help='error handle with ic3ref basic generalization')
     parser.add_argument('--run-mode', type=str, default="normal", help='run mode, normal or debug. Debug is for testing invariants correctness only')
     parser.add_argument('--model-checker', type=str, default="ic3ref", help='model checker, ic3ref or abc')
     #parser.add_argument('--dataset-folder-prefix', type=str, default="dataset", help='dataset folder prefix, the final aim generated folder, in the root folder')
@@ -450,7 +450,7 @@ if __name__ == '__main__':
     parser.add_argument('--benchmark', type=str, default=None, help='benchmark, which is used to generate the training dataset, in benchmark_folder')
     parser.add_argument('--ground_truth_folder_prefix', type=str, default=None, help='ground truth folder prefix, the final aim generated folder, in the root folder')
     parser.add_argument('--subset_range', type=str, default=0, help='subset range, the number of subset')
-
+    parser.add_argument('--num_cex', type=int, default=10, help='number of cex, the number of cex')
     
     args = parser.parse_args()
     '''
@@ -470,6 +470,8 @@ if __name__ == '__main__':
     global BENCHMARK
     global GROUND_TRUTH_FOLDER_PREFIX
     global SUBSET_RANGE
+    global NUM_CEX
+    NUM_CEX = args.num_cex
     DATASET_FOLDER_PREFIX = f"dataset_{args.benchmark}_{args.model_checker}_{args.simplification_label}_{args.subset_range}"
     SIMPLIFICATION_LABEL = "--thorough-simplification T" if args.simplification_label == "thorough" \
         else "--deep-simplification T" if args.simplification_label == "deep" \
@@ -510,13 +512,13 @@ if __name__ == '__main__':
     ---------------------------------------------------------
     '''
     dir_name = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{DATASET_FOLDER_PREFIX}"
-    if args.initialization_with_inv_generated:
-        initialization(dir_name, with_re_generate_inv=True)
-        generate_smt2_error_handle("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
-    else:
-        initialization(dir_name, with_re_generate_inv=False)
-        # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py
-        generate_smt2(args.run_mode,args.model_checker) # if mode is debug, the program will exit after inv checking
+    # if args.initialization_with_inv_generated:
+    #     initialization(dir_name, with_re_generate_inv=True)
+    #     generate_smt2_error_handle("/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/log/error_handle/mismatched_inv.log")
+    # else:
+    initialization(dir_name, with_re_generate_inv=False)
+    # script folder: /data/guangyuh/coding_env/AIG2INV/AIG2INV_main/data2dataset/cex2smt2/collect.py
+    generate_smt2(args.run_mode,args.model_checker) # if mode is debug, the program will exit after inv checking
     
     
     '''

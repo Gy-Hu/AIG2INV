@@ -21,8 +21,8 @@ def log_analyzer(log_file):
         # only keep the row that  NN-IC3-bg, IC3ref-bg are both 1
         df = df[(df[" NN-IC3-bg"] == 1) & (df[" IC3ref-bg"] == 1) | (df[" NN-IC3-bg"] == 0) & (df[" IC3ref-bg"] == 0)]
         # sort the dataframe by case name and the "NN-IC3 Frame" column
-        #df = df.sort_values(by=["case name", " NN-IC3 Time"])
-        df = df.sort_values(by=["case name", " NN-IC3 Frame"])
+        df = df.sort_values(by=["case name", " NN-IC3 Time"])
+        #df = df.sort_values(by=["case name", " NN-IC3 Frame"])
         # remove the duplicated rows
         df.drop_duplicates(subset="case name", keep="first", inplace=True)
         # re-index the dataframe
@@ -30,6 +30,8 @@ def log_analyzer(log_file):
         #print(df)
         # only print the table with top 3 columns
         print(df.iloc[:, :-2])
+        # Print DataFrame in LaTeX format
+        print(df.iloc[:, :-2].to_latex(index=False))
     
     
 

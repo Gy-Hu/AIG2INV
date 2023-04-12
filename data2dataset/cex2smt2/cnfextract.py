@@ -25,7 +25,7 @@ from tqdm import tqdm
 #from collect import SIMPLIFICATION_LEVEL
 
 class ExtractCnf(object):
-    def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True, model_checker = 'abc', deep_simplification = False, simplification_level = None, dump_folder_prefix = None):
+    def __init__(self, aagmodel, clause, name, generalize=False, aig_path='', generate_smt2=False, inv_correctness_check=True, model_checker = 'abc', deep_simplification = False, simplification_level = None, dump_folder_prefix = None, num_cex = 10):
         global SIMPLIFICATION_LEVEL
         global DUMP_FOLDER_PREFIX
         SIMPLIFICATION_LEVEL = simplification_level
@@ -39,6 +39,9 @@ class ExtractCnf(object):
         
         # use sympy to simplify the expression?
         self.deep_simplification = deep_simplification
+        
+        # number of cex to generate
+        self.num_cex = num_cex
         
         # build clauses
         self.aagmodel = aagmodel
@@ -596,7 +599,7 @@ class ExtractCnf(object):
         Everytime only the property is considered to generate the counterexample
         '''
         # define the number of cex that want to generate
-        num_cex = 10
+        num_cex = self.num_cex
         cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=True, generalize=self.generalize)
         # Backup the cex without generalization
         cex_without_generalization, cex_m_without_generalization, var_lst_without_generalization = \
@@ -624,7 +627,7 @@ class ExtractCnf(object):
         but this is not necessary!
         '''
         # define the number of cex that want to generate
-        num_cex = 10
+        num_cex = self.num_cex
         cex, cex_m, var_lst = self._solve_relative(prop, clause_list, prop_only=False, generalize=self.generalize)
         # Backup the cex without generalization
         cex_without_generalization, cex_m_without_generalization, var_lst_without_generalization = \

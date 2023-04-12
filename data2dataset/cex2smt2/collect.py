@@ -54,7 +54,8 @@ def convert_one_aag(aag_name, cnf_name, model_name, generalize_predecessor, gene
         inv_correctness_check = inv_correctness_check,\
         model_checker = model_checker,\
         simplification_level=SIMPLIFICATION_LEVEL,\
-        dump_folder_prefix=DUMP_FOLDER_PREFIX)
+        dump_folder_prefix=DUMP_FOLDER_PREFIX,\
+        num_cex = NUM_CEX)
     #XXX: Double check before running the script
     if SIMPLIFICATION_LEVEL in ["deep"]: check_extractor_eq(aag_name, cnf_name, model_name, generalize_predecessor, generate_smt2, inv_correctness_check, run_mode, model_checker, copy.deepcopy(extractor))
     if run_mode == 'debug': sys.exit()
@@ -77,7 +78,8 @@ def check_extractor_eq(aag_name, cnf_name, model_name, generalize_predecessor, g
         inv_correctness_check = inv_correctness_check,\
         model_checker = model_checker,\
         simplification_level=None,\
-        dump_folder_prefix=DUMP_FOLDER_PREFIX)
+        dump_folder_prefix=DUMP_FOLDER_PREFIX,\
+        num_cex = NUM_CEX)
     
     for a,b in zip(extractor.vprime2nxt, extractor_without_simplification.vprime2nxt):
         # if z3.is_true(a[1]) or z3.is_false(a[1]) or z3.is_true(b[1]) or z3.is_false(b[1]), skip this loop
@@ -129,6 +131,7 @@ if __name__ == "__main__":
     parser.add_argument('--naive-simplification', type=str2bool, default=False, help='only use sympy to simplify the counterexample cube')
     parser.add_argument('--ground-truth-folder-prefix', type=str, default='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/clause-learning/data-collect/hwmcc07-7200-result/output/tip/', help='the prefix of the ground truth folder')
     parser.add_argument('--dump-folder-prefix', type=str, default='/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset', help='the prefix of the dump folder')
+    parser.add_argument('--num-cex', type=int, default=10, help='number of counterexamples to generate')
     
     # parse the arguments to test()
     args = parser.parse_args()
@@ -164,6 +167,8 @@ if __name__ == "__main__":
     # set global variables
     global SIMPLIFICATION_LEVEL
     global DUMP_FOLDER_PREFIX
+    global NUM_CEX
+    NUM_CEX = args.num_cex
     SIMPLIFICATION_LEVEL = "naive" if args.naive_simplification else "slight" if args.slight_simplification else "moderate" if args.moderate_simplification else "deep" if args.deep_simplification else "thorough" if args.thorough_simplification else "none"
     #assert SIMPLIFICATION_LEVEL != "none", "Please specify the simplification level"
     DUMP_FOLDER_PREFIX = args.dump_folder_prefix

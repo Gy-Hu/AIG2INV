@@ -61,10 +61,10 @@ import torch.profiler
 HIDDEN_DIM = 128 # 32 default
 EMBEDDING_DIM = 128 # 16 default
 EPOCH = 300 # 100 default
-LR = 0.005 # =learning rate 0.01 default
-BATCH_SIZE = 16 # 2 default
+LR = 0.001 # =learning rate 0.01 default
+BATCH_SIZE = 64 # 2 default
 DATASET_SPLIT = None # None default, used for testing
-WEIGHT_DECAY = 0 # Apply L1 or L2 regularization, [1e-3,1e-2], default 1e-5
+WEIGHT_DECAY = 1e-5 # Apply L1 or L2 regularization, [1e-3,1e-2], default 1e-5
 DUMP_MODE = False # False default, used for preprocessing graph data
 
 # Best parameters (2023.4.4)

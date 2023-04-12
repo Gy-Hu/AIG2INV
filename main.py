@@ -4,6 +4,8 @@ import os
 import sys
 import torch
 from tqdm import tqdm
+import numpy as np
+import torch.nn.functional as F
 # append './train_neurograph/' to the path
 sys.path.append(os.path.join(os.getcwd(), 'train_neurograph'))
 # append './data2dataset/cex2smt2/' to the path
@@ -561,12 +563,12 @@ def sort_lists(cti_list, pclause_list):
 
 def minimize_cti_by_pclause(CTI, pclauses):
     CTI, pclauses = sort_lists(CTI, pclauses)
-    
+
     result = []
 
-    for cti_sublist in CTI:
-        found = False
+    #found = False
 
+    for cti_sublist in CTI:
         for pc_sublist in pclauses:
             if pc_sublist in result: continue
             if set(pc_sublist).issubset(cti_sublist):
@@ -575,7 +577,7 @@ def minimize_cti_by_pclause(CTI, pclauses):
             # break if naive minimization is found
             #if found: break
 
-        if not found:
+        #if not found:
             modified_cti_sublist = cti_sublist.copy()
 
             for i, num in enumerate(modified_cti_sublist):
@@ -583,7 +585,8 @@ def minimize_cti_by_pclause(CTI, pclauses):
                     modified_cti_sublist[i] = str(int(num) - 1)
 
             for pc_sublist in pclauses:
-                if pc_sublist in result: continue
+                if pc_sublist in result: 
+                    continue
                 if set(pc_sublist).issubset(modified_cti_sublist):
                     recovered_sublist = [
                         str(int(modified_cti_sublist[i])) if int(modified_cti_sublist[i]) == int(cti_sublist[i]) else cti_sublist[i]
@@ -608,7 +611,12 @@ def find_missing_pickles(json_folder, pickle_folder):
     
     return missing_indices
 
-def generate_predicted_inv_dgl(threshold, aig_case_name, NN_model,aig_original_location_prefix):
+def make_predictions(probs, threshold):
+    return (probs[:, 1] > threshold).cpu().numpy().astype(np.int64)
+
+def generate_predicted_inv_dgl(threshold, aig_case_name, NN_model,aig_original_location_prefix,args):
+    
+    if not args.re_predict: return True
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     with open(f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_gcn/{(aig_original_location_prefix.split('/'))[1].split('_comp')[0]}.pickle", 'rb') as f:
         graph_list = pickle.load(f)
@@ -620,7 +628,7 @@ def generate_predicted_inv_dgl(threshold, aig_case_name, NN_model,aig_original_l
         map_location='cpu'
     model.load_state_dict(torch.load( f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_gcn/{(aig_original_location_prefix.split('/'))[1].split('_comp')[0]}.pt",map_location=map_location))
     model.eval()
-    
+
     # load data
     from train_gcn.Dataset import CustomGraphDataset
     # Find all the graph in graph list that graph_list[x][0].name is start with aig_case_name
@@ -630,7 +638,15 @@ def generate_predicted_inv_dgl(threshold, aig_case_name, NN_model,aig_original_l
     for idx, dgl_graph in enumerate(dataset):
         dgl_graph = dgl_graph.to(device)
         logits = model(dgl_graph, dgl_graph.ndata['feat'])
-        pred = logits.argmax(1).cpu().numpy()
+        if threshold is not None:# use threshold to make prediction
+            probs = F.softmax(logits, dim=1)
+            pred = make_predictions(probs, threshold=threshold)
+        else:
+        # directly use the max probability as prediction
+            pred = logits.argmax(1).cpu().numpy()
+
+        
+
         true_labels = dgl_graph.ndata['label'].cpu().numpy()
         output = [
             (data['application'])
@@ -652,12 +668,18 @@ def generate_predicted_inv_dgl(threshold, aig_case_name, NN_model,aig_original_l
             and dgl_graph.ndata['train_mask'].cpu().numpy()[idx]
             and true_labels[idx]==1
         ]
-        
-        print(f"Predicted Invariant: {output}")
-        print(f"Real Invariant: {real_output}")
+
+        #print(f"Predicted Invariant: {output}")
+        #print(f"Real Invariant: {real_output}")
         final_predicted_clauses.append(output)
-    dump_predicted_clauses(aig_case_name, f"./{SELECTED_DATASET}", aig_original_location_prefix,final_predicted_clauses)
     
+    return dump_predicted_clauses(
+        aig_case_name,
+        f"./{SELECTED_DATASET}",
+        aig_original_location_prefix,
+        final_predicted_clauses,
+    )
+
 def dump_predicted_clauses(selected_aig_case, extracted_bad_cube_prefix,aig_original_location_prefix, final_predicted_clauses):
     # print final_predicted_clauses line by line
     # for clause in final_predicted_clauses: print(clause) #TAG: uncomment this line to print the predicted clauses
@@ -698,11 +720,13 @@ def dump_predicted_clauses(selected_aig_case, extracted_bad_cube_prefix,aig_orig
         final_generate_res.append(cls)
     '''
     final_generate_res = minimize_cti_by_pclause(original_CTI, final_predicted_clauses)
-    
+    if not final_generate_res: # generate failed -> this is not possible..
+        final_generate_res = final_predicted_clauses
     # directly use (ignore `NOT` literal condition )
     # final_generate_res = final_predicted_clauses
     # remove the duplicate clause in final_generate_res
     # be careful, using set will change the order of the list
+    
     final_generate_res = [
         list(t) for t in {tuple(element) for element in final_generate_res}
     ]
@@ -811,12 +835,15 @@ def extract_benchmark(s):
     else:
         return None
 
+def update_progress_bar(pbar):
+    pbar.update(1)
+
 if __name__ == "__main__":
     global SELECTED_DATASET
     global BENCHMARK
     # input arguments to adjust the test case, thershold, and model
     parser = argparse.ArgumentParser()
-    parser.add_argument('--threshold', type=float, default=0.8, help='threshold for the output of the NN model')
+    parser.add_argument('--threshold', type=float, default=None, help='threshold for the output of the NN model')
     #parser.add_argument('--compare_inv', action='store_true', help='compare the inv with ic3ref')
     #parser.add_argument('--aig-case-folder-prefix-for-prediction', type=str, default=None, help='case folder, use for test all cases in the folder, for example: benchmark_folder/hwmcc2007')
     #parser.add_argument('--aig-case-folder-prefix-for-ic3ref', type=str, default=None, help='case folder, contains all ic3ref produced inv.cnf, for example: benchmark_folder/hwmcc2007')
@@ -858,11 +885,13 @@ if __name__ == "__main__":
     '''
 
     '''
+    
     args = parser.parse_args([
-        '--threshold', '0.5',
+        #'--threshold', '0.5',
         '--selected-built-dataset', 'dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22',
+        #'--selected-built-dataset', 'dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38',
         '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
-        '--gpu-id', '1',
+        '--gpu-id', '0',
         '--compare_with_ic3ref',
         '--re-predict'])
     '''
@@ -913,6 +942,7 @@ if __name__ == "__main__":
                 aig_case_name=args.aig_case_name,
                 NN_model=args.NN_model,
                 aig_original_location_prefix=aig_case_folder_prefix_for_prediction,
+                args = args
             )
         )
         # if the inv is generated, then compare it with ic3ref or abc, if fail, we skip it
@@ -926,33 +956,37 @@ if __name__ == "__main__":
         aig_case_list = [ f.path for f in os.scandir(aig_case_folder_prefix_for_prediction) if f.is_dir() ]
         async_compare_ic3ref = []
         async_compare_abc = []
-        for aig_case in aig_case_list:
-            print("Begin to test case: ", aig_case.split('/')[-1], "...")
-            #if not(os.path.exists(f'{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}/{args.aig_case_name}_predicted_clauses_after_filtering.cnf')):
-            generate_predicted_inv_success = (
-                True
-                if (
-                    os.path.exists(
-                        f'{aig_case_folder_prefix_for_prediction}/{aig_case.split("/")[-1]}/{aig_case.split("/")[-1]}_predicted_clauses_after_filtering.cnf'
-                    ) and not args.re_predict # exist file and I don't want to re-genereate it
+        with tqdm(total=len(aig_case_list)) as pbar:
+            for aig_case in aig_case_list:
+                print("Begin to test case: ", aig_case.split('/')[-1], "...")
+                #if not(os.path.exists(f'{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}/{args.aig_case_name}_predicted_clauses_after_filtering.cnf')):
+                generate_predicted_inv_success = (
+                    True
+                    if (
+                        os.path.exists(
+                            f'{aig_case_folder_prefix_for_prediction}/{aig_case.split("/")[-1]}/{aig_case.split("/")[-1]}_predicted_clauses_after_filtering.cnf'
+                        ) and not args.re_predict # exist file and I don't want to re-genereate it
+                    )
+                    else generate_predicted_inv_dgl(# generate the inv again
+                        threshold=args.threshold,
+                        aig_case_name=aig_case.split('/')[-1],
+                        NN_model=args.NN_model,
+                        aig_original_location_prefix=aig_case_folder_prefix_for_prediction,
+                        args=args
+                    )
                 )
-                else generate_predicted_inv_dgl(# generate the inv again
-                    threshold=args.threshold,
-                    aig_case_name=aig_case.split('/')[-1],
-                    NN_model=args.NN_model,
-                    aig_original_location_prefix=aig_case_folder_prefix_for_prediction,
-                )
-            )
 
-            # begin to compare the inv with ic3ref or abc
-            if generate_predicted_inv_success and args.compare_with_abc and args.re_predict:
-                compare_abc(f"{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.log_location)
-            elif generate_predicted_inv_success and args.compare_with_ic3ref and args.re_predict: 
-                compare_ic3ref(f"{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization,args.log_location)
-            elif generate_predicted_inv_success and args.compare_with_abc:
-                async_compare_abc.append(aig_case)
-            elif generate_predicted_inv_success and args.compare_with_ic3ref:
-                async_compare_ic3ref.append(aig_case)
+                # begin to compare the inv with ic3ref or abc
+                # if generate_predicted_inv_success and args.compare_with_abc and args.re_predict:
+                #     compare_abc(f"{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.log_location)
+                # elif generate_predicted_inv_success and args.compare_with_ic3ref and args.re_predict: 
+                #     compare_ic3ref(f"{aig_case_folder_prefix_for_prediction}/{aig_case.split('/')[-1]}", f"{aig_case.split('/')[-1]}",args.compare_with_ic3ref_basic_generalization,args.compare_with_nnic3_basic_generalization,args.log_location)
+                if generate_predicted_inv_success and args.compare_with_abc:
+                    async_compare_abc.append(aig_case)
+                elif generate_predicted_inv_success and args.compare_with_ic3ref:
+                    async_compare_ic3ref.append(aig_case)
+            
+                update_progress_bar(pbar)
 
         # async compare with ic3ref
         if async_compare_ic3ref:
