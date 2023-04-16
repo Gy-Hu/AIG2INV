@@ -159,6 +159,13 @@ def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
         # 'eijk.bs3271.S',
         # 'texas.PI_main^01.E
         # #--------- benchmark 2020 stuck in generate smt2------------
+        'qspiflash_dualflexpress_divthree-p007',
+        'qspiflash_dualflexpress_divfive-p074',
+        'qspiflash_dualflexpress_divthree-p151',
+        'qspiflash_qflexpress_divfive-p075',
+        'cal86',
+        'cal149',
+        'cal106',
         'vcegar_QF_BV_ar',
         'rast-p00',
         'vis_arrays_bufferAlloc',
