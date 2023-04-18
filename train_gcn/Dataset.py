@@ -1,6 +1,6 @@
 import dgl
 import torch
-
+#import dgl.sparse as dglsp
 class CustomGraphDataset(dgl.data.DGLDataset):
     def __init__(self, graph_list, split='train'):
         self.graph_list = graph_list
@@ -10,7 +10,8 @@ class CustomGraphDataset(dgl.data.DGLDataset):
 
     def __getitem__(self, idx):
         G, node_features, node_labels, train_mask = self.graph_list[idx]
-        dgl_G = dgl.from_networkx(G)
+        #dgl_G = dgl.from_networkx(G)
+        dgl_G = G
         dgl_G.ndata['feat'] = torch.tensor(node_features, dtype=torch.float32)
         dgl_G.ndata['label'] = torch.tensor(node_labels, dtype=torch.long)
         dgl_G.ndata['train_mask'] = torch.tensor(train_mask)
@@ -34,3 +35,5 @@ class CustomGraphDataset(dgl.data.DGLDataset):
 
     def __len__(self):
         return len(self.graph_list)
+    
+    

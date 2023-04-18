@@ -6,7 +6,7 @@ import numpy as np
 import networkx as nx
 import numpy as np
 import pandas as pd
-from dgl.nn import GraphConv
+from dgl.nn import GraphConv, ChebConv, GATConv, SAGEConv, GINConv
 from torch import nn
 from torch.optim import Adam
 import dgl.data
@@ -270,3 +270,62 @@ class GCNModel(nn.Module):
         h = self.relu(h)
         h = self.conv2(g, h)
         return h
+    
+'''
+-----------------------------------GraphSAGE-----------------------------------
+'''
+class SAGEConvModel(nn.Module):
+    def __init__(self, in_feats, hidden_size, num_classes, aggregator_type='mean'):
+        super(SAGEConvModel, self).__init__()
+        self.sageconv1 = SAGEConv(in_feats, hidden_size, aggregator_type)
+        self.sageconv2 = SAGEConv(hidden_size, num_classes, aggregator_type)
+        self.relu = nn.ReLU()
+
+    def forward(self, g, in_feat):
+        h = self.sageconv1(g, in_feat)
+        h = self.relu(h)
+        h = self.sageconv2(g, h)
+        return h
+    
+    
+'''
+-----------------------------------GAT-----------------------------------
+'''
+
+class GATModel(nn.Module):
+    def __init__(self, in_feats, hidden_size, num_classes, num_heads=1):
+        super(GATModel, self).__init__()
+        self.gatconv1 = GATConv(in_feats, hidden_size, num_heads=num_heads)
+        self.gatconv2 = GATConv(hidden_size * num_heads, num_classes, num_heads=1)
+        self.relu = nn.ReLU()
+
+    def forward(self, g, in_feat):
+        h = self.gatconv1(g, in_feat)
+        h = h.view(h.shape[0], -1)  # Reshape to (N, hidden_size * num_heads)
+        h = self.relu(h)
+        h = self.gatconv2(g, h)
+        h = h.squeeze(1)  # Remove the extra dimension of the output shape (N, 1, num_classes) -> (N, num_classes)
+        return h
+
+'''
+-----------------------------------GIN-----------------------------------
+Graph Isomorphism Networks
+'''
+class GIN(torch.nn.Module):
+    def __init__(self, in_feats, hidden_size, num_classes, num_layers=3):
+        super(GIN, self).__init__()
+        self.layers = torch.nn.ModuleList()
+        self.layers.append(GINConv(in_feats, hidden_size, 'sum'))
+        
+        for _ in range(num_layers - 1):
+            self.layers.append(GINConv(hidden_size, hidden_size, 'sum'))
+            
+        self.fc = torch.nn.Linear(hidden_size, num_classes)
+
+    def forward(self, g, in_feat):
+        h = in_feat
+        for layer in self.layers:
+            h = torch.nn.functional.relu(layer(g, h))
+        g.ndata['h'] = h
+        hg = dgl.mean_nodes(g, 'h')
+        return self.fc(hg)

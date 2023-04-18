@@ -36,7 +36,7 @@ class ThresholdFinder:
         if self.dataloader.dataset.split == 'test':
             thresholds = np.linspace(0, 1, 101)
         elif self.dataloader.dataset.split == 'val':
-            thresholds = np.linspace(0, 1, 11)
+            thresholds = np.linspace(0, 1, 101)
         best_threshold = 0
         best_confusion = None # (tn, fp, fn, tp)
         best_f1 = -1

@@ -9,6 +9,7 @@ import pandas as pd
 from dgl.nn import GraphConv
 from torch import nn
 from torch.optim import Adam
+import torch.nn.functional as F
 import dgl.data
 import torch.nn as nn
 from sklearn.metrics import accuracy_score
@@ -16,7 +17,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from dgl.dataloading import GraphDataLoader
 #from BWGNN import BWGNN_Hetero, BWGNN, PolyConv, PolyConvBatch
 import glob 
-from GNN_Model import GCNModel, BWGNN_Hetero, BWGNN
+from GNN_Model import GCNModel, BWGNN_Hetero, BWGNN, SAGEConvModel, GATModel
 from Dataset import CustomGraphDataset
 from Loss import FocalLoss
 import argparse
@@ -30,6 +31,8 @@ from sklearn.decomposition import PCA
 import pickle
 from sklearn.model_selection import train_test_split
 import torch.profiler
+from NodeFeatureGenerator import generate_node_features
+from torch.utils.data import DataLoader
 
 #################################
 # WIP:
@@ -58,11 +61,11 @@ import torch.profiler
 #JSON_FOLDER = '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/nusmv.syncarb5^2.B/'
 #JSON_FOLDER = '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_no_simplification_0/bad_cube_cex2graph/expr_to_build_graph/vcegar_QF_BV_itc99_b13_p10/'
 #GROUND_TRUTH = os.path.join(JSON_FOLDER.replace('expr_to_build_graph', 'ground_truth_table'), JSON_FOLDER.split('/')[-2]+'.csv')
-HIDDEN_DIM = 128 # 32 default
-EMBEDDING_DIM = 128 # 16 default
-EPOCH = 300 # 100 default
+HIDDEN_DIM = 64 # 32 default
+EMBEDDING_DIM = 32 # 16 default
+EPOCH = 100 # 100 default
 LR = 0.001 # =learning rate 0.01 default
-BATCH_SIZE = 64 # 2 default
+BATCH_SIZE = 3 # 2 default
 DATASET_SPLIT = None # None default, used for testing
 WEIGHT_DECAY = 1e-5 # Apply L1 or L2 regularization, [1e-3,1e-2], default 1e-5
 DUMP_MODE = False # False default, used for preprocessing graph data
@@ -89,7 +92,8 @@ def data_preprocessing(args):
     # Get all case folders under the input directory
     case_folders = glob.glob(os.path.join(args.dataset, '*'))
     graph_list = []
-    for case_folder in case_folders[:DATASET_SPLIT]:
+
+    for case_folder in tqdm(case_folders[:DATASET_SPLIT],desc="Preprocessing with initial features"):
         JSON_FOLDER = case_folder
         GROUND_TRUTH = os.path.join(JSON_FOLDER.replace('expr_to_build_graph', 'ground_truth_table'), JSON_FOLDER.split('/')[-1]+'.csv')
         if not os.path.exists(GROUND_TRUTH): continue
@@ -111,8 +115,7 @@ def data_preprocessing(args):
                     for child_id in node['data']['to']['children_id']:
                         G.add_edge(node['data']['id'], child_id)
 
-            # Convert the directed graph G to an undirected graph
-            G = G.to_undirected()
+
 
             # 2. Assign node features and labels
 
@@ -124,8 +127,15 @@ def data_preprocessing(args):
             ground_truth_table = ground_truth_table[ground_truth_table['inductive_check']==os.path.join(JSON_FOLDER, _).split('/')[-1].replace('.json', '.smt2')]
 
             labels =  ground_truth_table.set_index("inductive_check").iloc[:, 1:].to_dict('records')[0]
-            node_features = np.eye(len(G.nodes))
+
+            # generate node features and convert the graph to undirected graph
+            node_features, G = generate_node_features(G)
+
+            # Convert the directed graph G to an undirected graph
+            # G = G.to_undirected()
+            #node_features = np.eye(len(G.nodes))
             #node_features = np.eye(G.number_of_nodes())
+
             node_labels = []
 
             for node in G.nodes(data=True):
@@ -144,11 +154,12 @@ def data_preprocessing(args):
             ]
 
             graph_list.append((G, node_features, node_labels, train_mask))
-    
+
     #with open(args.dump_pickle_name, "wb") as f: pickle.dump(graph_list, f) ; exit(0) # for bug fix only
     return graph_list
     
 def employ_graph_embedding(graph_list,args):
+    
             
     '''
     ----------------Node2Vec Embedding----------------
@@ -177,12 +188,14 @@ def employ_graph_embedding(graph_list,args):
     # Set the DeepWalk parameters
     num_walks = 10
     walk_length = 80
-    embedding_dim = EMBEDDING_DIM
+    embedding_dim = EMBEDDING_DIM - graph_list[0][1].shape[1] # one of the inital features
     window_size = 10
 
     # Apply DeepWalk to each graph in the graph_list
-    for idx, (G, _, node_labels, train_mask) in tqdm(enumerate(graph_list), desc="Applying DeepWalk", total=len(graph_list)):
-        node_features_final = deepwalk(G, num_walks, walk_length, embedding_dim, window_size)
+    for idx, (G, initial_feat, node_labels, train_mask) in tqdm(enumerate(graph_list), desc="Applying DeepWalk", total=len(graph_list)):
+        node_features_dw = deepwalk(G, num_walks, walk_length, embedding_dim, window_size)
+        # for every node feature in initial_feat, append the deepwalk embedding
+        node_features_final = np.concatenate((node_features_dw, initial_feat), axis=1)
         graph_list[idx] = (G, node_features_final, node_labels, train_mask)
     
     # dump all the graph_list to a pickle file 
@@ -200,7 +213,7 @@ def employ_graph_embedding(graph_list,args):
 
     return graph_list
 
-def model_eval(args, val_dataloader, model, device, save_model=False):
+def model_eval(args, val_dataloader, model, device, save_model=False,thred=None,print_stats=False):
     model.eval()
     
     pred_list = []
@@ -212,7 +225,13 @@ def model_eval(args, val_dataloader, model, device, save_model=False):
     for batched_dgl_G in val_dataloader:
         batched_dgl_G = batched_dgl_G.to(device)
         logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
-        pred = logits.argmax(1).cpu().numpy()
+        if thred is None:
+            pred = logits.argmax(1).cpu().numpy()
+        if thred is not None:
+            # Apply softmax to get probabilities
+            probs = F.softmax(logits, dim=1)
+            # Compare the probability of class 1 with the threshold value
+            pred = (probs[:, 1] > thred).cpu().numpy().astype(int)
         true_labels = batched_dgl_G.ndata['label'].cpu().numpy()
 
         # Create variable_mask for the batched_dgl_G
@@ -236,7 +255,7 @@ def model_eval(args, val_dataloader, model, device, save_model=False):
     f1 = f1_score(variable_true_labels, variable_pred)
     confusion = confusion_matrix(variable_true_labels, variable_pred)
 
-    if save_model:
+    if print_stats:
         print('Evaluating the model...')
         #print("Accuracy: ", accuracy, "Precision: ", precision, "Recall: ", recall, "F1-score: ", f1)
         print("Precision: ", precision)
@@ -244,10 +263,10 @@ def model_eval(args, val_dataloader, model, device, save_model=False):
         print("F1-score: ", f1)
         print("Confusion matrix:")
         print(confusion)
-        
-        # save the model
-        if args.model_name is not None:
-            torch.save(model.state_dict(), f"{args.model_name}.pt")
+    
+    # save the model
+    if args.model_name is not None and save_model:
+        torch.save(model.state_dict(), f"{args.model_name}.pt")
     
     return f1
     
@@ -267,6 +286,7 @@ if __name__ == "__main__":
     #                           ])
     # simple
     #args = parser.parse_args(['--load-pickle', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_gcn/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22.pickle'])
+    #args = parser.parse_args(['--dataset','/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38/bad_cube_cex2graph/expr_to_build_graph/'])
     args = parser.parse_args()
     if args.dump_pickle_name is not None: DUMP_MODE = True
 
@@ -274,6 +294,10 @@ if __name__ == "__main__":
         graph_list = pickle.load(open(args.load_pickle, "rb"))
     elif args.dataset is not None: # Second, do data preprocessing if the pickle file does not exist
         graph_list = data_preprocessing(args)
+        # if not using other embedding, then update DIM to the node feature dimension
+        #EMBEDDING_DIM = graph_list[0][1].shape[1]
+        
+        # comment out the last line if using other embedding
         graph_list = employ_graph_embedding(graph_list,args)
     else:
         assert False, "Please specify the dataset path to do data preprocessing or load the pickle file."
@@ -281,19 +305,25 @@ if __name__ == "__main__":
     # 4. Create a custom dataset
     
     # Split the graph_list into train, val, and test datasets
-    graph_list = graph_list[:DATASET_SPLIT]
+    # graph_list = graph_list[:]
+    #  apply dgl.from_networkx to every graph[0] in graph_list
+    assert len(graph_list[0]) == 4, "The graph_list should be a list of tuples (graph, node_features, node_labels, node_train_mask)"
+    graph_list = [(dgl.from_networkx(graph[0]), graph[1],graph[2],graph[3]) for graph in graph_list]
 
-    train_data = graph_list
-    _, val_data = train_test_split(train_data, test_size=0.2, random_state=42)
-    print("Length of val_data: ", len(val_data))
+    # train_data = graph_list
+    # _, val_data = train_test_split(train_data, test_size=0.2, random_state=42)
+    
     
     #train_data, test_data = train_test_split(graph_list, test_size=0.05, random_state=42)
     #_, val_data = train_test_split(train_data, test_size=0.2, random_state=42)
     
-    # train_data, temp_data = train_test_split(graph_list, test_size=0.2, random_state=42)
-    # val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
+    
+    train_data, temp_data = train_test_split(graph_list, test_size=0.2, random_state=42)
+    val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
     
     # train_data = graph_list ; val_data = graph_list ; test_data = graph_list
+    
+    print("Length of val_data: ", len(val_data))
     
     # Create custom datasets for each split
     train_dataset = CustomGraphDataset(train_data, split='train')
@@ -301,8 +331,8 @@ if __name__ == "__main__":
     #test_dataset = CustomGraphDataset(test_data, split='test')
 
     # Create dataloaders for each split
-    train_dataloader = GraphDataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=False)
-    val_dataloader = GraphDataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
+    train_dataloader = GraphDataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=False, num_workers=4)
+    val_dataloader = GraphDataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False, num_workers=4)
     #test_dataloader = GraphDataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
 
 
@@ -313,6 +343,8 @@ if __name__ == "__main__":
     input_feature_dim = EMBEDDING_DIM
     #model = GCNModel(input_feature_dim, HIDDEN_DIM, 2).to(device)
     model = BWGNN(input_feature_dim, HIDDEN_DIM, 2).to(device)
+    #model = SAGEConvModel(input_feature_dim, HIDDEN_DIM, 2).to(device)
+    #model = GATModel(input_feature_dim, HIDDEN_DIM, 2).to(device)
     print(model) # for log analysis
     loss_function = nn.CrossEntropyLoss()
     #loss_function = FocalLoss()
@@ -324,33 +356,33 @@ if __name__ == "__main__":
     for epoch in range(EPOCH):
         model.train()
         epoch_loss = 0
-        with torch.profiler.profile(
-        schedule=torch.profiler.schedule(wait=0, warmup=1, active=3),
-        on_trace_ready=torch.profiler.tensorboard_trace_handler('./log'),
-        record_shapes=True,
-        profile_memory=True,
-        with_stack=True,
-        use_cuda=True,
-        ) as prof:
-            for batched_dgl_G in train_dataloader:
-                batched_dgl_G = batched_dgl_G.to(device) #this may cost too much time
-                logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
-                # Compute the class weights for the current batch
-                train_labels = batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']].cpu().numpy()
-                class_weights = calculate_class_weights(train_labels)
-                if len(class_weights)==0: class_weights = [1.0, 1.0] # error handling
-                # Update the loss function with the computed class weights
-                #loss_function = nn.CrossEntropyLoss(weight=torch.FloatTensor(class_weights).to(device))
-                loss_function.weight = torch.FloatTensor(class_weights).to(device)
+        # with torch.profiler.profile(
+        # schedule=torch.profiler.schedule(wait=0, warmup=1, active=3),
+        # on_trace_ready=torch.profiler.tensorboard_trace_handler('./log'),
+        # record_shapes=True,
+        # profile_memory=True,
+        # with_stack=True,
+        # use_cuda=True,
+        # ) as prof:
+        for batched_dgl_G in train_dataloader:
+            batched_dgl_G = batched_dgl_G.to(device) #this may cost too much time
+            logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
+            # Compute the class weights for the current batch
+            train_labels = batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']].cpu().numpy()
+            class_weights = calculate_class_weights(train_labels)
+            if len(class_weights)==0: class_weights = [1.0, 1.0] # error handling
+            # Update the loss function with the computed class weights
+            #loss_function = nn.CrossEntropyLoss(weight=torch.FloatTensor(class_weights).to(device))
+            loss_function.weight = torch.FloatTensor(class_weights).to(device)
 
-                loss = loss_function(logits[batched_dgl_G.ndata['train_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']])
-                #loss = loss_function(logits[batched_dgl_G.ndata['train_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']])
+            loss = loss_function(logits[batched_dgl_G.ndata['train_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']])
+            #loss = loss_function(logits[batched_dgl_G.ndata['train_mask']], batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']])
 
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                epoch_loss += loss.item()
-                #prof.step()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item()
+            #prof.step()
         
         
         # Validation loop
@@ -380,7 +412,7 @@ if __name__ == "__main__":
         # *10 to make the loss comparable
         print(f"EPOCH: {epoch}, TRAIN LOSS: {(epoch_loss)},VAL LOSS: {(val_loss)}, BEST F1: {overall_best_f1}")
         '''
-        f1 = model_eval(args, val_dataloader, model, device, save_model=False)
+        f1 = model_eval(args, val_dataloader, model, device, save_model=False, print_stats=False)
         if f1 > overall_best_f1: overall_best_f1 = f1
         print(f"EPOCH: {epoch}, TRAIN LOSS: {(epoch_loss)}, BEST F1: {overall_best_f1}")
         # employ early stop
@@ -391,6 +423,7 @@ if __name__ == "__main__":
 
     # Instantiate the ThresholdFinder class
     model.eval()
+    print("Now evaluating the model on the validation set and find the best thershold...")
     threshold_finder = ThresholdFinder(val_dataloader, model, device)
     #threshold_finder = ThresholdFinder(test_dataloader, model, device)
 
@@ -401,8 +434,16 @@ if __name__ == "__main__":
     print("Best confusion matrix:\n ", best_confusion)
 
     # 6. Evaluate the model
-    _ = model_eval(args, train_dataloader, model, device, save_model=True)
-   
+    print("Now evaluating the model on the whole training dataset...")
+    _ = model_eval(args, train_dataloader, model, device, save_model=True, print_stats=True)
+    
+    # additional step: evaluate the model on the test set
+    print("Now evaluating the model on the test set...")
+    test_dataset = CustomGraphDataset(test_data, split='test')
+    test_dataloader = GraphDataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
+    _ = model_eval(args, test_dataloader, model, device, save_model=False, thred=best_threshold, print_stats=True)
+    
+    
 
 
 
