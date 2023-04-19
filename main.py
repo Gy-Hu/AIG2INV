@@ -34,6 +34,8 @@ import re
 import concurrent.futures
 import pickle
 
+CASE_TO_RUN = 0
+
 '''
 ---------------------------------------------------------
 Checker to check if the predicted clauses is satisfiable
@@ -282,7 +284,7 @@ def subset_preproces():
     '''
     all_aig_folder=f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/benchmark_folder/{BENCHMARK}"
     folder_for_prediction_result_store=f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/case4comp/{SELECTED_DATASET}_comp"
-    aig_with_preprocess_data = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{SELECTED_DATASET}/bad_cube_cex2graph/json_to_graph_pickle/"
+    aig_with_preprocess_data = f"/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/{SELECTED_DATASET}/bad_cube_cex2graph/expr_to_build_graph/"
     if not os.path.exists(folder_for_prediction_result_store):
         os.makedirs(folder_for_prediction_result_store)
     else:
@@ -306,20 +308,20 @@ def subset_preproces():
         files = [os.path.join(root, f) for f in files]
     # remove the _{number}.pkl and use set to remove duplicate in files list
     # Create the regular expression 
-    regex = re.compile(r'(.*)_[0-9]+\.pkl$')
+    # regex = re.compile(r'(.*)_[0-9]+\.pkl$')
     # Apply the regular expression to the array elements
-    output_array = [regex.match(element)[1] for element in files]
+    #output_array = [regex.match(element)[1] for element in files]
     # Remove duplicate elements from the output array
-    output_array = list(set(output_array))
-    aig_with_processed_graph = [ _.split('/')[-1] for _ in output_array]
+    #output_array = list(set(output_array))
+    #aig_with_processed_graph = [ _.split('/')[-1] for _ in output_array]
     
 
     #create a folder for each file
     for aig_path_in_benchmark in aig_file_list :
-        if list(filter(lambda x: aig_path_in_benchmark.split('/')[-1].split('.aag')[0] in x, aig_with_processed_graph)) !=[] :
-            os.mkdir(f'{folder_for_prediction_result_store}/{aig_path_in_benchmark.split("/")[-1].split(".aag")[0]}')
-            # copy the aig file to the folder
-            shutil.copy(aig_path_in_benchmark, f'{folder_for_prediction_result_store}/{aig_path_in_benchmark.split("/")[-1].split(".aag")[0]}')
+        #if list(filter(lambda x: aig_path_in_benchmark.split('/')[-1].split('.aag')[0] in x, aig_with_processed_graph)) !=[] :
+        os.mkdir(f'{folder_for_prediction_result_store}/{aig_path_in_benchmark.split("/")[-1].split(".aag")[0]}')
+        # copy the aig file to the folder
+        shutil.copy(aig_path_in_benchmark, f'{folder_for_prediction_result_store}/{aig_path_in_benchmark.split("/")[-1].split(".aag")[0]}')
     print('Finish copying all the aig files to the corresponding folders')
     
 
@@ -633,6 +635,7 @@ def generate_predicted_inv_dgl(threshold, aig_case_name, NN_model,aig_original_l
     from train_gcn.Dataset import CustomGraphDataset
     # Find all the graph in graph list that graph_list[x][0].name is start with aig_case_name
     graph_list = [graph for graph in graph_list if graph[0].name.startswith(aig_case_name)]
+    if not graph_list: return False # if no graph found, return False
     dataset = CustomGraphDataset(graph_list,split='test')
     final_predicted_clauses = []
     for idx, dgl_graph in enumerate(dataset):
@@ -645,7 +648,7 @@ def generate_predicted_inv_dgl(threshold, aig_case_name, NN_model,aig_original_l
         # directly use the max probability as prediction
             pred = logits.argmax(1).cpu().numpy()
 
-        
+
 
         true_labels = dgl_graph.ndata['label'].cpu().numpy()
         output = [
@@ -672,7 +675,7 @@ def generate_predicted_inv_dgl(threshold, aig_case_name, NN_model,aig_original_l
         #print(f"Predicted Invariant: {output}")
         #print(f"Real Invariant: {real_output}")
         final_predicted_clauses.append(output)
-    
+
     return dump_predicted_clauses(
         aig_case_name,
         f"./{SELECTED_DATASET}",
@@ -692,8 +695,10 @@ def dump_predicted_clauses(selected_aig_case, extracted_bad_cube_prefix,aig_orig
 
     CTI_file = f'{extracted_bad_cube_prefix}/bad_cube_cex2graph/cti_for_inv_map_checking/{selected_aig_case}/{selected_aig_case}_inv_CTI.txt'
     Predict_Clauses_File = f'{aig_original_location}/{selected_aig_case}_inv_CTI_predicted.cnf'
-    with open(CTI_file,'r') as f:
-        original_CTI = f.readlines()
+    if os.path.exists(CTI_file):
+        with open(CTI_file,'r') as f:
+            original_CTI = f.readlines()
+    else: return False
     # remove the last '\n'
     original_CTI = [i[:-1] for i in original_CTI]
     # split original_CTI into list with comma
@@ -885,16 +890,16 @@ if __name__ == "__main__":
     '''
 
     '''
-    
+    '''
     args = parser.parse_args([
         #'--threshold', '0.5',
-        '--selected-built-dataset', 'dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22',
+        '--selected-built-dataset', 'dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38',
         #'--selected-built-dataset', 'dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38',
-        '--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
+        #'--NN-model', 'neuropdr_2023-01-06_07:56:51_last.pth.tar',
         '--gpu-id', '0',
         '--compare_with_ic3ref',
         '--re-predict'])
-    '''
+    
 
     #assert args.log_location is not None, 'log location is required'
     args.compare_with_ic3ref_basic_generalization = "-b" if args.compare_with_ic3ref_basic_generalization else ""
@@ -984,10 +989,11 @@ if __name__ == "__main__":
                 if generate_predicted_inv_success and args.compare_with_abc:
                     async_compare_abc.append(aig_case)
                 elif generate_predicted_inv_success and args.compare_with_ic3ref:
-                    async_compare_ic3ref.append(aig_case)
+                    async_compare_ic3ref.append(aig_case) ; CASE_TO_RUN += 1
             
                 update_progress_bar(pbar)
 
+        print("Total case to run in final: ", CASE_TO_RUN)
         # async compare with ic3ref
         if async_compare_ic3ref:
             with concurrent.futures.ProcessPoolExecutor(max_workers=64) as executor:

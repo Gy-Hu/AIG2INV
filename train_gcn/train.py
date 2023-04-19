@@ -88,7 +88,7 @@ def calculate_class_weights(train_labels):
     return total_samples / (len(class_counts) * class_counts)
 
 # Preprocess the data before training
-def data_preprocessing(args):
+def data_preprocessing(args, Update_DIM=False):
     # Get all case folders under the input directory
     case_folders = glob.glob(os.path.join(args.dataset, '*'))
     graph_list = []
@@ -156,6 +156,7 @@ def data_preprocessing(args):
             graph_list.append((G, node_features, node_labels, train_mask))
 
     #with open(args.dump_pickle_name, "wb") as f: pickle.dump(graph_list, f) ; exit(0) # for bug fix only
+    if Update_DIM: EMBEDDING_DIM = graph_list[0][1].shape[1]
     return graph_list
     
 def employ_graph_embedding(graph_list,args):
@@ -293,12 +294,11 @@ if __name__ == "__main__":
     if args.load_pickle is not None: #  First, load the pickle file if it exists
         graph_list = pickle.load(open(args.load_pickle, "rb"))
     elif args.dataset is not None: # Second, do data preprocessing if the pickle file does not exist
-        graph_list = data_preprocessing(args)
-        # if not using other embedding, then update DIM to the node feature dimension
-        #EMBEDDING_DIM = graph_list[0][1].shape[1]
+        # apply multi-feature embedding
+        graph_list = data_preprocessing(args, Update_DIM=False) ; graph_list = employ_graph_embedding(graph_list,args)
+        # apply pre-define feature embedding
+        # graph_list = data_preprocessing(args, Update_DIM=True)
         
-        # comment out the last line if using other embedding
-        graph_list = employ_graph_embedding(graph_list,args)
     else:
         assert False, "Please specify the dataset path to do data preprocessing or load the pickle file."
 
@@ -308,7 +308,7 @@ if __name__ == "__main__":
     # graph_list = graph_list[:]
     #  apply dgl.from_networkx to every graph[0] in graph_list
     assert len(graph_list[0]) == 4, "The graph_list should be a list of tuples (graph, node_features, node_labels, node_train_mask)"
-    graph_list = [(dgl.from_networkx(graph[0]), graph[1],graph[2],graph[3]) for graph in graph_list]
+    #graph_list = [(dgl.from_networkx(graph[0]), graph[1],graph[2],graph[3]) for graph in graph_list]
 
     # train_data = graph_list
     # _, val_data = train_test_split(train_data, test_size=0.2, random_state=42)
