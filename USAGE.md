@@ -70,6 +70,7 @@ select which model to use (currently only `neurograph` is available)
         * Check node embedding method that you want to employ in `graph_list = employ_graph_embedding(graph_list,args)`
         * Comment out `default args` if you want to input them in command line
         * Comment out `G = G.to_undirected()` if you want to use directed graph
+        * Uncomment "employ_graph_embedding(graph_list,args)" if you want to use additional node embedding
 
 ## Validate the Model
 

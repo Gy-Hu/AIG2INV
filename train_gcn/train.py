@@ -17,7 +17,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from dgl.dataloading import GraphDataLoader
 #from BWGNN import BWGNN_Hetero, BWGNN, PolyConv, PolyConvBatch
 import glob 
-from GNN_Model import GCNModel, BWGNN_Hetero, BWGNN, SAGEConvModel, GATModel
+from GNN_Model import GCNModel, BWGNN_Hetero, BWGNN, SAGEConvModel, GATModel, BWGNN_Inductive
 from Dataset import CustomGraphDataset
 from Loss import FocalLoss
 import argparse
@@ -65,9 +65,9 @@ HIDDEN_DIM = 64 # 32 default
 EMBEDDING_DIM = 32 # 16 default
 EPOCH = 100 # 100 default
 LR = 0.001 # =learning rate 0.01 default
-BATCH_SIZE = 3 # 2 default
-DATASET_SPLIT = None # None default, used for testing
-WEIGHT_DECAY = 1e-5 # Apply L1 or L2 regularization, [1e-3,1e-2], default 1e-5
+BATCH_SIZE = 2 # 2 default
+DATASET_SPLIT = 3 # None default, used for testing
+WEIGHT_DECAY = 0 # Apply L1 or L2 regularization, [1e-3,1e-2], default 1e-5
 DUMP_MODE = False # False default, used for preprocessing graph data
 
 # Best parameters (2023.4.4)
@@ -88,7 +88,7 @@ def calculate_class_weights(train_labels):
     return total_samples / (len(class_counts) * class_counts)
 
 # Preprocess the data before training
-def data_preprocessing(args, Update_DIM=False):
+def data_preprocessing(args):
     # Get all case folders under the input directory
     case_folders = glob.glob(os.path.join(args.dataset, '*'))
     graph_list = []
@@ -156,7 +156,8 @@ def data_preprocessing(args, Update_DIM=False):
             graph_list.append((G, node_features, node_labels, train_mask))
 
     #with open(args.dump_pickle_name, "wb") as f: pickle.dump(graph_list, f) ; exit(0) # for bug fix only
-    if Update_DIM: EMBEDDING_DIM = graph_list[0][1].shape[1]
+    # if Update_DIM: 
+    #     EMBEDDING_DIM = graph_list[0][1].shape[1]
     return graph_list
     
 def employ_graph_embedding(graph_list,args):
@@ -295,9 +296,9 @@ if __name__ == "__main__":
         graph_list = pickle.load(open(args.load_pickle, "rb"))
     elif args.dataset is not None: # Second, do data preprocessing if the pickle file does not exist
         # apply multi-feature embedding
-        graph_list = data_preprocessing(args, Update_DIM=False) ; graph_list = employ_graph_embedding(graph_list,args)
+        #graph_list = data_preprocessing(args) ; graph_list = employ_graph_embedding(graph_list,args)
         # apply pre-define feature embedding
-        # graph_list = data_preprocessing(args, Update_DIM=True)
+        graph_list = data_preprocessing(args)
         
     else:
         assert False, "Please specify the dataset path to do data preprocessing or load the pickle file."
@@ -340,9 +341,10 @@ if __name__ == "__main__":
     #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Get the input feature dimension
-    input_feature_dim = EMBEDDING_DIM
+    input_feature_dim = graph_list[0][1].shape[1] # get the feature dimension of the first graph
     #model = GCNModel(input_feature_dim, HIDDEN_DIM, 2).to(device)
-    model = BWGNN(input_feature_dim, HIDDEN_DIM, 2).to(device)
+    #model = BWGNN(input_feature_dim, HIDDEN_DIM, 2).to(device)
+    model = BWGNN_Inductive(input_feature_dim, HIDDEN_DIM, 2).to(device)
     #model = SAGEConvModel(input_feature_dim, HIDDEN_DIM, 2).to(device)
     #model = GATModel(input_feature_dim, HIDDEN_DIM, 2).to(device)
     print(model) # for log analysis

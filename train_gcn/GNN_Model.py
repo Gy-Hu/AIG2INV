@@ -47,6 +47,51 @@ def calculate_theta2(d):
         thetas.append(inv_coeff)
     return thetas
 
+class PolyConv_Inductive(nn.Module):
+    def __init__(self,
+                 in_feats,
+                 out_feats,
+                 theta,
+                 num_sample_neighbors=5,  # new parameter
+                 activation=F.leaky_relu,
+                 lin=False,
+                 bias=False):
+        super(PolyConv, self).__init__()
+        self._theta = theta
+        self._k = len(self._theta)
+        self._in_feats = in_feats
+        self._out_feats = out_feats
+        self.num_sample_neighbors = num_sample_neighbors  # store the parameter
+        self.activation = activation
+        self.linear = nn.Linear(in_feats, out_feats, bias)
+        self.lin = lin
+
+    def forward(self, graph, feat):
+        def unnLaplacian(feat, D_invsqrt, graph):
+            """ Operation Feat * D^-1/2 A D^-1/2 """
+            graph.ndata['h'] = feat * D_invsqrt
+            graph.update_all(fn.copy_u('h', 'm'), fn.sum('m', 'h'))
+            return feat - graph.ndata.pop('h') * D_invsqrt
+
+        # Sample neighbors
+        sampled_graph = dgl.sampling.sample_neighbors(graph, graph.nodes(), self.num_sample_neighbors)
+        sampled_graph = dgl.to_bidirected(sampled_graph)
+
+        # Now work with the sampled graph
+        with sampled_graph.local_scope():
+            D_invsqrt = torch.pow(sampled_graph.in_degrees().float().clamp(
+                min=1), -0.5).unsqueeze(-1).to(feat.device)
+            h = self._theta[0] * feat
+            for k in range(1, self._k):
+                feat = unnLaplacian(feat, D_invsqrt, sampled_graph)
+                h += self._theta[k] * feat
+
+        if self.lin:
+            h = self.linear(h)
+            h = self.activation(h)
+        return h
+
+
 class PolyConv(nn.Module):
     '''
     Polynomial filtering: The PolyConv layer is designed to learn graph convolutional filters based on polynomial filtering,
@@ -144,6 +189,43 @@ class PolyConvBatch(nn.Module):
                 feat = unnLaplacian(feat, D_invsqrt, block)
                 h += self._theta[k]*feat
         return h
+
+class BWGNN_Inductive(nn.Module):
+    def __init__(self, in_feats, h_feats, num_classes, d=2, num_sample_neighbors=5, batch=False):
+        super(BWGNN_Inductive, self).__init__()
+        self.dropout = nn.Dropout(0.8)
+        self.thetas = calculate_theta2(d=d)
+        self.conv = nn.ModuleList()  # Use nn.ModuleList to store layers
+        for i in range(len(self.thetas)):
+            if not batch:
+                self.conv.append(PolyConv(h_feats, h_feats, self.thetas[i], num_sample_neighbors, lin=False))
+            else:
+                self.conv.append(PolyConvBatch(h_feats, h_feats, self.thetas[i], lin=False))
+        self.linear = nn.Linear(in_feats, h_feats)
+        self.linear2 = nn.Linear(h_feats, h_feats)
+        self.linear3 = nn.Linear(h_feats * len(self.conv), h_feats)
+        self.linear4 = nn.Linear(h_feats, num_classes)
+        self.act = nn.ReLU()
+        self.d = d
+
+    def forward(self, g, in_feat):
+        self.g = g
+        device = in_feat.device
+        h = self.linear(in_feat)
+        h = self.act(h)
+        h = self.linear2(h)
+        h = self.act(h)
+        h_final = torch.zeros([len(in_feat), 0]).to(device)
+        for conv in self.conv:
+            self.g = self.g.to(device)
+            h0 = conv(self.g, h)
+            h_final = torch.cat([h_final, h0], -1)
+        h = self.linear3(h_final)
+        h = self.act(h)
+        h = self.linear4(h)
+        return h
+
+       
 
 
 class BWGNN(nn.Module):

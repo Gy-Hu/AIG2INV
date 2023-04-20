@@ -106,7 +106,7 @@ def generate_node_features(G):
         neighbor_ops = count_neighbor_operators(G, node_id)
         pos_emb = position_embedding(node_id, max_node_id)
 
-        features = np.array([betweenness, degree, root_distance, neighbor_ops])
+        features = np.array([betweenness, degree, root_distance,neighbor_ops])
         features = np.concatenate((kind_enc, value_enc, features, pos_emb))
         node_features.append(features)
         ### other features can be added:
