@@ -198,9 +198,9 @@ class BWGNN_Inductive(nn.Module):
         self.conv = nn.ModuleList()  # Use nn.ModuleList to store layers
         for i in range(len(self.thetas)):
             if not batch:
-                self.conv.append(PolyConv(h_feats, h_feats, self.thetas[i], num_sample_neighbors, lin=False))
+                self.conv.append(PolyConv_Inductive(h_feats, h_feats, self.thetas[i], num_sample_neighbors, lin=False))
             else:
-                self.conv.append(PolyConvBatch(h_feats, h_feats, self.thetas[i], lin=False))
+                assert False
         self.linear = nn.Linear(in_feats, h_feats)
         self.linear2 = nn.Linear(h_feats, h_feats)
         self.linear3 = nn.Linear(h_feats * len(self.conv), h_feats)
