@@ -5,6 +5,10 @@ import os
 import pandas as pd
 from math import sin, cos, pi
 from sklearn.preprocessing import StandardScaler
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
+
+
 
 def count_state_variable_neighbors(G, node_id):
     neighbors = list(G.neighbors(node_id))
@@ -81,32 +85,48 @@ assert root_id is not None, "Root node not found"
 
 '''
 
+# Helper function to generate features for a single node
+def generate_single_node_features(G, node_id, node_data , betweenness_centrality, max_node_id):
+    kind_enc, value_enc = one_hot_encoding(node_data)
+    betweenness = betweenness_centrality[node_id]
+    degree = G.degree(node_id)
+    #root_distance = distance_to_root(G, root_id)[node_id]
+    neighbor_ops = count_neighbor_operators(G, node_id)
+    pos_emb = position_embedding(node_id, max_node_id)
+
+    features = np.array([betweenness, degree, neighbor_ops])
+    features = np.concatenate((kind_enc, value_enc, features, pos_emb))
+
+    return features
+
 def generate_node_features(G):
     # Find the root node id
-    root_id = None
-    for node_id, node_data in G.nodes(data=True):
-        if node_data["type"] == "node" and node_data["application"] == "and":
-            if G.in_degree(node_id) == 0:
-                root_id = node_id
-                break
+    # root_id = None
+    # for node_id, node_data in G.nodes(data=True):
+    #     if node_data["type"] == "node" and node_data["application"] == "and":
+    #         if G.in_degree(node_id) == 0:
+    #             root_id = node_id
+    #             break
 
-    G = G.to_undirected()
+    # G = G.to_undirected()
     # Compute betweenness centrality
     betweenness_centrality = nx.betweenness_centrality(G)
 
     # Compute node features
     node_features = []
     max_node_id = len(G.nodes) - 1
+    # Initialize the list to store node features
+    #node_features = [None] * len(G.nodes)
 
     for node_id, node_data in G.nodes(data=True):
         kind_enc, value_enc = one_hot_encoding(node_data)
         betweenness = betweenness_centrality[node_id]
         degree = G.degree(node_id)
-        root_distance = distance_to_root(G, root_id)[node_id]
-        neighbor_ops = count_neighbor_operators(G, node_id)
+        #root_distance = distance_to_root(G, root_id)[node_id]
+        #neighbor_ops = count_neighbor_operators(G, node_id)
         pos_emb = position_embedding(node_id, max_node_id)
 
-        features = np.array([betweenness, degree, root_distance,neighbor_ops])
+        features = np.array([betweenness, degree])
         features = np.concatenate((kind_enc, value_enc, features, pos_emb))
         node_features.append(features)
         ### other features can be added:
@@ -122,14 +142,14 @@ def generate_node_features(G):
     node_features_matrix = np.vstack(node_features)
 
     # Slice the continuous features (assuming they are the last 5 columns in this case)
-    continuous_features = node_features_matrix[:, 7:11]
+    continuous_features = node_features_matrix[:, 7:9]
 
     # Scale the continuous features using standard scaling
     scaler = StandardScaler()
     scaled_continuous_features = scaler.fit_transform(continuous_features)
 
     # Replace the original continuous features with the scaled ones
-    node_features_matrix[:, 7:11] = scaled_continuous_features
+    node_features_matrix[:, 7:9] = scaled_continuous_features
 
     # Convert the 2D NumPy array back to the list of arrays
     node_features = list(node_features_matrix)

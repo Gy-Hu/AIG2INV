@@ -1,12 +1,14 @@
-import dgl.sparse as dglsp
+#import dgl.sparse as dglsp
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import tqdm
+import numpy as np
+from sklearn.metrics.pairwise import cosine_distances
 
 '''
 ----------------------------Convert to Hypergraph----------------------------
-'''
+
 def convert_hypergraph(graph): #dgl graph as input
     indices = torch.stack(graph.edges())
     H = dglsp.spmatrix(indices)
@@ -42,9 +44,25 @@ def dgl_to_hypergraph(dgl_graph):
     
     # The adjacency matrix represents the hypergraph
     return adjacency_matrix, hyperedges
+'''
 
 '''
 ----------------------------Convert to heterograph----------------------------
-'''
+
 def convert_heterograph(graph): #dgl graph as input
     pass
+'''
+
+def update_adj_cosine_d(graph_list_ori_feat,graph_list_struc_feat):
+    # Iterate through the tuples in both lists
+    for (G_ori, _,__,___), (G_struc, struc_feat, ____, _____) in zip(graph_list_ori_feat, graph_list_struc_feat):
+        # Calculate cosine distances between the node embeddings
+        dist_matrix = cosine_distances(struc_feat)
+        
+        # Update the adjacency matrix of the graph in graph_list_ori_feat
+        for i in range(dist_matrix.shape[0]):
+            for j in range(dist_matrix.shape[1]):
+                # You can set a threshold or use a custom function to decide when to update the adjacency matrix
+                if dist_matrix[i, j] < 0.5: # Example threshold
+                    G_ori.add_edge(i, j)
+                    G_struc.add_edge(i, j)

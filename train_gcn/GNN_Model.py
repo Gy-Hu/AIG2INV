@@ -352,7 +352,40 @@ class GCNModel(nn.Module):
         h = self.relu(h)
         h = self.conv2(g, h)
         return h
-    
+
+'''
+----------------------------------DualGCN----------------------------------
+'''
+class DualGCNModel(nn.Module):
+    def __init__(self, in_feats_ori, in_feats_struc, hidden_size, num_classes, mlp_hidden_size):
+        super(DualGCNModel, self).__init__()
+        self.conv1_ori = GraphConv(in_feats_ori, hidden_size, allow_zero_in_degree=True)
+        self.conv2_ori = GraphConv(hidden_size, num_classes, allow_zero_in_degree=True)
+        
+        self.conv1_struc = GraphConv(in_feats_struc, hidden_size, allow_zero_in_degree=True)
+        self.conv2_struc = GraphConv(hidden_size, num_classes, allow_zero_in_degree=True)
+
+        self.relu = nn.ReLU()
+        self.mlp = nn.Sequential(
+            nn.Linear(2 * num_classes, mlp_hidden_size),
+            nn.ReLU(),
+            nn.Linear(mlp_hidden_size, num_classes)
+        )
+        #self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, g, ori_feat, struc_feat):
+        h_ori = self.conv1_ori(g, ori_feat)
+        h_ori = self.relu(h_ori)
+        h_ori = self.conv2_ori(g, h_ori)
+
+        h_struc = self.conv1_struc(g, struc_feat)
+        h_struc = self.relu(h_struc)
+        h_struc = self.conv2_struc(g, h_struc)
+
+        h_concat = torch.cat((h_ori, h_struc), dim=1)
+        h_reduced = self.mlp(h_concat)
+        return h_reduced
+
 '''
 -----------------------------------GraphSAGE-----------------------------------
 '''
@@ -368,7 +401,38 @@ class SAGEConvModel(nn.Module):
         h = self.relu(h)
         h = self.sageconv2(g, h)
         return h
-    
+
+'''
+-----------------------------------DualGraphSage-------------------------
+'''
+class DualGraphSAGEModel(nn.Module):
+    def __init__(self, in_feats_ori, in_feats_struc, hidden_size, num_classes, mlp_hidden_size):
+        super(DualGraphSAGEModel, self).__init__()
+        self.sageconv1_ori = SAGEConv(in_feats_ori, hidden_size, 'mean')
+        self.sageconv2_ori = SAGEConv(hidden_size, num_classes, 'mean')
+        
+        self.sageconv1_struc = SAGEConv(in_feats_struc, hidden_size, 'mean')
+        self.sageconv2_struc = SAGEConv(hidden_size, num_classes, 'mean')
+
+        self.relu = nn.ReLU()
+        self.mlp = nn.Sequential(
+            nn.Linear(2 * num_classes, mlp_hidden_size),
+            nn.ReLU(),
+            nn.Linear(mlp_hidden_size, num_classes)
+        )
+
+    def forward(self, g, ori_feat, struc_feat):
+        h_ori = self.sageconv1_ori(g, ori_feat)
+        h_ori = self.relu(h_ori)
+        h_ori = self.sageconv2_ori(g, h_ori)
+
+        h_struc = self.sageconv1_struc(g, struc_feat)
+        h_struc = self.relu(h_struc)
+        h_struc = self.sageconv2_struc(g, h_struc)
+
+        h_concat = torch.cat((h_ori, h_struc), dim=1)
+        h_reduced = self.mlp(h_concat)
+        return h_reduced
     
 '''
 -----------------------------------GAT-----------------------------------

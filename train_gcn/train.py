@@ -17,7 +17,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from dgl.dataloading import GraphDataLoader
 #from BWGNN import BWGNN_Hetero, BWGNN, PolyConv, PolyConvBatch
 import glob 
-from GNN_Model import GCNModel, BWGNN_Hetero, BWGNN, SAGEConvModel, GATModel, BWGNN_Inductive
+from GNN_Model import GCNModel, BWGNN_Hetero, BWGNN, SAGEConvModel, GATModel, BWGNN_Inductive, DualGCNModel, DualGraphSAGEModel
 from Dataset import CustomGraphDataset
 from Loss import FocalLoss
 import argparse
@@ -33,6 +33,9 @@ from sklearn.model_selection import train_test_split
 import torch.profiler
 from NodeFeatureGenerator import generate_node_features
 from torch.utils.data import DataLoader
+from copy import deepcopy
+from GraphConverter import update_adj_cosine_d
+
 
 #################################
 # WIP:
@@ -66,7 +69,7 @@ EMBEDDING_DIM = 32 # 16 default
 EPOCH = 100 # 100 default
 LR = 0.001 # =learning rate 0.01 default
 BATCH_SIZE = 2 # 2 default
-DATASET_SPLIT = 3 # None default, used for testing
+DATASET_SPLIT = 2 # None default, used for testing
 WEIGHT_DECAY = 0 # Apply L1 or L2 regularization, [1e-3,1e-2], default 1e-5
 DUMP_MODE = False # False default, used for preprocessing graph data
 
@@ -93,7 +96,7 @@ def data_preprocessing(args):
     case_folders = glob.glob(os.path.join(args.dataset, '*'))
     graph_list = []
 
-    for case_folder in tqdm(case_folders[:DATASET_SPLIT],desc="Preprocessing with initial features"):
+    for case_folder in case_folders[:DATASET_SPLIT]:
         JSON_FOLDER = case_folder
         GROUND_TRUTH = os.path.join(JSON_FOLDER.replace('expr_to_build_graph', 'ground_truth_table'), JSON_FOLDER.split('/')[-1]+'.csv')
         if not os.path.exists(GROUND_TRUTH): continue
@@ -129,11 +132,11 @@ def data_preprocessing(args):
             labels =  ground_truth_table.set_index("inductive_check").iloc[:, 1:].to_dict('records')[0]
 
             # generate node features and convert the graph to undirected graph
-            node_features, G = generate_node_features(G)
+            # node_features, G = generate_node_features(G)
 
             # Convert the directed graph G to an undirected graph
-            # G = G.to_undirected()
-            #node_features = np.eye(len(G.nodes))
+            G = G.to_undirected()
+            node_features = np.eye(len(G.nodes))
             #node_features = np.eye(G.number_of_nodes())
 
             node_labels = []
@@ -190,14 +193,16 @@ def employ_graph_embedding(graph_list,args):
     # Set the DeepWalk parameters
     num_walks = 10
     walk_length = 80
-    embedding_dim = EMBEDDING_DIM - graph_list[0][1].shape[1] # one of the inital features
+    #embedding_dim = EMBEDDING_DIM - graph_list[0][1].shape[1] # one of the inital features
+    embedding_dim = EMBEDDING_DIM
     window_size = 10
 
     # Apply DeepWalk to each graph in the graph_list
     for idx, (G, initial_feat, node_labels, train_mask) in tqdm(enumerate(graph_list), desc="Applying DeepWalk", total=len(graph_list)):
         node_features_dw = deepwalk(G, num_walks, walk_length, embedding_dim, window_size)
         # for every node feature in initial_feat, append the deepwalk embedding
-        node_features_final = np.concatenate((node_features_dw, initial_feat), axis=1)
+        #node_features_final = np.concatenate((node_features_dw, initial_feat), axis=1)
+        node_features_final = node_features_dw
         graph_list[idx] = (G, node_features_final, node_labels, train_mask)
     
     # dump all the graph_list to a pickle file 
@@ -226,7 +231,7 @@ def model_eval(args, val_dataloader, model, device, save_model=False,thred=None,
     #for batched_dgl_G in test_dataloader:
     for batched_dgl_G in val_dataloader:
         batched_dgl_G = batched_dgl_G.to(device)
-        logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
+        logits = model(batched_dgl_G, batched_dgl_G.ndata['ori_feat'],batched_dgl_G.ndata['struc_feat'])
         if thred is None:
             pred = logits.argmax(1).cpu().numpy()
         if thred is not None:
@@ -288,17 +293,40 @@ if __name__ == "__main__":
     #                           ])
     # simple
     #args = parser.parse_args(['--load-pickle', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_gcn/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22.pickle'])
-    #args = parser.parse_args(['--dataset','/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38/bad_cube_cex2graph/expr_to_build_graph/'])
-    args = parser.parse_args()
+    args = parser.parse_args(['--dataset','/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38/bad_cube_cex2graph/expr_to_build_graph/'])
+    #args = parser.parse_args()
     if args.dump_pickle_name is not None: DUMP_MODE = True
 
     if args.load_pickle is not None: #  First, load the pickle file if it exists
         graph_list = pickle.load(open(args.load_pickle, "rb"))
     elif args.dataset is not None: # Second, do data preprocessing if the pickle file does not exist
         # apply multi-feature embedding
-        #graph_list = data_preprocessing(args) ; graph_list = employ_graph_embedding(graph_list,args)
+        graph_list_ori_feat = data_preprocessing(args)
+        
+        
+        updated_graph_list = []
+        # pre-defined feature embedding
+        for idx, (G, initial_feat, node_labels, train_mask) in tqdm(enumerate(graph_list_ori_feat), desc="Applying inital feature encode", total=len(graph_list_ori_feat)):
+            initial_feat, G = generate_node_features(G)
+            new_tuple = (G, initial_feat, node_labels, train_mask);updated_graph_list.append(new_tuple)
+        
+        # Assign the updated list back to the original variable
+        graph_list_ori_feat = updated_graph_list
+        
+        # copy the graph_list
+        graph_list_struc_feat = deepcopy(graph_list_ori_feat)
+        
+        # structure feature embedding
+        graph_list_struc_feat = employ_graph_embedding(graph_list_struc_feat,args)
         # apply pre-define feature embedding
-        graph_list = data_preprocessing(args)
+        # graph_list = data_preprocessing(args)
+        update_adj_cosine_d(graph_list_ori_feat,graph_list_struc_feat)
+        
+        graph_list = [(G,
+                np.concatenate((ori_feat, graph_list_struc_feat[i][1]), axis=1),
+                node_labels,
+                train_mask)
+               for i, (G, ori_feat, node_labels, train_mask) in enumerate(graph_list_ori_feat)]
         
     else:
         assert False, "Please specify the dataset path to do data preprocessing or load the pickle file."
@@ -327,13 +355,13 @@ if __name__ == "__main__":
     print("Length of val_data: ", len(val_data))
     
     # Create custom datasets for each split
-    train_dataset = CustomGraphDataset(train_data, split='train')
-    val_dataset = CustomGraphDataset(val_data, split='val')
+    train_dataset = CustomGraphDataset(train_data, split='train',DIM=EMBEDDING_DIM)
+    val_dataset = CustomGraphDataset(val_data, split='val',DIM=EMBEDDING_DIM)
     #test_dataset = CustomGraphDataset(test_data, split='test')
 
     # Create dataloaders for each split
-    train_dataloader = GraphDataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=False, num_workers=4)
-    val_dataloader = GraphDataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False, num_workers=4)
+    train_dataloader = GraphDataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=False)
+    val_dataloader = GraphDataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
     #test_dataloader = GraphDataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
 
 
@@ -341,10 +369,13 @@ if __name__ == "__main__":
     #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Get the input feature dimension
-    input_feature_dim = graph_list[0][1].shape[1] # get the feature dimension of the first graph
+    #input_feature_dim = graph_list[0][1].shape[1] # get the feature dimension of the first graph
+    ori_feat_input_dim = graph_list_ori_feat[0][1].shape[1] # if using dual graph embedding
+    struc_feat_input_dim = graph_list_struc_feat[0][1].shape[1] # if using dual graph embedding
     #model = GCNModel(input_feature_dim, HIDDEN_DIM, 2).to(device)
     #model = BWGNN(input_feature_dim, HIDDEN_DIM, 2).to(device)
-    model = BWGNN_Inductive(input_feature_dim, HIDDEN_DIM, 2).to(device)
+    #model = BWGNN_Inductive(input_feature_dim, HIDDEN_DIM, 2).to(device)
+    model = DualGraphSAGEModel(ori_feat_input_dim, struc_feat_input_dim, HIDDEN_DIM, 2, 16).to(device)
     #model = SAGEConvModel(input_feature_dim, HIDDEN_DIM, 2).to(device)
     #model = GATModel(input_feature_dim, HIDDEN_DIM, 2).to(device)
     print(model) # for log analysis
@@ -368,7 +399,8 @@ if __name__ == "__main__":
         # ) as prof:
         for batched_dgl_G in train_dataloader:
             batched_dgl_G = batched_dgl_G.to(device) #this may cost too much time
-            logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
+            #logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
+            logits = model(batched_dgl_G, batched_dgl_G.ndata['ori_feat'],batched_dgl_G.ndata['struc_feat'])
             # Compute the class weights for the current batch
             train_labels = batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']].cpu().numpy()
             class_weights = calculate_class_weights(train_labels)

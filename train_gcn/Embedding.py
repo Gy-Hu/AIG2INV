@@ -97,3 +97,4 @@ def generate_attribute_node_features(graph_list, EMBEDDING_DIM):
         graph_list[idx] = (G, node_features, node_labels, train_mask)
 
     return graph_list
+
