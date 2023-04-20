@@ -69,7 +69,7 @@ EMBEDDING_DIM = 32 # 16 default
 EPOCH = 1 # 100 default
 LR = 0.001 # =learning rate 0.01 default
 BATCH_SIZE = 2 # 2 default
-DATASET_SPLIT = 1 # None default, used for testing
+DATASET_SPLIT = 4 # None default, used for testing
 WEIGHT_DECAY = 1e-2 # Apply L1 or L2 regularization, [1e-3,1e-2], default 1e-5
 DUMP_MODE = False # False default, used for preprocessing graph data
 
@@ -489,7 +489,7 @@ if __name__ == "__main__":
     
     # additional step: evaluate the model on the test set
     print("Now evaluating the model on the test set...")
-    test_dataset = CustomGraphDataset(test_data, split='test',dual=args.dual)
+    test_dataset = CustomGraphDataset(test_data, split='test', DIM=EMBEDDING_DIM, dual=args.dual)
     test_dataloader = GraphDataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
     _ = model_eval(args, test_dataloader, model, device, save_model=False, thred=best_threshold, print_stats=True)
     
