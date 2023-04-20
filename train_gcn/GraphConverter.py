@@ -53,7 +53,8 @@ def convert_heterograph(graph): #dgl graph as input
     pass
 '''
 
-def update_adj_cosine_d(graph_list_ori_feat,graph_list_struc_feat):
+def update_adj_cosine_d(graph_list_ori_feat,graph_list_struc_feat,dualGraph=False):
+    if not dualGraph: return
     # Iterate through the tuples in both lists
     for (G_ori, _,__,___), (G_struc, struc_feat, ____, _____) in zip(graph_list_ori_feat, graph_list_struc_feat):
         # Calculate cosine distances between the node embeddings

@@ -54,12 +54,13 @@ select which model to use (currently only `neurograph` is available)
     parser.add_argument('--load-pickle', type=str, default=None, help='load pickle file name')
     parser.add_argument('--dump-pickle-name', type=str, default=None, help='dump pickle file name') # no need if load pickle
     parser.add_argument('--model-name', type=str, default=None, help='model name to save')
-    * **usage:** `python train.py --dataset <dataset>  (optional: --load-pickle, --model-name, --dump-pickle-name <dump-pickle-name> , etc.)`
+    * **usage:** `python train.py --dataset <dataset>  (optional: --load-pickle, --model-name, --dump-pickle-name <dump-pickle-name> --dual , etc.)`
     * **parameters:**
         * `--dataset` : The dataset to use (e.g. `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/`)
         * `--load-pickle` : The pickle file to load (e.g. `hwmcc07_tip_ic3ref_no_simplification_0-22.pickle`)
         * `--dump-pickle-name` : The pickle file to dump (e.g. `hwmcc07_tip_ic3ref_no_simplification_0-22.pickle`)
         * `--model-name` : The model name to save (e.g. `hwmcc07_ic3ref_tip_no_simplification_0-22.pt`)
+        * `--dual` : Use dual GNN or not (One for pre-defined feature, one for unsuperivsed embedding)
     * **note:**
         * Adjust `DATASET_SPLIT` if you just want to test the code
         * Adjust `h = self.dropout(h)` in `train_gcn/GNN_Model.py` and `WEIGHT_DECAY` in `train_gcn/train.py` if you want to prevent overfitting
@@ -70,7 +71,8 @@ select which model to use (currently only `neurograph` is available)
         * Check node embedding method that you want to employ in `graph_list = employ_graph_embedding(graph_list,args)`
         * Comment out `default args` if you want to input them in command line
         * Comment out `G = G.to_undirected()` if you want to use directed graph
-        * Uncomment "employ_graph_embedding(graph_list,args)" if you want to use additional node embedding
+        * Uncomment `graph_list_struc_feat = employ_graph_embedding(graph_list,args)` if you want to use additional node embedding
+        * If using `dual` GNN, choose the GNN model start with `dual` (), other will fail. (e.g.`DualGCNModle`,`DualGraphSAGEModel`,etc.) 
 
 ## Validate the Model
 

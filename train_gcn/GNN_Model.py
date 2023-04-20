@@ -56,7 +56,7 @@ class PolyConv_Inductive(nn.Module):
                  activation=F.leaky_relu,
                  lin=False,
                  bias=False):
-        super(PolyConv, self).__init__()
+        super(PolyConv_Inductive, self).__init__()
         self._theta = theta
         self._k = len(self._theta)
         self._in_feats = in_feats
@@ -75,7 +75,12 @@ class PolyConv_Inductive(nn.Module):
 
         # Sample neighbors
         sampled_graph = dgl.sampling.sample_neighbors(graph, graph.nodes(), self.num_sample_neighbors)
+        
+        # Move the graph to CPU before calling to_bidirected(), and then move it back to the device (GPU)
+        sampled_graph = sampled_graph.to('cpu')
         sampled_graph = dgl.to_bidirected(sampled_graph)
+        sampled_graph = sampled_graph.to(feat.device)
+
 
         # Now work with the sampled graph
         with sampled_graph.local_scope():
@@ -198,9 +203,9 @@ class BWGNN_Inductive(nn.Module):
         self.conv = nn.ModuleList()  # Use nn.ModuleList to store layers
         for i in range(len(self.thetas)):
             if not batch:
-                self.conv.append(PolyConv(h_feats, h_feats, self.thetas[i], num_sample_neighbors, lin=False))
+                self.conv.append(PolyConv_Inductive(h_feats, h_feats, self.thetas[i], num_sample_neighbors, lin=False))
             else:
-                self.conv.append(PolyConvBatch(h_feats, h_feats, self.thetas[i], lin=False))
+                assert False
         self.linear = nn.Linear(in_feats, h_feats)
         self.linear2 = nn.Linear(h_feats, h_feats)
         self.linear3 = nn.Linear(h_feats * len(self.conv), h_feats)

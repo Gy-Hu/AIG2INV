@@ -24,10 +24,11 @@ from sklearn.metrics import f1_score
 import torch.nn.functional as F
 
 class ThresholdFinder:
-    def __init__(self, dataloader, model, device):
+    def __init__(self, dataloader, model, device, args):
         self.dataloader = dataloader
         self.model = model
         self.device = device
+        self.args = args
 
     def make_predictions(self, probs, threshold):
         return (probs[:, 1] > threshold).cpu().numpy().astype(np.int64)
@@ -47,7 +48,10 @@ class ThresholdFinder:
 
             for batched_dgl_G in self.dataloader:
                 batched_dgl_G = batched_dgl_G.to(self.device)
-                logits = self.model(batched_dgl_G, batched_dgl_G.ndata['ori_feat'],batched_dgl_G.ndata['struc_feat'])
+                if self.args.dual:
+                    logits = self.model(batched_dgl_G, batched_dgl_G.ndata['ori_feat'],batched_dgl_G.ndata['struc_feat'])
+                else:
+                    logits = self.model(batched_dgl_G, batched_dgl_G.ndata['feat'])
                 probs = F.softmax(logits, dim=1)
                 pred = self.make_predictions(probs, threshold)
                 true_labels = batched_dgl_G.ndata['label'].cpu().numpy()

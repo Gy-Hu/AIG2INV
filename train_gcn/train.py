@@ -66,11 +66,11 @@ from GraphConverter import update_adj_cosine_d
 #GROUND_TRUTH = os.path.join(JSON_FOLDER.replace('expr_to_build_graph', 'ground_truth_table'), JSON_FOLDER.split('/')[-2]+'.csv')
 HIDDEN_DIM = 64 # 32 default
 EMBEDDING_DIM = 32 # 16 default
-EPOCH = 100 # 100 default
+EPOCH = 1 # 100 default
 LR = 0.001 # =learning rate 0.01 default
 BATCH_SIZE = 2 # 2 default
-DATASET_SPLIT = 2 # None default, used for testing
-WEIGHT_DECAY = 0 # Apply L1 or L2 regularization, [1e-3,1e-2], default 1e-5
+DATASET_SPLIT = 1 # None default, used for testing
+WEIGHT_DECAY = 1e-2 # Apply L1 or L2 regularization, [1e-3,1e-2], default 1e-5
 DUMP_MODE = False # False default, used for preprocessing graph data
 
 # Best parameters (2023.4.4)
@@ -193,16 +193,22 @@ def employ_graph_embedding(graph_list,args):
     # Set the DeepWalk parameters
     num_walks = 10
     walk_length = 80
-    #embedding_dim = EMBEDDING_DIM - graph_list[0][1].shape[1] # one of the inital features
-    embedding_dim = EMBEDDING_DIM
+    if args.dual: # not change the embedding dim
+        embedding_dim = EMBEDDING_DIM
+    else: # use the rest of dim to embed the graph
+        embedding_dim = EMBEDDING_DIM - graph_list[0][1].shape[1] # one of the inital features
+    #embedding_dim = EMBEDDING_DIM
     window_size = 10
 
     # Apply DeepWalk to each graph in the graph_list
     for idx, (G, initial_feat, node_labels, train_mask) in tqdm(enumerate(graph_list), desc="Applying DeepWalk", total=len(graph_list)):
         node_features_dw = deepwalk(G, num_walks, walk_length, embedding_dim, window_size)
         # for every node feature in initial_feat, append the deepwalk embedding
-        #node_features_final = np.concatenate((node_features_dw, initial_feat), axis=1)
-        node_features_final = node_features_dw
+        if args.dual: # dual graph, no need to concat
+            node_features_final = node_features_dw
+        else: # concat the initial feature and the deepwalk embedding
+            node_features_final = np.concatenate((node_features_dw, initial_feat), axis=1)
+        #node_features_final = node_features_dw
         graph_list[idx] = (G, node_features_final, node_labels, train_mask)
     
     # dump all the graph_list to a pickle file 
@@ -231,7 +237,10 @@ def model_eval(args, val_dataloader, model, device, save_model=False,thred=None,
     #for batched_dgl_G in test_dataloader:
     for batched_dgl_G in val_dataloader:
         batched_dgl_G = batched_dgl_G.to(device)
-        logits = model(batched_dgl_G, batched_dgl_G.ndata['ori_feat'],batched_dgl_G.ndata['struc_feat'])
+        if args.dual:
+            logits = model(batched_dgl_G, batched_dgl_G.ndata['ori_feat'],batched_dgl_G.ndata['struc_feat'])
+        else:
+            logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
         if thred is None:
             pred = logits.argmax(1).cpu().numpy()
         if thred is not None:
@@ -286,6 +295,7 @@ if __name__ == "__main__":
     parser.add_argument('--load-pickle', type=str, default=None, help='load pickle file name')
     parser.add_argument('--dump-pickle-name', type=str, default=None, help='dump pickle file name') # no need if load pickle
     parser.add_argument('--model-name', type=str, default=None, help='model name to save')
+    parser.add_argument('--dual', action='store_true', help='use dual graph')
     # complex
     # args = parser.parse_args(['--dataset', \
     #                           '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_hard_abc_no_simplification_0-9/bad_cube_cex2graph/expr_to_build_graph/',\
@@ -293,7 +303,8 @@ if __name__ == "__main__":
     #                           ])
     # simple
     #args = parser.parse_args(['--load-pickle', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_gcn/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22.pickle'])
-    args = parser.parse_args(['--dataset','/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38/bad_cube_cex2graph/expr_to_build_graph/'])
+    args = parser.parse_args(['--dataset','/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38/bad_cube_cex2graph/expr_to_build_graph/',\
+        '--dual'])
     #args = parser.parse_args()
     if args.dump_pickle_name is not None: DUMP_MODE = True
 
@@ -320,13 +331,16 @@ if __name__ == "__main__":
         graph_list_struc_feat = employ_graph_embedding(graph_list_struc_feat,args)
         # apply pre-define feature embedding
         # graph_list = data_preprocessing(args)
-        update_adj_cosine_d(graph_list_ori_feat,graph_list_struc_feat)
+        update_adj_cosine_d(graph_list_ori_feat,graph_list_struc_feat,dualGraph=args.dual)
         
-        graph_list = [(G,
-                np.concatenate((ori_feat, graph_list_struc_feat[i][1]), axis=1),
-                node_labels,
-                train_mask)
-               for i, (G, ori_feat, node_labels, train_mask) in enumerate(graph_list_ori_feat)]
+        if args.dual:
+            graph_list = [(G,
+                    np.concatenate((ori_feat, graph_list_struc_feat[i][1]), axis=1),
+                    node_labels,
+                    train_mask)
+                for i, (G, ori_feat, node_labels, train_mask) in enumerate(graph_list_ori_feat)]
+        else:
+            graph_list = graph_list_struc_feat
         
     else:
         assert False, "Please specify the dataset path to do data preprocessing or load the pickle file."
@@ -355,8 +369,8 @@ if __name__ == "__main__":
     print("Length of val_data: ", len(val_data))
     
     # Create custom datasets for each split
-    train_dataset = CustomGraphDataset(train_data, split='train',DIM=EMBEDDING_DIM)
-    val_dataset = CustomGraphDataset(val_data, split='val',DIM=EMBEDDING_DIM)
+    train_dataset = CustomGraphDataset(train_data, split='train',DIM=EMBEDDING_DIM, dual=args.dual)
+    val_dataset = CustomGraphDataset(val_data, split='val',DIM=EMBEDDING_DIM,dual=args.dual)
     #test_dataset = CustomGraphDataset(test_data, split='test')
 
     # Create dataloaders for each split
@@ -369,7 +383,7 @@ if __name__ == "__main__":
     #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Get the input feature dimension
-    #input_feature_dim = graph_list[0][1].shape[1] # get the feature dimension of the first graph
+    input_feature_dim = graph_list[0][1].shape[1] # get the feature dimension of the first graph
     ori_feat_input_dim = graph_list_ori_feat[0][1].shape[1] # if using dual graph embedding
     struc_feat_input_dim = graph_list_struc_feat[0][1].shape[1] # if using dual graph embedding
     #model = GCNModel(input_feature_dim, HIDDEN_DIM, 2).to(device)
@@ -399,8 +413,10 @@ if __name__ == "__main__":
         # ) as prof:
         for batched_dgl_G in train_dataloader:
             batched_dgl_G = batched_dgl_G.to(device) #this may cost too much time
-            #logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
-            logits = model(batched_dgl_G, batched_dgl_G.ndata['ori_feat'],batched_dgl_G.ndata['struc_feat'])
+            if args.dual:
+                logits = model(batched_dgl_G, batched_dgl_G.ndata['ori_feat'],batched_dgl_G.ndata['struc_feat'])
+            else:
+                logits = model(batched_dgl_G, batched_dgl_G.ndata['feat'])
             # Compute the class weights for the current batch
             train_labels = batched_dgl_G.ndata['label'][batched_dgl_G.ndata['train_mask']].cpu().numpy()
             class_weights = calculate_class_weights(train_labels)
@@ -458,7 +474,7 @@ if __name__ == "__main__":
     # Instantiate the ThresholdFinder class
     model.eval()
     print("Now evaluating the model on the validation set and find the best thershold...")
-    threshold_finder = ThresholdFinder(val_dataloader, model, device)
+    threshold_finder = ThresholdFinder(val_dataloader, model, device,args)
     #threshold_finder = ThresholdFinder(test_dataloader, model, device)
 
     # Find the best threshold
@@ -473,7 +489,7 @@ if __name__ == "__main__":
     
     # additional step: evaluate the model on the test set
     print("Now evaluating the model on the test set...")
-    test_dataset = CustomGraphDataset(test_data, split='test')
+    test_dataset = CustomGraphDataset(test_data, split='test',dual=args.dual)
     test_dataloader = GraphDataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
     _ = model_eval(args, test_dataloader, model, device, save_model=False, thred=best_threshold, print_stats=True)
     
