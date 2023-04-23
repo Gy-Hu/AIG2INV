@@ -48,17 +48,14 @@ class ThresholdFinder:
 
             for batched_dgl_G in self.dataloader:
                 batched_dgl_G = batched_dgl_G.to(self.device)
-                if self.args.dual:
-                    logits = self.model(batched_dgl_G, batched_dgl_G.ndata
-                                        ,batched_dgl_G.ndata['struc_feat'])
-                else:
-                    logits = self.model(batched_dgl_G, batched_dgl_G.ndata['feat'])
+                
+                logits = self.model(batched_dgl_G, batched_dgl_G.ndata['feat'])
                 probs = F.softmax(logits, dim=1)
                 pred = self.make_predictions(probs, threshold)
                 true_labels = batched_dgl_G.ndata['label'].cpu().numpy()
-                variable_mask = batched_dgl_G.ndata['train_mask'].cpu().numpy()
+                variable_mask = batched_dgl_G.ndata['mask'].cpu().numpy()
                 # if self.dataloader.dataset.split == 'train':
-                #     variable_mask = batched_dgl_G.ndata['train_mask'].cpu().numpy()
+                #     variable_mask = batched_dgl_G.ndata['mask'].cpu().numpy()
                 # elif self.dataloader.dataset.split == 'val':
                 #     variable_mask = batched_dgl_G.ndata['val_mask'].cpu().numpy()
                 # elif self.dataloader.dataset.split == 'test':

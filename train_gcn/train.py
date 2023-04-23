@@ -66,7 +66,7 @@ from GraphConverter import update_adj_cosine_d
 #GROUND_TRUTH = os.path.join(JSON_FOLDER.replace('expr_to_build_graph', 'ground_truth_table'), JSON_FOLDER.split('/')[-2]+'.csv')
 HIDDEN_DIM = 64 # 32 default
 EMBEDDING_DIM = 32 # 16 default
-EPOCH = 1 # 100 default
+EPOCH = 10 # 100 default
 LR = 0.001 # =learning rate 0.01 default
 BATCH_SIZE = 2 # 2 default
 DATASET_SPLIT = 4 # None default, used for testing
@@ -296,6 +296,7 @@ if __name__ == "__main__":
     parser.add_argument('--dump-pickle-name', type=str, default=None, help='dump pickle file name') # no need if load pickle
     parser.add_argument('--model-name', type=str, default=None, help='model name to save')
     parser.add_argument('--dual', action='store_true', help='use dual graph')
+    #parser.add_argument('--concat', action='store_true', help='concatenate the original feature and the deepwalk embedding')
     # complex
     # args = parser.parse_args(['--dataset', \
     #                           '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_hard_abc_no_simplification_0-9/bad_cube_cex2graph/expr_to_build_graph/',\
@@ -303,9 +304,8 @@ if __name__ == "__main__":
     #                           ])
     # simple
     #args = parser.parse_args(['--load-pickle', '/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/train_gcn/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22.pickle'])
-    args = parser.parse_args(['--dataset','/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38/bad_cube_cex2graph/expr_to_build_graph/',\
-        '--dual'])
-    #args = parser.parse_args()
+    #args = parser.parse_args(['--dataset','/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38/bad_cube_cex2graph/expr_to_build_graph/','--dual'])
+    args = parser.parse_args()
     if args.dump_pickle_name is not None: DUMP_MODE = True
 
     if args.load_pickle is not None: #  First, load the pickle file if it exists

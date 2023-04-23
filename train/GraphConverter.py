@@ -53,19 +53,23 @@ def convert_heterograph(graph): #dgl graph as input
     pass
 '''
 
-def update_adj_cosine_d(graph_list_ori_feat,graph_list_struc_feat,dualGraph=False):
-    if not dualGraph: return
+def update_adj_cosine_d(graph_list_encoded,graph_list_struc_feat):
     # Iterate through the tuples in both lists
-    for (G_ori, _,__,___), (G_struc, struc_feat, ____, _____) in zip(graph_list_ori_feat, graph_list_struc_feat):
+    for (G_ori, _,__,___), (G_struc, struc_feat, ____, _____) in zip(graph_list_encoded, graph_list_struc_feat):
         # Calculate cosine distances between the node embeddings
         dist_matrix = cosine_distances(struc_feat)
-        
+        # get the nodes list
+        nodes_list = list(G_ori.nodes(data=True))
         # Update the adjacency matrix of the graph in graph_list_ori_feat
         for i in range(dist_matrix.shape[0]):
             for j in range(dist_matrix.shape[1]):
+                if i == j: continue
                 # You can set a threshold or use a custom function to decide when to update the adjacency matrix
-                if dist_matrix[i, j] < 0.5: # Example threshold
+                
+                '''
+                i, j is the index of the node in the graph (not the node id)
+                so we need to get the node id from the nodes_list
+                '''
+                # if distances are less than 0.5, and (i,j) in graph is state variable, then add edge
+                if dist_matrix[i, j] < 0.5 and  G_ori.nodes[nodes_list[i][0]]['type'] == 'variable' and  G_ori.nodes[nodes_list[j][0]]['type'] == 'variable':
                     G_ori.add_edge(i, j)
-                    G_ori.add_edge(j, i)
-                    G_struc.add_edge(i, j)
-                    G_struc.add_edge(j, i)
