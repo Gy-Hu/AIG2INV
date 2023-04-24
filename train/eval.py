@@ -64,13 +64,13 @@ if __name__ == "__main__":
     accuracy = accuracy_score(variable_true_labels, variable_pred)
     precision = precision_score(variable_true_labels, variable_pred)
     recall = recall_score(variable_true_labels, variable_pred)
-    f1 = f1_score(variable_true_labels, variable_pred)
+    mf1 = f1_score(variable_true_labels, variable_pred,average='macro',zero_division=1)
     confusion = confusion_matrix(variable_true_labels, variable_pred)
 
     print("Accuracy: ", accuracy)
     print("Precision: ", precision)
     print("Recall: ", recall)
-    print("F1-score: ", f1)
+    print("F1-score: ", mf1)
     print("Confusion matrix:")
     print(confusion)
     

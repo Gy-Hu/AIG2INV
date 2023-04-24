@@ -97,7 +97,7 @@ def model_eval(args, val_dataloader, model, device, save_model=False,thred=None,
     accuracy = accuracy_score(variable_true_labels, variable_pred)
     precision = precision_score(variable_true_labels, variable_pred)
     recall = recall_score(variable_true_labels, variable_pred)
-    f1 = f1_score(variable_true_labels, variable_pred)
+    mf1 = f1_score(variable_true_labels, variable_pred, average='macro',zero_division=1)
     confusion = confusion_matrix(variable_true_labels, variable_pred)
 
     if print_stats:
@@ -105,7 +105,7 @@ def model_eval(args, val_dataloader, model, device, save_model=False,thred=None,
         #print("Accuracy: ", accuracy, "Precision: ", precision, "Recall: ", recall, "F1-score: ", f1)
         print("Precision: ", precision)
         print("Recall: ", recall)
-        print("F1-score: ", f1)
+        print("MF1-score: ", mf1)
         print("Confusion matrix:")
         print(confusion)
     
@@ -113,7 +113,7 @@ def model_eval(args, val_dataloader, model, device, save_model=False,thred=None,
     if args.model_name is not None and save_model:
         torch.save(model.state_dict(), f"{args.model_name}.pt")
     
-    return f1
+    return mf1
     
     
 
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     parser.add_argument('--model-name', type=str, default=None, help='model name to save')
     parser.add_argument('--update-adjs', action='store_true', help='update adjs by applying knn graph')
     
-    args = parser.parse_args(['--dataset','/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38/bad_cube_cex2graph/expr_to_build_graph/', '--update-adjs'])
+    args = parser.parse_args(['--dataset','/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38/bad_cube_cex2graph/expr_to_build_graph/'])
     if args.dump_pickle_name is not None: DUMP_MODE = True
 
     if args.load_pickle is not None: #  First, load the pickle file if it exists
@@ -200,7 +200,7 @@ if __name__ == "__main__":
     #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     #model = GCNModel(input_feature_dim, HIDDEN_DIM, 2).to(device)
-    #model = BWGNN(input_feature_dim, HIDDEN_DIM, 2).to(device)
+    #for (G, initial_feat, node_labels, train_mask) in graph_list: G.to_undirected(); model = BWGNN(graph_list[0][1].shape[1], HIDDEN_DIM, 2).to(device)
     #model = BWGNN_Inductive(input_feature_dim, HIDDEN_DIM, 2).to(device)
     #model = DualGraphSAGEModel(ori_feat_input_dim, struc_feat_input_dim, HIDDEN_DIM, 2, 16).to(device)
     model = SAGEConvModel(graph_list[0][1].shape[1], HIDDEN_DIM, 2).to(device)
@@ -296,7 +296,7 @@ if __name__ == "__main__":
 
     # 6. Evaluate the model
     print("Now evaluating the model on the whole training dataset...")
-    _ = model_eval(args, train_dataloader, model, device, save_model=True, thred=best_threshold, print_stats=True)
+    _ = model_eval(args, train_dataloader, model, device, save_model=True, print_stats=True)
     
     # additional step: evaluate the model on the test set
     print("Now evaluating the model on the test set...")
@@ -305,15 +305,15 @@ if __name__ == "__main__":
     _ = model_eval(args, test_dataloader, model, device, save_model=False, thred=best_threshold, print_stats=True)
     
     # Explain the prediction for graph 0
-    explainer = GNNExplainer(model, num_hops=1)
-    g = test_dataset[0]
-    features = g.ndata['feat']
-    labels = g.ndata['label']
-    train_mask = g.ndata['mask']
-    explainer = GNNExplainer(model, num_hops=1)
-    new_center, sg, feat_mask, edge_mask = explainer.explain_node(10, g , features)
-    print("Feature importance of node 10: ", feat_mask)
-    print("Edge importance of node 10: ", edge_mask)
+    # explainer = GNNExplainer(model, num_hops=1)
+    # g = test_dataset[0]
+    # features = g.ndata['feat']
+    # labels = g.ndata['label']
+    # train_mask = g.ndata['mask']
+    # explainer = GNNExplainer(model, num_hops=1)
+    # new_center, sg, feat_mask, edge_mask = explainer.explain_node(10, g , features)
+    # print("Feature importance of node 10: ", feat_mask)
+    # print("Edge importance of node 10: ", edge_mask)
     
     
 

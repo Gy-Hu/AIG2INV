@@ -68,13 +68,13 @@ class ThresholdFinder:
             variable_pred = np.concatenate(variable_pred_list)
             variable_true_labels = np.concatenate(variable_true_labels_list)
 
-            f1 = f1_score(variable_true_labels, variable_pred)
+            mf1 = f1_score(variable_true_labels, variable_pred,average='macro',zero_division=1)
 
             # Calculate metrics
             confusion = confusion_matrix(variable_true_labels, variable_pred)
 
-            if f1 > best_f1:
-                best_f1 = f1
+            if mf1 > best_f1:
+                best_f1 = mf1
                 best_threshold = threshold
                 best_confusion = confusion
 

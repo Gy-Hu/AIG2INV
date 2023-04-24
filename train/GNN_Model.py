@@ -139,7 +139,7 @@ class PolyConv(nn.Module):
         This ensures that any updates made to the graph's node/edge features are discarded once the forward pass is complete. 
         It helps to maintain the original graph structure for future operations.
         '''
-        with graph.local_scope():
+        with graph.local_scope(): #local_scope() -> 
             #Compute the inverse square root of the node degrees for normalization
             D_invsqrt = torch.pow(graph.in_degrees().float().clamp(
                 min=1), -0.5).unsqueeze(-1).to(feat.device) 

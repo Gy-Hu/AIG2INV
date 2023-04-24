@@ -49,12 +49,14 @@ def one_hot_encoding(node_data):
             value_encoding = [0, 0, 1, 0, 0, 0, 0]
         elif node_data['application'].startswith('constant_f'):
             value_encoding = [0, 0, 0, 1, 0, 0, 0]
-    elif node_data['application'] == 'and':
-        value_encoding = [0, 0, 0, 0, 1, 0, 0]
-    elif node_data['application'] == 'or':
-        value_encoding = [0, 0, 0, 0, 0, 1, 0]
-    elif node_data['application'] == 'not':
-        value_encoding = [0, 0, 0, 0, 0, 0, 1]
+            
+    elif node_data['type'] == 'node':
+        if node_data['application'] == 'and':
+            value_encoding = [0, 0, 0, 0, 1, 0, 0]
+        elif node_data['application'] == 'or':
+            value_encoding = [0, 0, 0, 0, 0, 1, 0]
+        elif node_data['application'] == 'not':
+            value_encoding = [0, 0, 0, 0, 0, 0, 1]
 
     return kind_encoding, value_encoding
 
@@ -73,7 +75,30 @@ def fout_embedding(G, node_id):
                 fout[2] += 1
     return fout
     
-
+def fin_embedding(G, node_id):
+    # find all the neighbors of the node that point to it
+    # and count the number of each type of node
+    neighbors = list(G.successors(node_id))
+    fout = np.array([0 , 0 , 0, 0, 0 ,0, 0]) #represent the number of Not, And, Or
+    for _ in neighbors:
+        if G.nodes[_]["type"] == "node":
+            if G.nodes[_]["application"] == "not":
+                fout[0] += 1
+            elif G.nodes[_]["application"] == "and":
+                fout[1] += 1
+            elif G.nodes[_]["application"] == "or":
+                fout[2] += 1
+                
+        elif G.nodes[_]["type"] == "variable":
+            if G.nodes[_]["application"].startswith("v"):
+                fout[3] += 1
+            elif G.nodes[_]["application"].startswith("i"):
+                fout[4] += 1
+            elif G.nodes[_]["application"].startswith("constant_t"):
+                fout[5] += 1
+            elif G.nodes[_]["application"].startswith("constant_f"):
+                fout[6] += 1
+    return fout
 
 # Helper function to generate features for a single node
 def generate_single_node_features(G, node_id, node_data , betweenness_centrality, max_node_id):
@@ -113,13 +138,14 @@ def generate_node_features(G):
         kind_enc, value_enc = one_hot_encoding(node_data)
         betweenness = betweenness_centrality[node_id]
         #degree = G.degree(node_id)
-        root_distance = distance_to_root(G, 0)[node_id]
+        root_distance = distance_to_root(G, root_id)[node_id]
         #neighbor_ops = count_neighbor_operators(G, node_id)
         pos_emb = position_embedding(node_id, max_node_id)
         fout = fout_embedding(G, node_id)
+        fin = fin_embedding(G, node_id)
 
         features = np.array([betweenness, root_distance])
-        features = np.concatenate((kind_enc, value_enc, pos_emb, fout, features))
+        features = np.concatenate((kind_enc, value_enc, pos_emb, fout, fin, features))
         node_features.append(features)
         ### other features can be added:
         ### - conncetivity between state variables
@@ -134,14 +160,14 @@ def generate_node_features(G):
     node_features_matrix = np.vstack(node_features)
 
     # Slice the continuous features (assuming they are the last 5 columns in this case)
-    continuous_features = node_features_matrix[:, -5:]
+    continuous_features = node_features_matrix[:, -8:]
 
     # Scale the continuous features using standard scaling
     scaler = StandardScaler()
     scaled_continuous_features = scaler.fit_transform(continuous_features)
 
     # Replace the original continuous features with the scaled ones
-    node_features_matrix[:, -5:] = scaled_continuous_features
+    node_features_matrix[:, -8:] = scaled_continuous_features
 
     # Convert the 2D NumPy array back to the list of arrays
     node_features = list(node_features_matrix)
