@@ -17,7 +17,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from dgl.dataloading import GraphDataLoader
 #from BWGNN import BWGNN_Hetero, BWGNN, PolyConv, PolyConvBatch
 import glob 
-from GNN_Model import GCNModel, BWGNN_Hetero, BWGNN, SAGE, GATModel, SAGE_BW, DualGCNModel, DualGraphSAGEModel
+from GNN_Model import GCNModel, SAGE, GATModel, SAGE_BW, DualGCNModel, DualGraphSAGEModel
 from Dataset import CustomGraphDataset
 from Loss import FocalLoss
 import argparse
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     parser.add_argument('--update-adjs', action='store_true', help='update adjs by applying knn graph')
     parser.add_argument('--undirected', action='store_true', help='undirected graph')
     
-    args = parser.parse_args(['--dataset','/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/'])
+    args = parser.parse_args(['--dataset','/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/','--undirected'])
     print(args)
     if args.dump_pickle_name is not None: DUMP_MODE = True
 
@@ -207,9 +207,9 @@ if __name__ == "__main__":
     
     #model = GCNModel(input_feature_dim, HIDDEN_DIM, 2).to(device)
     #for (G, initial_feat, node_labels, train_mask) in graph_list: G.to_undirected(); model = BWGNN(graph_list[0][1].shape[1], HIDDEN_DIM, 2).to(device)
-    #model = SAGE_BW(graph_list[0][1].shape[1], HIDDEN_DIM, 2).to(device)
+    model = SAGE_BW(graph_list[0][1].shape[1], HIDDEN_DIM, 2).to(device)
     #model = DualGraphSAGEModel(ori_feat_input_dim, struc_feat_input_dim, HIDDEN_DIM, 2, 16).to(device)
-    model = SAGE(graph_list[0][1].shape[1], HIDDEN_DIM, 2).to(device)
+    #model = SAGE(graph_list[0][1].shape[1], HIDDEN_DIM, 2).to(device)
     #model = GATModel(input_feature_dim, HIDDEN_DIM, 2).to(device)
     print(model) # for log analysis
     loss_function = nn.CrossEntropyLoss()

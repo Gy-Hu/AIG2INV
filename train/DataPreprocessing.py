@@ -18,7 +18,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from dgl.dataloading import GraphDataLoader
 #from BWGNN import BWGNN_Hetero, BWGNN, PolyConv, PolyConvBatch
 import glob 
-from GNN_Model import GCNModel, BWGNN_Hetero, BWGNN, SAGE, GATModel, SAGE_BW, DualGCNModel, DualGraphSAGEModel
+from GNN_Model import GCNModel, SAGE, GATModel, SAGE_BW, DualGCNModel, DualGraphSAGEModel
 from Dataset import CustomGraphDataset
 from Loss import FocalLoss
 import argparse

@@ -1,7 +1,7 @@
 
 import pickle
 import torch
-from GNN_Model import GCNModel, BWGNN_Hetero, BWGNN
+from GNN_Model import GCNModel
 from Dataset import CustomGraphDataset
 from dgl.dataloading import GraphDataLoader
 import numpy as np
