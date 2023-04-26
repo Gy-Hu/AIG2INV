@@ -48,6 +48,7 @@ data2dataset/aig2graph/
 utils/picosat/
 clause-learning/
 !check_proc.sh
+!re-generate-graph.sh
 .vector_cache/
 *.pickle
 train_gcn/graph_list.pickle

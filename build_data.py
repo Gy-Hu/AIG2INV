@@ -169,6 +169,7 @@ def find_case_in_selected_dataset_with_inv(model_checker='ic3ref'):
         'vcegar_QF_BV_ar',
         'rast-p00',
         'vis_arrays_bufferAlloc',
+        'vis.prodcell^01.E_9',
         'zipversa_composecrc_prf-p10',
         'qspiflash_dualflexpress_divthree-p010',
         'vcegar_QF_BV_itc99_b13_p10',

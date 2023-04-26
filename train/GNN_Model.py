@@ -7,6 +7,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from dgl.nn import GraphConv, ChebConv, GATConv, SAGEConv, GINConv
+from GlobalVar import *
 from torch import nn
 from torch.optim import Adam
 import dgl.data
@@ -47,7 +48,7 @@ def calculate_theta2(d):
         thetas.append(inv_coeff)
     return thetas
 
-class PolyConv_Inductive(nn.Module):
+class SagePolyConv(nn.Module):
     def __init__(self,
                  in_feats,
                  out_feats,
@@ -56,7 +57,7 @@ class PolyConv_Inductive(nn.Module):
                  activation=F.leaky_relu,
                  lin=False,
                  bias=False):
-        super(PolyConv_Inductive, self).__init__()
+        super(SagePolyConv, self).__init__()
         self._theta = theta
         self._k = len(self._theta)
         self._in_feats = in_feats
@@ -195,15 +196,15 @@ class PolyConvBatch(nn.Module):
                 h += self._theta[k]*feat
         return h
 
-class BWGNN_Inductive(nn.Module):
+class SAGE_BW(nn.Module):
     def __init__(self, in_feats, h_feats, num_classes, d=2, num_sample_neighbors=5, batch=False):
-        super(BWGNN_Inductive, self).__init__()
-        self.dropout = nn.Dropout(0.8)
+        super(SAGE_BW, self).__init__()
+        self.dropout = nn.Dropout(DROPOUT)
         self.thetas = calculate_theta2(d=d)
         self.conv = nn.ModuleList()  # Use nn.ModuleList to store layers
         for i in range(len(self.thetas)):
             if not batch:
-                self.conv.append(PolyConv_Inductive(h_feats, h_feats, self.thetas[i], num_sample_neighbors, lin=False))
+                self.conv.append(SagePolyConv(h_feats, h_feats, self.thetas[i], num_sample_neighbors, lin=False))
             else:
                 assert False
         self.linear = nn.Linear(in_feats, h_feats)
@@ -230,8 +231,6 @@ class BWGNN_Inductive(nn.Module):
         h = self.linear4(h)
         return h
 
-       
-
 
 class BWGNN(nn.Module):
     def __init__(self, in_feats, h_feats, num_classes, d=2, batch=False):
@@ -241,7 +240,7 @@ class BWGNN(nn.Module):
         which increases its capacity to learn complex patterns in the data. 
         This increased capacity can help the model perform better on imbalanced datasets.
         '''
-        self.dropout = nn.Dropout(0.8)
+        self.dropout = nn.Dropout(DROPOUT)
         self.thetas = calculate_theta2(d=d)
         self.conv = []
         for i in range(len(self.thetas)):
@@ -394,18 +393,26 @@ class DualGCNModel(nn.Module):
 '''
 -----------------------------------GraphSAGE-----------------------------------
 '''
-class SAGEConvModel(nn.Module):
-    def __init__(self, in_feats, hidden_size, num_classes, aggregator_type='mean'):
-        super(SAGEConvModel, self).__init__()
-        self.sageconv1 = SAGEConv(in_feats, hidden_size, aggregator_type)
-        self.sageconv2 = SAGEConv(hidden_size, num_classes, aggregator_type)
+class SAGE(nn.Module):
+    def __init__(self, in_feats, hidden_size, num_classes, aggregator_type='gcn', dropout=0):
+        super(SAGE, self).__init__()
+        self.layers = nn.ModuleList()
+        self.layers.append(SAGEConv(in_feats, hidden_size, aggregator_type))
+        self.layers.append(SAGEConv(hidden_size, hidden_size, aggregator_type))
+        self.layers.append(SAGEConv(hidden_size, hidden_size, aggregator_type))
+        self.layers.append(SAGEConv(hidden_size, hidden_size, aggregator_type))
+        self.layers.append(SAGEConv(hidden_size, num_classes, aggregator_type))
+        self.dropout = nn.Dropout(DROPOUT)
         self.relu = nn.ReLU()
 
     def forward(self, graph, feat, eweight=None):
-        h = self.sageconv1(graph, feat)
-        h = self.relu(h)
-        h = self.sageconv2(graph, h)
-        return h
+        x = feat # x is the feature of the node
+        for l, layers in enumerate(self.layers):
+            x = layers(graph, x)
+            if l != len(self.layers) - 1:
+                x = F.relu(x)
+                x = self.dropout(x)
+        return x
 
 '''
 -----------------------------------DualGraphSage-------------------------

@@ -172,7 +172,7 @@ int main(int argc, char ** argv) {
     if(is_simplify){
         cout<<"simplification of graph is on"<<endl;
     }
-    cout<<"file name:"<<file_name<<endl;
+    cout<<"\nfile name:"<<file_name<<endl;
     //print if simplify the graph
     cout<<"ready to simplify: "<<is_simplify<<endl;
 
@@ -200,7 +200,7 @@ int main(int argc, char ** argv) {
 
     //traversal the file name vector and get the graph
     for(int i=0;i<filenames.size();i++){
-        cout<<"file name:"<<filenames[i]<<endl;
+        cout<<"\nfile name:"<<filenames[i]<<endl;
         //if file end with .smt2, then parse it
         if(filenames[i].find(".smt2") == string::npos){
             //skip this loop

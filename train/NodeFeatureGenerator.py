@@ -39,6 +39,7 @@ def count_neighbor_operators(G, node_id):
 
 def one_hot_encoding(node_data):
     kind_encoding = [0] if node_data['type'] == 'node' else [1]
+    value_encoding = None; 
 
     if node_data['type'] == 'variable':
         if node_data['application'].startswith('v'):
@@ -49,7 +50,7 @@ def one_hot_encoding(node_data):
             value_encoding = [0, 0, 1, 0, 0, 0, 0]
         elif node_data['application'].startswith('constant_f'):
             value_encoding = [0, 0, 0, 1, 0, 0, 0]
-            
+
     elif node_data['type'] == 'node':
         if node_data['application'] == 'and':
             value_encoding = [0, 0, 0, 0, 1, 0, 0]
@@ -57,7 +58,10 @@ def one_hot_encoding(node_data):
             value_encoding = [0, 0, 0, 0, 0, 1, 0]
         elif node_data['application'] == 'not':
             value_encoding = [0, 0, 0, 0, 0, 0, 1]
-
+            
+    assert (
+        len(kind_encoding) == 1 and value_encoding is not None
+    ), f"Encoding length is not correct, node data: {node_data}"
     return kind_encoding, value_encoding
 
 def fout_embedding(G, node_id):
@@ -102,7 +106,7 @@ def fin_embedding(G, node_id):
 
 # Helper function to generate features for a single node
 def generate_single_node_features(G, node_id, node_data , betweenness_centrality, max_node_id):
-    kind_enc, value_enc = one_hot_encoding(node_data)
+    kind_enc, value_enc = one_hot_encoding(node_data,G)
     betweenness = betweenness_centrality[node_id]
     degree = G.degree(node_id)
     #root_distance = distance_to_root(G, root_id)[node_id]
