@@ -6,4 +6,4 @@ BATCH_SIZE = 32 # 2 default
 DATASET_SPLIT = None # None default, used for testing
 WEIGHT_DECAY = 0 # Apply L1 or L2 regularization, [1e-3,1e-2], default 1e-5
 DUMP_MODE = False # False default, used for preprocessing graph data
-DROPOUT = 0
+DROPOUT = 0 # set 0.8 for SAGE-BW, 0 default

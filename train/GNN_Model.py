@@ -82,7 +82,7 @@ class SagePolyConv(nn.Module):
         with sampled_graph.local_scope():
             D_invsqrt = torch.pow(sampled_graph.in_degrees().float().clamp(
                 min=1), -0.5).unsqueeze(-1).to(feat.device)
-            h = self._theta[0] * feat
+            h = self._theta[0] * feat #cheb/GCN theta is constant value
             for k in range(1, self._k):
                 sampled_graph.ndata['h'] = feat * D_invsqrt
                 sampled_graph.update_all(fn.copy_u('h', 'm'), fn.sum('m', 'h'))
