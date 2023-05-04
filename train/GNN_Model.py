@@ -66,6 +66,14 @@ class SagePolyConv(nn.Module):
         self.activation = activation
         self.linear = nn.Linear(in_feats, out_feats, bias)
         self.lin = lin
+    
+    '''
+    def reset_parameters(self):
+        if self.linear.weight is not None:
+            init.xavier_uniform_(self.linear.weight)
+        if self.linear.bias is not None:
+            init.zeros_(self.linear.bias)
+    '''
 
     def forward(self, graph, feat):
 
@@ -112,8 +120,9 @@ class SAGE_BW(nn.Module):
         self.act = nn.ReLU()
         self.d = d
 
-    def forward(self, g, in_feat):
-        self.g = g
+    def forward(self, graph, feat, eweight=None):
+        self.g = graph
+        in_feat = feat
         device = in_feat.device
         h = self.linear(in_feat)
         h = self.act(h)

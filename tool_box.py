@@ -56,58 +56,135 @@ def calculate_pickle_number(file_path):
 
 # draw mermaid -> from the graph json file
 def json2mermaid(json_path=None):
-    with open(json_path) as f:
-        json_obj = json.loads(f.read())
-    if json_path == None: 
+    if json_path is not None:
+        with open(json_path) as f:
+            json_obj = json.loads(f.read())
+    else: 
+
+    #     json_obj = json.loads('''
+    #    [    
+    #    {        
+    #         "data": {            
+    #                 "application": "not",            
+    #                 "id": 5,            
+    #                 "to": {                
+    #                     "children_id": [18]
+    #                 },
+    #                 "type": "node"
+    #             }
+    #         },
+    #     {
+    #     "data": {
+    #         "application": "and",
+    #         "id": 6,
+    #         "to": {
+    #             "children_id": [
+    #                 19,
+    #                 20
+    #             ]
+    #         },
+    #         "type": "node"
+    #     }
+    # },
+    # {
+    #     "data": {
+    #         "application": "i10",
+    #         "id": 18,
+    #         "type": "variable"
+    #     }
+    # },
+    # {
+    #     "data": {
+    #         "application": "i11",
+    #         "id": 19,
+    #         "type": "variable"
+    #     }
+    # },
+    # {
+    #     "data": {
+    #         "application": "i12",
+    #         "id": 20,
+    #         "type": "variable"
+    #     }
+    # }
+    # ]
+
+    # ''')
         json_obj = json.loads('''
-       [    
-       {        
+        [  
+        {
+            "data": {
+                "application": "and",
+                "id": 3,
+                "to": {
+                    "children_id": [
+                        4,
+                        5
+                    ]
+                },
+                "type": "node"
+            }
+        },  
+        {
+            "data": {
+                "application": "and",
+                "id": 6,
+                "to": {
+                    "children_id": [
+                        19,
+                        20
+                    ]
+                },
+                "type": "node"
+            }
+        },
+    {        
             "data": {            
                     "application": "not",            
-                    "id": 5,            
+                    "id": 4,            
                     "to": {                
-                        "children_id": [18]
+                        "children_id": [6]
                     },
                     "type": "node"
                 }
             },
+            {
+            "data": {
+                "application": "and",
+                "id": 5,
+                "to": {
+                    "children_id": [
+                        18,
+                        19
+                    ]
+                },
+                "type": "node"
+            }
+        },
         {
-        "data": {
-            "application": "and",
-            "id": 6,
-            "to": {
-                "children_id": [
-                    19,
-                    20
-                ]
-            },
-            "type": "node"
+            "data": {
+                "application": "v1",
+                "id": 18,
+                "type": "variable"
+            }
+        },
+        {
+            "data": {
+                "application": "v2",
+                "id": 19,
+                "type": "variable"
+            }
+        },
+        {
+            "data": {
+                "application": "v3",
+                "id": 20,
+                "type": "variable"
+            }
         }
-    },
-    {
-        "data": {
-            "application": "i10",
-            "id": 18,
-            "type": "variable"
-        }
-    },
-    {
-        "data": {
-            "application": "i11",
-            "id": 19,
-            "type": "variable"
-        }
-    },
-    {
-        "data": {
-            "application": "i12",
-            "id": 20,
-            "type": "variable"
-        }
-    }
-]
+        ]
 
-    ''')
+        ''')
     graph = 'graph TB\n'
     for obj in json_obj:
         data = obj['data']
@@ -125,7 +202,7 @@ def json2mermaid(json_path=None):
     base64_bytes = base64.b64encode(graphbytes)
     base64_string = base64_bytes.decode("ascii")
     img_data = requests.get(f'https://mermaid.ink/img/{base64_string}').content
-    with open('mermaid_deep_simplify.jpg', 'wb') as f:
+    with open('mermaid_test.jpg', 'wb') as f:
         f.write(img_data)
 
 

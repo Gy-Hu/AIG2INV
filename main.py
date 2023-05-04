@@ -417,7 +417,7 @@ def compare_abc(aig_original_location, selected_aig_case, log_location=None):
     elif int(last_level_abc) - int(last_level_nn_abc) > 0 and elapsed_time_for_abc < elapsed_time_for_nn_abc:
         print(
             'NN-abc has been improved with  ',
-            int(last_level_abc) - int(elapsed_time_for_nn_abc),
+            int(last_level_abc) - int(last_level_nn_abc),
             ' frames',
         )
     else:
@@ -890,7 +890,7 @@ if __name__ == "__main__":
     '''
 
     '''
-    '''
+    
     args = parser.parse_args([
         #'--threshold', '0.5',
         '--selected-built-dataset', 'dataset_hwmcc2020_all_only_unsat_ic3ref_no_simplification_0-38',
@@ -899,7 +899,7 @@ if __name__ == "__main__":
         '--gpu-id', '0',
         '--compare_with_ic3ref',
         '--re-predict'])
-    
+    '''
 
     #assert args.log_location is not None, 'log location is required'
     args.compare_with_ic3ref_basic_generalization = "-b" if args.compare_with_ic3ref_basic_generalization else ""

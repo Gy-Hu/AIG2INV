@@ -129,6 +129,7 @@ if __name__ == "__main__":
     
     args = parser.parse_args(['--dataset','/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/','--undirected'])
     print(args)
+    print("hidden dimension: ", HIDDEN_DIM, "\nembedding dimension: ", EMBEDDING_DIM, "\nepoch: ", EPOCH, "\nlearning rate: ", LR, "\nbatch size: ", BATCH_SIZE, "\ndataset split: ", DATASET_SPLIT, "\nweight decay: ", WEIGHT_DECAY, "\ndropout: ", DROPOUT)
     if args.dump_pickle_name is not None: DUMP_MODE = True
 
     if args.load_pickle is not None: #  First, load the pickle file if it exists
@@ -311,15 +312,32 @@ if __name__ == "__main__":
     _ = model_eval(args, test_dataloader, model, device, save_model=False, thred=best_threshold, print_stats=True)
     
     # Explain the prediction for graph 0
-    # explainer = GNNExplainer(model, num_hops=1)
-    # g = test_dataset[0]
-    # features = g.ndata['feat']
-    # labels = g.ndata['label']
-    # train_mask = g.ndata['mask']
-    # explainer = GNNExplainer(model, num_hops=1)
-    # new_center, sg, feat_mask, edge_mask = explainer.explain_node(10, g , features)
-    # print("Feature importance of node 10: ", feat_mask)
-    # print("Edge importance of node 10: ", edge_mask)
+    explainer = GNNExplainer(model, num_hops=1)
+    g = test_dataset[0]
+    features = g.ndata['feat']
+    labels = g.ndata['label']
+    train_mask = g.ndata['mask']
+
+    # Get all node indices where the mask is True
+    node_indices = np.where(train_mask)[0]
+    # randomly select 10 nodes
+    node_indices = np.random.choice(node_indices, 10, replace=False)
+
+    # Initialize an array to store feature importance for all masked nodes
+    feat_masks = []
+
+    # Iterate over all masked node indices
+    for node_idx in node_indices:
+        _, _, feat_mask, _ = explainer.explain_node(node_idx, g, features)
+        feat_masks.append(feat_mask)
+
+    # Convert the list of feature importance arrays into a 2D NumPy array
+    feat_masks = np.vstack(feat_masks)
+
+    # Calculate the mean feature importance across all masked nodes
+    mean_feat_mask = np.mean(feat_masks, axis=0)
+
+    print("Mean feature importance of masked nodes: ", mean_feat_mask)
     
     
 

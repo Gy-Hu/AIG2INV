@@ -105,6 +105,7 @@ def fin_embedding(G, node_id):
     return fout
 
 # Helper function to generate features for a single node
+'''
 def generate_single_node_features(G, node_id, node_data , betweenness_centrality, max_node_id):
     kind_enc, value_enc = one_hot_encoding(node_data,G)
     betweenness = betweenness_centrality[node_id]
@@ -117,6 +118,7 @@ def generate_single_node_features(G, node_id, node_data , betweenness_centrality
     features = np.concatenate((kind_enc, value_enc, features, pos_emb))
 
     return features
+'''
 
 def generate_node_features(G):
     # Find the root node id
@@ -164,14 +166,14 @@ def generate_node_features(G):
     node_features_matrix = np.vstack(node_features)
 
     # Slice the continuous features (assuming they are the last 5 columns in this case)
-    continuous_features = node_features_matrix[:, -8:]
+    continuous_features = node_features_matrix[:, -12:]
 
     # Scale the continuous features using standard scaling
     scaler = StandardScaler()
     scaled_continuous_features = scaler.fit_transform(continuous_features)
 
     # Replace the original continuous features with the scaled ones
-    node_features_matrix[:, -8:] = scaled_continuous_features
+    node_features_matrix[:, -12:] = scaled_continuous_features
 
     # Convert the 2D NumPy array back to the list of arrays
     node_features = list(node_features_matrix)
