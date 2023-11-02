@@ -2,15 +2,6 @@
 
 Accelerating IC3 by inducive clauses prediction
 
-
-### For important dir
-
-**for ground truth**
-* abc hwmcc07: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc07_abc_7200_result`
-* abc hwmcc20: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20_abc_7200_result/`
-* ic3ref hwmcc07: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc07-ic3ref_7200-result`
-* ic3ref hwmcc20: `/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/ground_truth/hwmcc20-ic3ref_7200-result/`
-
 ### For deps
 
 **For modified ic3ref:**
