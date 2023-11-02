@@ -55,6 +55,25 @@ def data_preprocessing(args):
             # 1. Parse the JSON graph data and create the graph structure
             with open(os.path.join(JSON_FOLDER, _)) as f:
                 graph_data = json.loads(f.read())
+                
+            if len(graph_data) == 1: 
+                '''
+                Assert data is like this:
+                {
+                "data": {
+                "application": "constant_false",
+                "id": 0,
+                "type": "variable"
+                }
+                }
+                '''
+                assert all([
+                    graph_data[0]['data']['type'] == 'variable',
+                    graph_data[0]['data']['application'] in ['constant_true', 'constant_false'],
+                    graph_data[0]['data']['id'] == 0
+                ]), 'Abnormal graph! Check json file!'
+                #record_abnormal_graph(filename)
+                continue
 
             G = nx.DiGraph(name=os.path.splitext(_)[0])
 

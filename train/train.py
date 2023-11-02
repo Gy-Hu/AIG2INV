@@ -127,7 +127,7 @@ if __name__ == "__main__":
     parser.add_argument('--update-adjs', action='store_true', help='update adjs by applying knn graph')
     parser.add_argument('--undirected', action='store_true', help='undirected graph')
     
-    args = parser.parse_args(['--dataset','/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2007_tip_ic3ref_no_simplification_0-22/bad_cube_cex2graph/expr_to_build_graph/','--undirected'])
+    args = parser.parse_args(['--dataset','/data/guangyuh/coding_env/AIG2INV/AIG2INV_main/dataset_hwmcc2020_all_only_unsat_abc_moderate_10/bad_cube_cex2graph/expr_to_build_graph/','--undirected','--dump-pickle-name','dataset_hwmcc2020_all_only_unsat_abc_moderate_10.pt'])
     print(args)
     print("hidden dimension: ", HIDDEN_DIM, "\nembedding dimension: ", EMBEDDING_DIM, "\nepoch: ", EPOCH, "\nlearning rate: ", LR, "\nbatch size: ", BATCH_SIZE, "\ndataset split: ", DATASET_SPLIT, "\nweight decay: ", WEIGHT_DECAY, "\ndropout: ", DROPOUT)
     if args.dump_pickle_name is not None: DUMP_MODE = True
@@ -150,6 +150,11 @@ if __name__ == "__main__":
         
         # Assign the updated list back to the original variable
         graph_list_encoded = updated_graph_list
+        
+        if DUMP_MODE:
+            with open(args.dump_pickle_name, "wb") as f:
+                pickle.dump(graph_list_encoded, f)
+            exit(0)
         
         if args.update_adjs:
             # copy the graph_list
